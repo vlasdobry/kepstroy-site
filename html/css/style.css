@@ -8,13 +8,14 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: #fff;
+  background: transparent;
   padding: 0.75rem 1rem;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-  border-top: 1px solid var(--c-border);
+  box-shadow: none;
+  border-top: none;
   transform: translateY(120%);
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
+  pointer-events: none;
 }
 .sticky-phone.is-visible {
   transform: translateY(0);
@@ -33,10 +34,12 @@
   font-size: 1rem;
   border-radius: var(--rad-lg);
   transition: var(--transition);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(21, 128, 61, 0.35);
+  pointer-events: auto;
 }
 .sticky-phone__btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(21, 128, 61, 0.4);
+  box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(21, 128, 61, 0.45);
 }
 @media (max-width: 768px) {
   body { padding-bottom: 80px; }
