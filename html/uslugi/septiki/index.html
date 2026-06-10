@@ -140,7 +140,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../css/style.css?v=14">
+  <link rel="stylesheet" href="../../css/style.css?v=15">
   <link rel="icon" type="image/svg+xml" href="../../images/favicon/favicon.svg">
   <!-- Yandex.Metrika counter -->
   <script type="text/javascript">
@@ -390,6 +390,12 @@
 
               <input type="text" name="name" class="calc-input" placeholder="Ваше имя" required>
               <input type="tel" name="phone" class="calc-input" placeholder="+7 (___) ___-__-__" required>
+              <div class="form-consent">
+                <label>
+                  <input type="checkbox" name="consent" required>
+                  <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
+                </label>
+              </div>
               <button type="submit" class="btn btn-primary btn-block calc-submit">
                 Забронировать смету за <span id="btn-price">123 300 ₽</span>
               </button>
@@ -734,6 +740,12 @@
             </select>
           </div>
           <div style="display: flex; align-items: flex-end;">
+            <div class="form-consent">
+              <label>
+                <input type="checkbox" name="consent" required>
+                <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
+              </label>
+            </div>
             <button type="submit" class="btn btn--accent" style="width: 100%; padding: 0.875rem 1.5rem; font-size: 1rem; font-weight: 700;">
               Получить расчёт
             </button>
@@ -821,12 +833,18 @@
         <div style="margin-bottom: 1.5rem;">
           <input type="tel" name="phone" placeholder="+7 (978) 000-00-00" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem;" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
         </div>
+        <div class="form-consent">
+          <label>
+            <input type="checkbox" name="consent" required>
+            <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
+          </label>
+        </div>
         <button type="submit" class="btn btn--accent" style="width: 100%;">Перезвоните мне</button>
       </form>
     </div>
   </div>
 
-  <script src="../../js/main.js?v=14"></script>
+  <script src="../../js/main.js?v=15"></script>
   <script>
     // FAQ toggle
     function toggleFaq(btn) {
@@ -1002,5 +1020,9 @@
       if (e.key === 'Escape') closeModal();
     });
   </script>
+<div class="cookie-banner" id="cookieBanner">
+  <p>Мы используем cookies для аналитики (Яндекс.Метрика). Продолжая использовать сайт, вы соглашаетесь с <a href="/politika-konfidencialnosti/">политикой конфиденциальности</a>.</p>
+  <button class="cookie-banner__btn" type="button">Принять</button>
+</div>
 </body>
 </html>

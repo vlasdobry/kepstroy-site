@@ -337,3 +337,24 @@ window.addEventListener('scroll', () => {
   
   lastScroll = currentScroll;
 });
+
+
+// === Cookie Consent Banner ===
+(function () {
+  const banner = document.getElementById('cookieBanner');
+  if (!banner) return;
+
+  // Check if user already accepted
+  if (localStorage.getItem('cookiesAccepted') === 'true') {
+    banner.classList.add('is-hidden');
+    return;
+  }
+
+  const acceptBtn = banner.querySelector('.cookie-banner__btn');
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', function () {
+      localStorage.setItem('cookiesAccepted', 'true');
+      banner.classList.add('is-hidden');
+    });
+  }
+})();

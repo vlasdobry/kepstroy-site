@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css?v=14">
+  <link rel="stylesheet" href="css/style.css?v=15">
   <link rel="icon" type="image/svg+xml" href="images/favicon/favicon.svg">
   
   <!-- Open Graph -->
@@ -285,6 +285,12 @@
               <option value="zabory">Заборы</option>
               <option value="other">Другое</option>
             </select>
+            <div class="form-consent">
+              <label>
+                <input type="checkbox" name="consent" required>
+                <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
+              </label>
+            </div>
             <button type="submit" class="btn btn--accent cta-form__btn">Получить расчёт</button>
           </div>
           <p class="cta-form__privacy">Нажимая кнопку, вы соглашаетесь с <a href="/politika-konfidencialnosti/">политикой конфиденциальности</a></p>
@@ -674,13 +680,18 @@
         <div class="form-group">
           <input type="tel" name="phone" class="input" placeholder="+7 (___) ___-__-__" required>
         </div>
+        <div class="form-consent">
+          <label>
+            <input type="checkbox" name="consent" required>
+            <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
+          </label>
+        </div>
         <button type="submit" class="btn btn--accent btn--full" style="width: 100%;">Рассчитать стоимость</button>
-        <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Нажимая кнопку, вы соглашаетесь с <a href="/politika-konfidencialnosti/" style="color: #94a3b8; text-decoration: underline;">политикой конфиденциальности</a></p>
       </form>
     </div>
   </div>
 
-  <script src="js/main.js?v=144"></script>
+  <script src="js/main.js?v=15"></script>
   <script>
     function openModal() {
       document.getElementById('modalOverlay').classList.add('active');
@@ -694,5 +705,9 @@
       if (e.key === 'Escape') closeModal();
     });
   </script>
+<div class="cookie-banner" id="cookieBanner">
+  <p>Мы используем cookies для аналитики (Яндекс.Метрика). Продолжая использовать сайт, вы соглашаетесь с <a href="/politika-konfidencialnosti/">политикой конфиденциальности</a>.</p>
+  <button class="cookie-banner__btn" type="button">Принять</button>
+</div>
 </body>
 </html>
