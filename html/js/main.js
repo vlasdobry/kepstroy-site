@@ -44,7 +44,18 @@ if (stickyPhone) {
 document.querySelectorAll('a[href^="tel:"]').forEach(link => {
   link.addEventListener('click', () => {
     if (typeof ym !== 'undefined') {
-      ym(99999999, 'reachGoal', 'phone_click');
+      ym(109754800, 'reachGoal', 'phone_click');
+    }
+  });
+});
+
+// === Smart Call: Desktop → Modal, Mobile → tel: ===
+document.querySelectorAll('.js-smart-call').forEach(link => {
+  link.addEventListener('click', function (e) {
+    if (window.innerWidth > 768) {
+      e.preventDefault();
+      if (typeof openModal === 'function') openModal();
+      if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'phone_click');
     }
   });
 });
@@ -90,7 +101,7 @@ if (contactForm) {
       if (response.ok) {
         // Track form submission
         if (typeof ym !== 'undefined') {
-          ym(99999999, 'reachGoal', 'form_submit');
+          ym(109754800, 'reachGoal', 'form_submit');
         }
 
         // Show success
@@ -121,7 +132,7 @@ window.addEventListener('scroll', () => {
   if (scrollPercent >= 50) {
     scrollTracked = true;
     if (typeof ym !== 'undefined') {
-      ym(99999999, 'reachGoal', 'scroll_50');
+      ym(109754800, 'reachGoal', 'scroll_50');
     }
   }
 });
@@ -129,7 +140,7 @@ window.addEventListener('scroll', () => {
 // === Time on site tracking (2 minutes) ===
 setTimeout(() => {
   if (typeof ym !== 'undefined') {
-    ym(99999999, 'reachGoal', 'time_2min');
+    ym(109754800, 'reachGoal', 'time_2min');
   }
 }, 120000);
 
@@ -281,7 +292,7 @@ quizContainers.forEach(container => {
         });
 
         if (response.ok) {
-          if (typeof ym !== 'undefined') ym(99999999, 'reachGoal', 'quiz_submit');
+          if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'quiz_submit');
           quizForm.innerHTML = `
             <div style="text-align:center;padding:2rem;">
               <div style="font-size:3rem;margin-bottom:1rem;">✓</div>

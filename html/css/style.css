@@ -315,6 +315,16 @@ h1, h2, h3, h4 {
 .hero--dark .hero__ben-item {
   color: rgba(255, 255, 255, 0.95) !important;
 }
+.hero--dark .hero__benefits { color: #ffffff; }
+.hero .badge { margin-bottom: 3rem; }
+.hero .btn-group { margin-top: 0.5rem; margin-bottom: 1rem; }
+.hero .btn--accent,
+.hero .btn--outline {
+  padding: 1rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  gap: 0.5rem;
+}
 
 .hero__grid {
   display: grid;
@@ -537,6 +547,86 @@ h1, h2, h3, h4 {
 }
 @media (max-width: 600px) {
   .reviews-grid { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   MARKETING BLOCKS — Equipment, Guarantees, Geography
+   ========================================================================== */
+.brands-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+.brand-card {
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: var(--rad-xl);
+  padding: 1.75rem 1rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--c-heading);
+}
+.brand-card__note {
+  font-size: 0.8rem;
+  color: var(--c-text);
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.guarantees-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+.guarantee-card {
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: var(--rad-xl);
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+.guarantee-card__icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  color: var(--c-primary);
+}
+.guarantee-card__title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+  color: var(--c-heading);
+}
+.guarantee-card__text {
+  font-size: 0.875rem;
+  color: var(--c-text);
+  line-height: 1.5;
+}
+
+.geo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.geo-item {
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: var(--rad-lg);
+  padding: 1rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--c-heading);
+}
+
+@media (max-width: 768px) {
+  .brands-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .guarantees-grid { grid-template-columns: 1fr; gap: 1rem; }
+  .geo-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ==========================================================================
