@@ -1,0 +1,26 @@
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Screenshots (local only)
+html/screenshots/
+
+# Logs
+*.log
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# Sensitive files
+*.pem
+*.key
+id_rsa*

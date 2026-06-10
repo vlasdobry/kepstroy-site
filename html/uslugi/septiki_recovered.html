@@ -1,0 +1,42 @@
+<!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR --><!-- DATA CORRUPTED BY BAD SECTOR -->pipeSlider=document.getElementById('pipeLength');
+if(pipeSlider){pipeSlider.addEventListener('input',e=>{pipeLength=parseInt(e.target.value);const valEl=document.getElementById('pipeLengthValue');if(valEl)valEl.textContent=pipeLength+' метров';updateCalculator();});}
+
+// ===== INIT =====
+function init(){
+renderInstSteps();
+renderCoverCities();
+renderCalcModels();
+renderCalcRegion();
+updateCalculator();
+renderPortfolio();
+renderFaq();
+renderTrustFeatures();
+initFilters();
+handleForm('consultForm','consultSuccess','consultBtn');
+handleForm('calcBookingForm','bookingSuccess','bookingBtn',()=>{
+const model=SEPTIC_MODELS[selectedModel];
+const region=CRIMEA_REGIONS[selectedRegion];
+const pipeExtra=Math.max(0,pipeLength-FREE_PIPE_LENGTH);
+const pipeCost=pipeExtra*PIPE_COST_PER_METER;
+const baseLabor=Math.round(model.installationPrice*region.workPriceMultiplier);
+const difficultyCost=DIFFICULTY_COSTS[region.soilDifficulty]||0;
+const total=(model.price+baseLabor+pipeCost+difficultyCost)*DISCOUNT;
+const code=generateCertCode();
+const ce=document.getElementById('certCode');if(ce)ce.textContent='#CAP-AC-10%-'+Math.floor(Math.random()*90000+10000);
+const cm=document.getElementById('certModel');if(cm)cm.innerHTML='<strong>Оборудование:</strong> Септик '+model.name+' ('+model.specs.dimensions+')';
+const cr=document.getElementById('certRegion');if(cr)cr.innerHTML='<strong>Специфика грунта:</strong> '+region.name+' ('+region.soilType.split(',')[0]+')';
+const cd=document.getElementById('certDiscount');if(cd)cd.innerHTML='<strong>Размер забронированной скидки:</strong> '+discountAmount.toLocaleString('ru')+' ₽';
+});
+handleForm('newsletterForm','newsletterSuccess','');
+handleForm('fabForm','fabSuccess','');
+const faqSearch=document.getElementById('faqSearch');
+if(faqSearch){faqSearch.addEventListener('input',renderFaq);}
+const faqClear=document.getElementById('faqClear');
+if(faqClear){faqClear.addEventListener('click',()=>{if(faqSearch)faqSearch.value='';renderFaq();});}
+const hash=window.location.hash.replace('#','');
+if(['calc','portfolio','faqs'].includes(hash))setTab(hash);
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

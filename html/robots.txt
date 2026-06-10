@@ -1,0 +1,36 @@
+# === Международные AI-боты ===
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+# === Российские AI-боты (критично для RU) ===
+User-agent: YandexBot
+Allow: /
+
+User-agent: YandexImages
+Allow: /
+
+User-agent: SputnikBot
+Allow: /
+
+# === Основные поисковые боты ===
+User-agent: *
+Allow: /
+
+# === Блокировать ===
+User-agent: CCBot
+Disallow: /
+
+# Sitemap
+Sitemap: https://kepstroy.ru/sitemap.xml

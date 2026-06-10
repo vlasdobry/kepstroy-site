@@ -2,17 +2,23 @@ version: "3.8"
 
 services:
   kepstroy-site:
-    build: .
+    image: ghcr.io/vlasdobry/kepstroy-site:latest
     container_name: kepstroy-site
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.kepstroy.rule=Host(`kepstroy.ru`) || Host(`www.kepstroy.ru`)"
       - "traefik.http.routers.kepstroy.entrypoints=websecure"
       - "traefik.http.routers.kepstroy.tls.certresolver=letsencrypt"
       - "traefik.http.services.kepstroy.loadbalancer.server.port=80"
-      - "com.centurylinklabs.watchtower.enable=true"
-      - "traefik.http.middlewares.kepstroy-redirect-www.redirectregex.regex=^https://www\\.kepstroy\\.ru/(.*)"
+      - "traefik.http.middlewares.kepstroy-redirect-www.redirectregex.regex=^https://www\.kepstroy\.ru/(.*)"
       - "traefik.http.middlewares.kepstroy-redirect-www.redirectregex.replacement=https://kepstroy.ru/$${1}"
       - "traefik.http.middlewares.kepstroy-redirect-www.redirectregex.permanent=true"
       - "traefik.http.routers.kepstroy.middlewares=kepstroy-redirect-www"
