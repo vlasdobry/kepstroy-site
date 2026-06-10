@@ -2,7 +2,7 @@
    STICKY PHONE BAR (mobile only)
    ========================================================================== */
 .sticky-phone {
-  display: none;
+  display: block;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -12,6 +12,12 @@
   padding: 0.75rem 1rem;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
   border-top: 1px solid var(--c-border);
+  transform: translateY(120%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.sticky-phone.is-visible {
+  transform: translateY(0);
 }
 .sticky-phone__btn {
   display: flex;
@@ -33,7 +39,6 @@
   box-shadow: 0 8px 20px rgba(21, 128, 61, 0.4);
 }
 @media (max-width: 768px) {
-  .sticky-phone { display: block; }
   body { padding-bottom: 80px; }
 }
 
@@ -87,7 +92,8 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
-  color-scheme: light;
+  color-scheme: only light;
+  background-color: #ffffff;
 }
 body {
   font-family: var(--font-sans);
@@ -95,37 +101,46 @@ body {
   background-color: var(--c-bg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  color-scheme: light;
+  color-scheme: only light;
   forced-color-adjust: none;
   -webkit-forced-color-adjust: none;
 }
 
 /* Force light mode — ignore system dark theme */
+/* Aggressive light mode override for browser auto-dark features (Chrome, Samsung, Yandex) */
 @media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: light;
+  html, body {
+    color-scheme: only light !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
   }
-  html {
-    color-scheme: light;
-    background-color: #ffffff;
+  .header, .section, .section-alt, .section--bg, .service-tile, .review-card,
+  .case-item, .engineer-box, .cta-block, .portfolio-card, .faq-item,
+  .region-card, .case-card, .calc-result__card, .calc-type-card__body,
+  .modal, .badge, .sticky-phone, .mobile-menu, .container {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #e2e8f0 !important;
   }
-  body {
-    color: var(--c-text);
-    background-color: var(--c-bg);
-    color-scheme: light;
-  }
-  .header {
-    background: white;
+  .hero--dark {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
   }
   .hero--dark h1,
   .hero--dark .hero-subtitle,
-  .hero--dark .hero__subtitle {
-    color: white;
+  .hero--dark .hero__subtitle,
+  .hero--dark p {
+    color: #ffffff !important;
   }
   .footer {
-    background: #1e293b;
-    color: white;
+    background-color: #1e293b !important;
+    color: #ffffff !important;
   }
+  .btn--primary, .btn--accent, .btn-primary {
+    color: #ffffff !important;
+  }
+  a { color: inherit !important; }
+  a:hover { color: var(--c-primary) !important; }
 }
 img { max-width: 100%; display: block; }
 a { color: var(--c-primary); text-decoration: none; transition: var(--transition); }
@@ -1966,6 +1981,15 @@ h1, h2, h3, h4, p, span, a, li, div {
    HEADER MOBILE FIXES
    ========================================================================== */
 @media (max-width: 768px) {
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+  body {
+    padding-top: 64px;
+  }
   .header__contact-main,
   .header-phone {
     display: none;

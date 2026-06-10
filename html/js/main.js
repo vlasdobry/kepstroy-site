@@ -19,6 +19,27 @@ if (menuToggle && mobileMenu) {
   });
 }
 
+// === Sticky Phone Bar - show after scrolling past first viewport ===
+const stickyPhone = document.querySelector('.sticky-phone');
+
+if (stickyPhone) {
+  const showThreshold = Math.max(window.innerHeight * 0.55, 300);
+  let phoneVisible = false;
+
+  function updateStickyPhone() {
+    const shouldShow = window.scrollY > showThreshold;
+    if (shouldShow === phoneVisible) return;
+    phoneVisible = shouldShow;
+    stickyPhone.classList.toggle('is-visible', shouldShow);
+  }
+
+  window.addEventListener('scroll', updateStickyPhone, { passive: true });
+  window.addEventListener('resize', () => {
+    updateStickyPhone();
+  }, { passive: true });
+  updateStickyPhone();
+}
+
 // === Phone Click Tracking (Yandex Metrica) ===
 document.querySelectorAll('a[href^="tel:"]').forEach(link => {
   link.addEventListener('click', () => {
