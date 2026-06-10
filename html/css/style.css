@@ -84,13 +84,48 @@
    RESET & BASE
    ========================================================================== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; font-size: 16px; }
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  color-scheme: light;
+}
 body {
   font-family: var(--font-sans);
   color: var(--c-text);
   background-color: var(--c-bg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+  forced-color-adjust: none;
+  -webkit-forced-color-adjust: none;
+}
+
+/* Force light mode — ignore system dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light;
+  }
+  html {
+    color-scheme: light;
+    background-color: #ffffff;
+  }
+  body {
+    color: var(--c-text);
+    background-color: var(--c-bg);
+    color-scheme: light;
+  }
+  .header {
+    background: white;
+  }
+  .hero--dark h1,
+  .hero--dark .hero-subtitle,
+  .hero--dark .hero__subtitle {
+    color: white;
+  }
+  .footer {
+    background: #1e293b;
+    color: white;
+  }
 }
 img { max-width: 100%; display: block; }
 a { color: var(--c-primary); text-decoration: none; transition: var(--transition); }
@@ -1886,4 +1921,43 @@ html, body {
     min-height: auto !important;
     padding: 2.5rem 0 !important;
   }
+}
+
+/* ==========================================================================
+   FORCE LIGHT MODE — prevent browser from overriding colors
+   ========================================================================== */
+
+/* Prevent forced colors (Windows High Contrast, mobile dark mode overrides) */
+.header,
+.hero,
+.hero--dark,
+.section,
+.section--bg,
+.footer,
+.btn,
+.btn--primary,
+.btn--accent,
+.btn--outline,
+.service-tile,
+.review-card,
+.case-item,
+.engineer-box,
+.cta-block,
+.portfolio-card,
+.region-card,
+.faq-item,
+.case-card,
+.calc-result__card,
+.calc-type-card__body,
+.modal,
+.badge,
+.sticky-phone {
+  forced-color-adjust: none;
+  -webkit-forced-color-adjust: none;
+}
+
+/* Ensure text colors stay as defined */
+h1, h2, h3, h4, p, span, a, li, div {
+  forced-color-adjust: none;
+  -webkit-forced-color-adjust: none;
 }
