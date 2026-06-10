@@ -1961,3 +1961,18 @@ h1, h2, h3, h4, p, span, a, li, div {
   forced-color-adjust: none;
   -webkit-forced-color-adjust: none;
 }
+
+/* ==========================================================================
+   HEADER MOBILE FIXES
+   ========================================================================== */
+@media (max-width: 768px) {
+  .header__contact-main {
+    display: none;
+  }
+  .header__inner {
+    height: 64px;
+  }
+  .logo {
+    font-size: 1.25rem;
+  }
+}
