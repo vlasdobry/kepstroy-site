@@ -1,14 +1,13 @@
 FROM nginx:alpine
 
-# Create non-root user
-RUN addgroup -g 101 -S nginxgroup && \
-    adduser -u 101 -S nginxuser -G nginxgroup
+# Remove the IPv6 entrypoint script that tries to modify read-only default.conf
+RUN rm -f /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
 
 # Copy site files and custom nginx config
 COPY html/ /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Create required directories with proper permissions
+# Create required directories with proper permissions for nginx user (uid 101)
 RUN mkdir -p /var/cache/nginx/client_temp \
     /var/cache/nginx/proxy_temp \
     /var/cache/nginx/fastcgi_temp \
@@ -16,7 +15,7 @@ RUN mkdir -p /var/cache/nginx/client_temp \
     /var/cache/nginx/scgi_temp \
     /var/run \
     /tmp && \
-    chown -R nginxuser:nginxgroup /var/cache/nginx \
+    chown -R nginx:nginx /var/cache/nginx \
     /var/run \
     /tmp \
     /usr/share/nginx/html \
@@ -24,4 +23,4 @@ RUN mkdir -p /var/cache/nginx/client_temp \
     /etc/nginx/conf.d
 
 EXPOSE 80
-USER nginxuser
+USER nginx
