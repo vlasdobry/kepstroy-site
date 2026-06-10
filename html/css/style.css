@@ -1966,10 +1966,12 @@ h1, h2, h3, h4, p, span, a, li, div {
    HEADER MOBILE FIXES
    ========================================================================== */
 @media (max-width: 768px) {
-  .header__contact-main {
+  .header__contact-main,
+  .header-phone {
     display: none;
   }
-  .header__inner {
+  .header__inner,
+  .header-inner {
     height: 64px;
   }
   .logo {
