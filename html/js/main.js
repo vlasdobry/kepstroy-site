@@ -50,13 +50,17 @@ document.querySelectorAll('a[href^="tel:"]').forEach(link => {
 });
 
 // === Smart Call: Desktop → Modal, Mobile → tel: ===
-document.querySelectorAll('.js-smart-call').forEach(link => {
-  link.addEventListener('click', function (e) {
-    if (window.innerWidth > 768) {
-      e.preventDefault();
+document.querySelectorAll('.js-smart-call').forEach(btn => {
+  btn.addEventListener('click', function (e) {
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+      window.location.href = 'tel:+79780000000';
+    } else {
       if (typeof openModal === 'function') openModal();
-      if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'phone_click');
     }
+
+    if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'phone_click');
   });
 });
 

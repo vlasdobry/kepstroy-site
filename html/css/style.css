@@ -62,6 +62,30 @@
   body { padding-bottom: 80px; }
 }
 
+/* Pulse animation for desktop sticky button */
+@keyframes pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.7); }
+  70% { box-shadow: 0 0 0 15px rgba(21, 128, 61, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0); }
+}
+
+@media (min-width: 769px) {
+  .sticky-phone {
+    bottom: 40px;
+    right: 40px;
+  }
+  .sticky-phone__btn {
+    width: 64px;
+    height: 64px;
+    padding: 0;
+    border-radius: 50%;
+    animation: pulse-green 2s infinite;
+  }
+  .sticky-phone__text {
+    display: none;
+  }
+}
+
 /* ==========================================================================
    MODERN DESIGN SYSTEM - KEPSTROY (ZEMLECHIST STYLE)
    ========================================================================== */
