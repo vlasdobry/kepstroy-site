@@ -1614,36 +1614,39 @@ html, body {
 
   /* --- Hero --- */
   .hero {
-    padding: 2rem 0 2.5rem;
+    padding: 1.5rem 0 2rem;
     min-height: auto !important;
     text-align: center;
   }
   .hero--dark {
-    background: #ffffff !important;
-    color: #1e293b !important;
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0.92) 0%, rgba(15, 23, 42, 0.88) 100%),
+                linear-gradient(180deg, #0f172a 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
   }
   .hero--dark .hero-bg,
   .hero--dark .hero-bg::after {
-    opacity: 0.06;
+    opacity: 1;
   }
   .hero--dark .hero__title,
   .hero--dark .hero__subtitle,
   .hero--dark p,
   .hero--dark .hero__ben-item {
-    color: #1e293b !important;
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
   }
   .hero--dark .btn--outline {
-    border-color: #1e293b;
-    color: #1e293b;
+    border-color: rgba(255,255,255,0.8);
+    color: #ffffff;
   }
   .hero__title {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
+    font-size: 1.45rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.25;
   }
   .hero__subtitle {
     font-size: 0.95rem;
-    margin-bottom: 1.5rem;
-    color: #1e293b !important;
+    margin-bottom: 1.25rem;
+    color: rgba(255,255,255,0.95) !important;
   }
   .hero__content {
     max-width: 100% !important;
@@ -1954,7 +1957,6 @@ html, body {
   section.hero[style*="min-height: 70vh"],
   section.hero[style*="min-height: 50vh"] {
     min-height: auto !important;
-    padding: 2.5rem 0 !important;
   }
 }
 
