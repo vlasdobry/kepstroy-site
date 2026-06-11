@@ -286,6 +286,8 @@ h1, h2, h3, h4 {
   background: #f1f5f9;
   padding: 4rem 0 6rem;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .hero-bg {
@@ -304,6 +306,9 @@ h1, h2, h3, h4 {
 .hero .container {
   position: relative;
   z-index: 1;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 .hero--dark {
   position: relative;
