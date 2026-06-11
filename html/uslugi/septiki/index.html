@@ -515,6 +515,44 @@
     </div>
   </section>
 
+  <!-- Форма заявки -->
+  <section class="section section--cta">
+    <div class="container" style="max-width: 900px;">
+      <div class="section-head text-center">
+        <h2 class="section-title section-title--center">Получить расчёт стоимости</h2>
+        <p class="section-subtitle">Оставьте заявку — перезвоним за 15 минут с точной сметой</p>
+      </div>
+      <div class="service-form">
+        <form id="septic-form" class="service-form__grid" action="https://formsubmit.co/info@kepstroy.ru" method="POST">
+          <input type="hidden" name="_subject" value="Заявка со страницы Септики — КэпСтрой">
+          <input type="hidden" name="_template" value="table">
+          <input type="hidden" name="_next" value="https://kepstroy.ru/spasibo/">
+          <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+
+          <div>
+            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Ваше имя</label>
+            <input type="text" name="name" placeholder="Андрей" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Телефон</label>
+            <input type="tel" name="phone" placeholder="+7 (978) 000-00-00" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
+          </div>
+          <div style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn btn--accent" style="width: 100%; padding: 0.875rem 1.5rem; font-size: 1rem; font-weight: 700;">
+              Получить расчёт
+            </button>
+          </div>
+          <div class="form-consent" style="grid-column: 1 / -1; margin-top: 0.5rem;">
+            <label>
+              <input type="checkbox" name="consent" required>
+              <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
+            </label>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
   <!-- Как мы работаем -->
   <section class="section section--bg">
     <div class="container">
@@ -702,44 +740,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Форма заявки -->
-  <section class="section section--cta">
-    <div class="container" style="max-width: 900px;">
-      <div class="section-head text-center">
-        <h2 class="section-title section-title--center">Получить расчёт стоимости</h2>
-        <p class="section-subtitle">Оставьте заявку — перезвоним за 15 минут с точной сметой</p>
-      </div>
-      <div class="service-form">
-        <form id="septic-form" class="service-form__grid" action="https://formsubmit.co/info@kepstroy.ru" method="POST">
-          <input type="hidden" name="_subject" value="Заявка со страницы Септики — КэпСтрой">
-          <input type="hidden" name="_template" value="table">
-          <input type="hidden" name="_next" value="https://kepstroy.ru/spasibo/">
-          <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
-
-          <div>
-            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Ваше имя</label>
-            <input type="text" name="name" placeholder="Андрей" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
-          </div>
-          <div>
-            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Телефон</label>
-            <input type="tel" name="phone" placeholder="+7 (978) 000-00-00" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
-          </div>
-          <div style="display: flex; align-items: flex-end;">
-            <button type="submit" class="btn btn--accent" style="width: 100%; padding: 0.875rem 1.5rem; font-size: 1rem; font-weight: 700;">
-              Получить расчёт
-            </button>
-          </div>
-          <div class="form-consent" style="grid-column: 1 / -1; margin-top: 0.5rem;">
-            <label>
-              <input type="checkbox" name="consent" required>
-              <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
-            </label>
-          </div>
-        </form>
       </div>
     </div>
   </section>
