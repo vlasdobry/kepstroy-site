@@ -1735,8 +1735,15 @@ html, body {
   /* --- Hero --- */
   .hero {
     padding: 1.5rem 0 2rem;
-    min-height: auto !important;
+    min-height: calc(100vh - 60px) !important;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+  }
+  .hero .container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
   }
   .hero__title {
     font-size: 2.25rem;
@@ -1750,6 +1757,9 @@ html, body {
   }
   .hero__content {
     max-width: 100% !important;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
   }
 
   /* --- Buttons --- */
@@ -1759,7 +1769,7 @@ html, body {
     justify-content: center;
     width: 100%;
     gap: 0.75rem;
-    margin-top: 3rem !important;
+    margin-top: auto !important;
   }
   .btn-group .btn {
     width: 100%;
