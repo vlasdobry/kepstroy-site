@@ -1745,7 +1745,7 @@ html, body {
   }
   .hero__subtitle {
     font-size: 0.95rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 2.5rem;
     color: rgba(255, 255, 255, 0.95) !important;
   }
   .hero__content {
@@ -1759,6 +1759,7 @@ html, body {
     justify-content: center;
     width: 100%;
     gap: 0.75rem;
+    margin-top: 3rem !important;
   }
   .btn-group .btn {
     width: 100%;
