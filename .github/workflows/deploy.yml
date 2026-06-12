@@ -103,4 +103,6 @@ jobs:
             sudo docker compose up -d --force-recreate
             sleep 5
             sudo docker compose logs --tail=100
+            echo "Testing Telegram proxy..."
+            curl -s --max-time 15 -x "$TELEGRAM_PROXY_URL" "https://api.telegram.org/bot8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU/getMe" || echo "proxy test failed"
             sudo docker image prune -f
