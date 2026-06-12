@@ -160,7 +160,33 @@ app.get('/health', (req, res) => {
   res.json({ ok: true });
 });
 
+async function pollUpdates(offset = 0) {
+  try {
+    const data = await callTelegramAPI('getUpdates', { offset, limit: 10 });
+    if (data.ok && data.result) {
+      for (const update of data.result) {
+        offset = update.update_id + 1;
+        const callbackQuery = update.callback_query;
+        if (callbackQuery && callbackQuery.data && callbackQuery.data.startsWith('lead_done:')) {
+          const phone = callbackQuery.data.replace('lead_done:', '');
+          await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
+          await editMessageStatus(
+            callbackQuery.message.chat.id,
+            callbackQuery.message.message_id,
+            callbackQuery.message.text
+          );
+          console.log('Lead marked as done via polling:', phone);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Polling error:', err.message);
+  }
+  setTimeout(() => pollUpdates(offset), 5000);
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Form handler listening on port ${PORT}`);
+  pollUpdates();
 });
