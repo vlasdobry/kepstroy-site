@@ -37,8 +37,8 @@ services:
     tmpfs:
       - /tmp:noexec,nosuid,size=10m
     environment:
-      - BOT_TOKEN=8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU
-      - CHAT_ID=-5215921734
+      - BOT_TOKEN=${BOT_TOKEN}
+      - CHAT_ID=${CHAT_ID}
       - TELEGRAM_PROXY_URL=${TELEGRAM_PROXY_URL:-}
     security_opt:
       - no-new-privileges:true

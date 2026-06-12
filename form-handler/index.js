@@ -15,8 +15,8 @@ app.use(cors({
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU';
-const CHAT_ID = process.env.CHAT_ID || '-5215921734';
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const CHAT_ID = process.env.CHAT_ID;
 const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 
 const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
@@ -183,6 +183,11 @@ async function pollUpdates(offset = 0) {
     console.error('Polling error:', err.message);
   }
   setTimeout(() => pollUpdates(offset), 5000);
+}
+
+if (!BOT_TOKEN || !CHAT_ID) {
+  console.error('Missing BOT_TOKEN or CHAT_ID environment variables');
+  process.exit(1);
 }
 
 const PORT = process.env.PORT || 3000;
