@@ -64,6 +64,20 @@ document.querySelectorAll('.js-smart-call').forEach(btn => {
   });
 });
 
+// === Add page source to all forms (for Telegram tracking) ===
+document.querySelectorAll('form').forEach(form => {
+  form.addEventListener('submit', () => {
+    let pageInput = form.querySelector('input[name="page"]');
+    if (!pageInput) {
+      pageInput = document.createElement('input');
+      pageInput.type = 'hidden';
+      pageInput.name = 'page';
+      form.appendChild(pageInput);
+    }
+    pageInput.value = window.location.href;
+  });
+});
+
 // === Form Handling ===
 const contactForm = document.getElementById('contact-form');
 
@@ -86,7 +100,7 @@ if (contactForm) {
 
     try {
       // Using FormSubmit.co (replace with your email)
-      const response = await fetch('https://formsubmit.co/ajax/info@kepstroy.ru', {
+      const response = await fetch('https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,8 +111,7 @@ if (contactForm) {
           phone: formData.get('phone'),
           service: formData.get('service'),
           message: formData.get('message'),
-          _subject: 'Новая заявка с сайта КэпСтрой',
-          _template: 'table'
+          page: window.location.href
         })
       });
 
@@ -283,15 +296,15 @@ quizContainers.forEach(container => {
       submitBtn.textContent = 'Отправка...';
 
       try {
-        const response = await fetch('https://formsubmit.co/ajax/info@kepstroy.ru', {
+        const response = await fetch('https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({
             name: formData.get('name'),
             phone: formData.get('phone'),
-            quiz_answers: JSON.stringify(answers),
-            _subject: 'Квиз: заявка на расчёт септика',
-            _template: 'table'
+            service: 'Квиз: септик',
+            message: 'Ответы квиза: ' + JSON.stringify(answers),
+            page: window.location.href
           })
         });
 

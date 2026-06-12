@@ -29,7 +29,6 @@
         "description": "Профессиональные земляные работы, установка септиков, канализации, заборов и водоснабжения в Крыму",
         "url": "https://kepstroy.ru",
         "telephone": "+79784615962",
-        "email": "info@kepstroy.ru",
         "address": {
           "@type": "PostalAddress",
           "addressLocality": "Симферополь",
@@ -384,9 +383,8 @@
               <p class="calc-result__note">Точная смета после бесплатного выезда инженера</p>
             </div>
 
-            <form class="calc-form" id="calc-form" action="https://formsubmit.co/ajax/info@kepstroy.ru" method="POST">
-              <input type="hidden" name="_next" value="https://kepstroy.ru/spasibo/">
-              <input type="hidden" name="_subject" value="Заявка из калькулятора септика">
+            <form class="calc-form" id="calc-form" action="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" method="POST">
+              <input type="hidden" name="service" value="Калькулятор септика">
               <input type="hidden" name="septic_type" id="form-type">
               <input type="hidden" name="region" id="form-region">
               <input type="hidden" name="distance" id="form-distance">
@@ -527,11 +525,8 @@
         <p class="section-subtitle">Оставьте заявку — перезвоним за 15 минут с точной сметой</p>
       </div>
       <div class="service-form">
-        <form id="septic-form" class="service-form__grid" action="https://formsubmit.co/info@kepstroy.ru" method="POST">
-          <input type="hidden" name="_subject" value="Заявка со страницы Септики — КэпСтрой">
-          <input type="hidden" name="_template" value="table">
-          <input type="hidden" name="_next" value="https://kepstroy.ru/spasibo/">
-          <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+        <form id="septic-form" class="service-form__grid" action="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" method="POST">
+          <input type="hidden" name="service" value="Септики">
 
           <div>
             <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Ваше имя</label>
@@ -815,11 +810,8 @@
       <button class="modal__close" onclick="closeModal()">✕</button>
       <h3 class="modal__title">Заказать обратный звонок</h3>
       <p class="modal__desc">Оставьте номер — перезвоним в течение 15 минут</p>
-      <form action="https://formsubmit.co/info@kepstroy.ru" method="POST">
-        <input type="hidden" name="_subject" value="Обратный звонок — Септики">
-        <input type="hidden" name="_template" value="table">
-        <input type="hidden" name="_next" value="https://kepstroy.ru/spasibo/">
-        <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+      <form action="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" method="POST">
+        <input type="hidden" name="service" value="Обратный звонок (септики)">
         <div style="margin-bottom: 1rem;">
           <input type="text" name="name" placeholder="Ваше имя" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem;" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
         </div>

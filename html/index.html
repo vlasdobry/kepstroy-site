@@ -36,7 +36,6 @@
     "description": "Профессиональные земляные работы, установка септиков, канализации, заборов и водоснабжения в Крыму",
     "url": "https://kepstroy.ru",
     "telephone": "+79784615962",
-    "email": "info@kepstroy.ru",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Симферополь",
@@ -270,10 +269,7 @@
           <h2 class="cta-block__title">Получите расчёт стоимости за 5 минут</h2>
           <p class="cta-block__desc">Бесплатный выезд инженера на объект и составление сметы. Работаем по всему Крыму.</p>
         </div>
-        <form class="cta-form" action="https://formsubmit.co/info@kepstroy.ru" method="POST">
-          <input type="hidden" name="_subject" value="Новая заявка с сайта КэпСтрой (главная)">
-          <input type="hidden" name="_next" value="https://kepstroy.ru/spasibo/">
-          <input type="text" name="_honey" style="display:none">
+        <form class="cta-form" action="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" method="POST">
           <div class="cta-form__grid">
             <input type="text" name="name" class="input cta-form__input" placeholder="Ваше имя" required>
             <input type="tel" name="phone" class="input cta-form__input" placeholder="+7 (___) ___-__-__" required>
@@ -673,10 +669,8 @@
       <button class="modal__close" onclick="closeModal()" aria-label="Закрыть">&times;</button>
       <h3 class="modal__title">Узнайте стоимость работ</h3>
       <p class="modal__desc">Введите номер телефона, мы перезвоним и рассчитаем предварительную смету за 5 минут</p>
-      <form id="modal-form" action="https://formsubmit.co/info@kepstroy.ru" method="POST">
-        <input type="hidden" name="_subject" value="Новая заявка с сайта КэпСтрой (главная)">
-        <input type="hidden" name="_next" value="https://kepstroy.ru/spasibo/">
-        <input type="text" name="_honey" style="display:none">
+      <form id="modal-form" action="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" method="POST">
+        <input type="hidden" name="service" value="Обратный звонок">
         <div class="form-group">
           <input type="tel" name="phone" class="input" placeholder="+7 (___) ___-__-__" required>
         </div>
