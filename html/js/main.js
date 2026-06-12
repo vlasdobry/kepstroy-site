@@ -92,6 +92,7 @@ if (contactForm) {
     }
 
     const formData = new FormData(contactForm);
+    formData.append('page', window.location.href);
     const submitBtn = contactForm.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
 
@@ -99,20 +100,9 @@ if (contactForm) {
     submitBtn.textContent = 'Отправка...';
 
     try {
-      // Using FormSubmit.co (replace with your email)
       const response = await fetch('https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          name: formData.get('name'),
-          phone: formData.get('phone'),
-          service: formData.get('service'),
-          message: formData.get('message'),
-          page: window.location.href
-        })
+        body: formData
       });
 
       if (response.ok) {
@@ -292,20 +282,18 @@ quizContainers.forEach(container => {
         if (sel) answers['q' + (i + 1)] = sel.dataset.value;
       });
 
+      const quizData = new FormData(quizForm);
+      quizData.append('service', 'Квиз: септик');
+      quizData.append('message', 'Ответы квиза: ' + JSON.stringify(answers));
+      quizData.append('page', window.location.href);
+
       submitBtn.disabled = true;
       submitBtn.textContent = 'Отправка...';
 
       try {
         const response = await fetch('https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            name: formData.get('name'),
-            phone: formData.get('phone'),
-            service: 'Квиз: септик',
-            message: 'Ответы квиза: ' + JSON.stringify(answers),
-            page: window.location.href
-          })
+          body: quizData
         });
 
         if (response.ok) {
