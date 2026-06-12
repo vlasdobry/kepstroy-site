@@ -41,6 +41,7 @@ async function sendTelegramMessage(text, phone) {
     body: JSON.stringify(payload)
   });
   const body = await response.text();
+  console.log('Telegram API response:', response.status, body.slice(0, 200));
   if (!response.ok) {
     throw new Error(`Telegram API ${response.status}: ${body}`);
   }

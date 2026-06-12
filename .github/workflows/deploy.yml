@@ -106,5 +106,8 @@ jobs:
             echo "Testing form submission..."
             HTTP_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -X POST "https://kepstroy.ru/submit" -d "name=CI+Test&phone=+79999999999&service=septiki&page=https://kepstroy.ru/&message=CI+test")
             echo "Form submission HTTP code: $HTTP_CODE"
-            if [ "$HTTP_CODE" != "302" ]; then exit 1; fi
+            if [ "$HTTP_CODE" != "302" ]; then
+              sudo docker compose logs --tail=50
+              exit 1
+            fi
             sudo docker image prune -f
