@@ -21,27 +21,20 @@ const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 
 const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
 
-async function sendTelegramMessage(text, phone) {
+function cleanPhone(phone) {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '');
+}
+
+async function sendTelegramMessage(text) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  const payload = { chat_id: CHAT_ID, text, parse_mode: 'HTML' };
-  if (phone) {
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone) {
-      payload.reply_markup = {
-        inline_keyboard: [
-          [{ text: '📞 Позвонить клиенту', url: `tel:+${cleanPhone}` }]
-        ]
-      };
-    }
-  }
   const response = await fetch(url, {
     method: 'POST',
     agent: telegramAgent,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'HTML' })
   });
   const body = await response.text();
-  console.log('Telegram API response:', response.status, body.slice(0, 200));
   if (!response.ok) {
     throw new Error(`Telegram API ${response.status}: ${body}`);
   }
@@ -65,9 +58,12 @@ app.post('/submit', async (req, res) => {
     const clientId = req.body.client_id;
     const referrer = req.body.referrer;
 
+    const phoneDigits = cleanPhone(phone);
+    const phoneLink = phoneDigits ? `<a href="tel:+${phoneDigits}">${phone}</a>` : (phone || '—');
+
     let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
     text += `👤 Имя: ${name || '—'}\n`;
-    text += `📞 Телефон: ${phone || '—'}\n`;
+    text += `📞 Телефон: ${phoneLink}\n`;
     text += `🔧 Услуга: ${service || '—'}\n`;
     text += `🌐 Страница: ${page || '—'}`;
     if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
@@ -83,7 +79,7 @@ app.post('/submit', async (req, res) => {
       text += `\n💬 Сообщение: ${message}`;
     }
 
-    await sendTelegramMessage(text, phone);
+    await sendTelegramMessage(text);
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
