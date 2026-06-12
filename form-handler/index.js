@@ -104,9 +104,11 @@ app.post('/submit', async (req, res) => {
 
     const phoneDisplay = formatPhone(phone);
 
+    const phoneDigits = cleanPhone(phone);
+    const phoneHref = phoneDigits ? `<a href="tel:+${phoneDigits}">${phoneDisplay}</a>` : phoneDisplay;
     let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
     text += `👤 Имя: ${name || '—'}\n`;
-    text += `📞 Телефон: ${phoneDisplay}\n`;
+    text += `📞 Телефон: ${phoneHref}\n`;
     text += `🔧 Услуга: ${service || '—'}\n`;
     text += `🌐 Страница: ${page || '—'}`;
     if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
