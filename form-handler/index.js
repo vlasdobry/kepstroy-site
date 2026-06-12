@@ -21,13 +21,24 @@ const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 
 const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
 
-async function sendTelegramMessage(text) {
+async function sendTelegramMessage(text, phone) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+  const payload = { chat_id: CHAT_ID, text, parse_mode: 'HTML' };
+  if (phone) {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone) {
+      payload.reply_markup = {
+        inline_keyboard: [
+          [{ text: '📞 Позвонить клиенту', url: `tel:+${cleanPhone}` }]
+        ]
+      };
+    }
+  }
   const response = await fetch(url, {
     method: 'POST',
     agent: telegramAgent,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'HTML' })
+    body: JSON.stringify(payload)
   });
   const body = await response.text();
   if (!response.ok) {
@@ -71,7 +82,7 @@ app.post('/submit', async (req, res) => {
       text += `\n💬 Сообщение: ${message}`;
     }
 
-    await sendTelegramMessage(text);
+    await sendTelegramMessage(text, phone);
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
