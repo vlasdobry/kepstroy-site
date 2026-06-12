@@ -45,11 +45,28 @@ app.post('/submit', async (req, res) => {
       return res.status(400).send('Spam detected');
     }
 
+    const utmSource = req.body.utm_source;
+    const utmMedium = req.body.utm_medium;
+    const utmCampaign = req.body.utm_campaign;
+    const utmContent = req.body.utm_content;
+    const utmTerm = req.body.utm_term;
+    const clientId = req.body.client_id;
+    const referrer = req.body.referrer;
+
     let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
     text += `👤 Имя: ${name || '—'}\n`;
     text += `📞 Телефон: ${phone || '—'}\n`;
     text += `🔧 Услуга: ${service || '—'}\n`;
     text += `🌐 Страница: ${page || '—'}`;
+    if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
+      text += `\n📊 UTM: ${utmSource || '-'} / ${utmMedium || '-'} / ${utmCampaign || '-'} / content: ${utmContent || '-'} / term: ${utmTerm || '-'}`;
+    }
+    if (clientId) {
+      text += `\n🆔 Client ID: ${clientId}`;
+    }
+    if (referrer) {
+      text += `\n↩️ Referrer: ${referrer}`;
+    }
     if (message) {
       text += `\n💬 Сообщение: ${message}`;
     }

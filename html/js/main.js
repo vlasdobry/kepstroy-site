@@ -64,19 +64,99 @@ document.querySelectorAll('.js-smart-call').forEach(btn => {
   });
 });
 
-// === Add page source to all forms (for Telegram tracking) ===
-document.querySelectorAll('form').forEach(form => {
-  form.addEventListener('submit', () => {
-    let pageInput = form.querySelector('input[name="page"]');
-    if (!pageInput) {
-      pageInput = document.createElement('input');
-      pageInput.type = 'hidden';
-      pageInput.name = 'page';
-      form.appendChild(pageInput);
+// === Universal form handler for all /submit forms ===
+document.querySelectorAll('form[action="/submit"]').forEach(form => {
+  if (form.id === 'contact-form' || form.classList.contains('quiz-form-inner')) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const honeypot = form.querySelector('.form-honeypot');
+    if (honeypot && honeypot.value) return;
+
+    const formData = new FormData(form);
+    if (!formData.get('page')) {
+      formData.append('page', window.location.href);
     }
-    pageInput.value = window.location.href;
+    await appendTrackingData(formData);
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Отправка...';
+    }
+
+    try {
+      const response = await fetch('/submit', { method: 'POST', body: formData });
+      if (response.ok) {
+        if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'form_submit');
+        window.location.href = '/spasibo/';
+      } else {
+        throw new Error('Submit failed');
+      }
+    } catch (error) {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+      alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62');
+    }
   });
 });
+
+// === UTM & Client ID tracking ===
+function getUTMParams() {
+  const params = new URLSearchParams(window.location.search);
+  const utm = {};
+  ['source', 'medium', 'campaign', 'content', 'term'].forEach(key => {
+    const value = params.get(`utm_${key}`);
+    if (value) utm[key] = value;
+  });
+  return utm;
+}
+
+function saveUTMParams() {
+  const utm = getUTMParams();
+  if (Object.keys(utm).length > 0) {
+    sessionStorage.setItem('kepstroy_utm', JSON.stringify(utm));
+  }
+}
+
+function getStoredUTM() {
+  try {
+    return JSON.parse(sessionStorage.getItem('kepstroy_utm') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function getYandexClientId() {
+  return new Promise((resolve) => {
+    if (typeof ym === 'undefined') return resolve(null);
+    try {
+      ym(109754800, 'getClientID', (clientID) => {
+        resolve(clientID);
+      });
+    } catch {
+      resolve(null);
+    }
+    // Fallback if callback never fires
+    setTimeout(() => resolve(null), 500);
+  });
+}
+
+async function appendTrackingData(formData) {
+  const utm = getStoredUTM();
+  Object.entries(utm).forEach(([key, value]) => {
+    formData.append(`utm_${key}`, value);
+  });
+  formData.append('referrer', document.referrer || '');
+  const clientId = await getYandexClientId();
+  if (clientId) formData.append('client_id', clientId);
+}
+
+saveUTMParams();
 
 // === Form Handling ===
 const contactForm = document.getElementById('contact-form');
@@ -93,6 +173,7 @@ if (contactForm) {
 
     const formData = new FormData(contactForm);
     formData.append('page', window.location.href);
+    await appendTrackingData(formData);
     const submitBtn = contactForm.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
 
@@ -286,6 +367,7 @@ quizContainers.forEach(container => {
       quizData.append('service', 'Квиз: септик');
       quizData.append('message', 'Ответы квиза: ' + JSON.stringify(answers));
       quizData.append('page', window.location.href);
+      await appendTrackingData(quizData);
 
       submitBtn.disabled = true;
       submitBtn.textContent = 'Отправка...';
