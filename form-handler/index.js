@@ -62,7 +62,10 @@ async function sendTelegramMessage(text, phone) {
   if (digits) {
     payload.reply_markup = {
       inline_keyboard: [
-        [{ text: '✅ Отработано', callback_data: `lead_done:${digits}` }]
+        [
+          { text: '📞 Позвонить', url: `tel:+${digits}` },
+          { text: '✅ Взять в работу', callback_data: `lead_done:${digits}` }
+        ]
       ]
     };
   }
@@ -76,13 +79,23 @@ async function answerCallback(callbackQueryId, text) {
   });
 }
 
-async function editMessageStatus(chatId, messageId, text) {
-  return callTelegramAPI('editMessageText', {
+async function editMessageStatus(chatId, messageId, text, phone) {
+  const digits = cleanPhone(phone);
+  const payload = {
     chat_id: chatId,
     message_id: messageId,
     text: `${text}\n\n✅ Отработано`,
     parse_mode: 'HTML'
-  });
+  };
+  if (digits) {
+    // Keep the call button; remove the "take to work" button
+    payload.reply_markup = {
+      inline_keyboard: [
+        [{ text: '📞 Позвонить', url: `tel:+${digits}` }]
+      ]
+    };
+  }
+  return callTelegramAPI('editMessageText', payload);
 }
 
 app.post('/submit', async (req, res) => {
@@ -105,10 +118,9 @@ app.post('/submit', async (req, res) => {
     const phoneDisplay = formatPhone(phone);
 
     const phoneDigits = cleanPhone(phone);
-    const phoneHref = phoneDigits ? `<a href="tel:+${phoneDigits}">${phoneDisplay}</a>` : phoneDisplay;
     let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
     text += `👤 Имя: ${name || '—'}\n`;
-    text += `📞 Телефон: ${phoneHref}\n`;
+    text += `📞 Телефон: ${phoneDisplay}\n`;
     text += `🔧 Услуга: ${service || '—'}\n`;
     text += `🌐 Страница: ${page || '—'}`;
     if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
@@ -145,7 +157,8 @@ app.post('/webhook', async (req, res) => {
       await editMessageStatus(
         callbackQuery.message.chat.id,
         callbackQuery.message.message_id,
-        callbackQuery.message.text
+        callbackQuery.message.text,
+        phone
       );
       try {
         await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
@@ -178,7 +191,8 @@ async function pollUpdates(offset = 0) {
           await editMessageStatus(
             callbackQuery.message.chat.id,
             callbackQuery.message.message_id,
-            callbackQuery.message.text
+            callbackQuery.message.text,
+            phone
           );
           try {
             await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
