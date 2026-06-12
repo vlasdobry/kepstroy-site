@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const https = require('https');
 
 const app = express();
 
@@ -16,18 +17,44 @@ app.use(express.json());
 const BOT_TOKEN = process.env.BOT_TOKEN || '8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU';
 const CHAT_ID = process.env.CHAT_ID || '-5215921734';
 
-async function sendTelegramMessage(text) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'HTML' })
+function sendTelegramMessage(text) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      chat_id: CHAT_ID,
+      text: text,
+      parse_mode: 'HTML'
+    });
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    const parsedUrl = new URL(url);
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+    console.log('Sending Telegram request to', parsedUrl.hostname);
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        console.log('Telegram response status:', res.statusCode, 'body:', body);
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(body);
+        } else {
+          reject(new Error(`Telegram API ${res.statusCode}: ${body}`));
+        }
+      });
+    });
+    req.on('error', (err) => {
+      console.error('Telegram request error:', err);
+      reject(err);
+    });
+    req.write(data);
+    req.end();
   });
-  const body = await response.text();
-  if (!response.ok) {
-    throw new Error(`Telegram API ${response.status}: ${body}`);
-  }
-  return body;
 }
 
 app.post('/submit', async (req, res) => {
@@ -48,14 +75,11 @@ app.post('/submit', async (req, res) => {
       text += `\n💬 Сообщение: ${message}`;
     }
 
-    console.log('Sending Telegram message to chat', CHAT_ID);
-    const telegramResponse = await sendTelegramMessage(text);
-    console.log('Telegram response:', telegramResponse);
-
+    await sendTelegramMessage(text);
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
-    res.status(500).send(`Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62 (${error.message})`);
+    res.status(500).send(`Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62 (${error.code || error.message})`);
   }
 });
 
