@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  FORMS_IMAGE_NAME: ${{ github.repository }}-forms
 
 jobs:
   build-and-push:
@@ -26,8 +27,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      - name: Extract metadata (site)
+        id: meta-site
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -35,13 +36,30 @@ jobs:
             type=raw,value=latest
             type=sha,prefix=
 
-      - name: Build and push
+      - name: Build and push site image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-site.outputs.tags }}
+          labels: ${{ steps.meta-site.outputs.labels }}
+
+      - name: Extract metadata (forms)
+        id: meta-forms
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FORMS_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=
+
+      - name: Build and push forms image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./form-handler
+          push: true
+          tags: ${{ steps.meta-forms.outputs.tags }}
+          labels: ${{ steps.meta-forms.outputs.labels }}
 
   deploy:
     needs: build-and-push
