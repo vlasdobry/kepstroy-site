@@ -105,4 +105,7 @@ jobs:
             sudo docker compose logs --tail=100
             echo "Testing Telegram proxy..."
             curl -s --max-time 15 -x "$TELEGRAM_PROXY_URL" "https://api.telegram.org/bot8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU/getMe" || echo "proxy test failed"
+            echo "Testing form submission..."
+            curl -s --max-time 20 -L -X POST "https://kepstroy.ru/submit" -d "name=CI+Test&phone=+79999999999&service=septiki&page=https://kepstroy.ru/&message=CI+test" -w "\nHTTP %{http_code}\n" || echo "form test failed"
+            sudo docker compose logs --tail=50
             sudo docker image prune -f
