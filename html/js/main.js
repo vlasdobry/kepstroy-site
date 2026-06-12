@@ -55,7 +55,7 @@ document.querySelectorAll('.js-smart-call').forEach(btn => {
     const isMobile = window.innerWidth <= 768;
 
     if (isMobile) {
-      window.location.href = 'tel:+79780000000';
+      window.location.href = 'tel:+79784615962';
     } else {
       if (typeof openModal === 'function') openModal();
     }
@@ -314,7 +314,7 @@ quizContainers.forEach(container => {
       } catch (error) {
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
-        alert('Ошибка отправки. Позвоните напрямую: +7 (978) 000-00-00');
+        alert('Ошибка отправки. Позвоните напрямую: +7 (978) 461-59-62');
       }
     });
   }
