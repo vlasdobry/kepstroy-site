@@ -100,7 +100,7 @@ if (contactForm) {
     submitBtn.textContent = 'Отправка...';
 
     try {
-      const response = await fetch('https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbzBlMBFfyEaZQddBohN6oZB9RH8i-tezlmPIbSnmgTn3rDa3sXeln1WoqR1cvPDTJYT/exec', {
         method: 'POST',
         body: formData
       });
@@ -291,7 +291,7 @@ quizContainers.forEach(container => {
       submitBtn.textContent = 'Отправка...';
 
       try {
-        const response = await fetch('https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec', {
+        const response = await fetch('https://script.google.com/macros/s/AKfycbzBlMBFfyEaZQddBohN6oZB9RH8i-tezlmPIbSnmgTn3rDa3sXeln1WoqR1cvPDTJYT/exec', {
           method: 'POST',
           body: quizData
         });
