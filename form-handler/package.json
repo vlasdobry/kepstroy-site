@@ -1,0 +1,13 @@
+{
+  "name": "kepstroy-form-handler",
+  "version": "1.0.0",
+  "description": "Form handler for kepstroy.ru — sends leads to Telegram",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

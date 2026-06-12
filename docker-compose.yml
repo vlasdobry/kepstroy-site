@@ -15,6 +15,7 @@ services:
       - "traefik.http.routers.kepstroy.rule=Host(`kepstroy.ru`) || Host(`www.kepstroy.ru`)"
       - "traefik.http.routers.kepstroy.entrypoints=websecure"
       - "traefik.http.routers.kepstroy.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kepstroy.priority=10"
       - "traefik.http.services.kepstroy.loadbalancer.server.port=80"
       - 'traefik.http.middlewares.kepstroy-redirect-www.redirectregex.regex=^https://www\.kepstroy\.ru/(.*)'
       - "traefik.http.middlewares.kepstroy-redirect-www.redirectregex.replacement=https://kepstroy.ru/$${1}"
@@ -27,6 +28,36 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  kepstroy-forms:
+    build:
+      context: ./form-handler
+      dockerfile: Dockerfile
+    container_name: kepstroy-forms
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=10m
+    environment:
+      - BOT_TOKEN=8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU
+      - CHAT_ID=-5215921734
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kepstroy-forms.rule=Host(`kepstroy.ru`) && PathPrefix(`/submit`)"
+      - "traefik.http.routers.kepstroy-forms.entrypoints=websecure"
+      - "traefik.http.routers.kepstroy-forms.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kepstroy-forms.priority=20"
+      - "traefik.http.services.kepstroy-forms.loadbalancer.server.port=3000"
+    networks:
+      - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   web:
     external: true
