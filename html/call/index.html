@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Звонок клиенту</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      max-width: 320px;
+    }
+    a.phone {
+      display: inline-block;
+      margin-top: 16px;
+      font-size: 1.25rem;
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p id="message">Перенаправляем на звонок...</p>
+    <a id="phone" class="phone" href="#"></a>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('phone') || '';
+    const digits = raw.replace(/\D/g, '');
+    const messageEl = document.getElementById('message');
+    const phoneEl = document.getElementById('phone');
+
+    if (digits) {
+      const href = 'tel:+' + digits;
+      phoneEl.textContent = '+' + digits;
+      phoneEl.href = href;
+      window.location.replace(href);
+    } else {
+      messageEl.textContent = 'Номер телефона не указан';
+      phoneEl.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

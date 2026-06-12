@@ -52,6 +52,18 @@ async function callTelegramAPI(method, body) {
   return JSON.parse(text);
 }
 
+function callButton(digits) {
+  return { text: '📞 Позвонить', url: `https://kepstroy.ru/call/?phone=${digits}` };
+}
+
+function takeButton(digits) {
+  return { text: '🕐 Взять в работу', callback_data: `lead_progress:${digits}` };
+}
+
+function doneButton(digits) {
+  return { text: '✅ Отработано', callback_data: `lead_done:${digits}` };
+}
+
 async function sendTelegramMessage(text, phone) {
   const digits = cleanPhone(phone);
   const payload = {
@@ -62,7 +74,7 @@ async function sendTelegramMessage(text, phone) {
   if (digits) {
     payload.reply_markup = {
       inline_keyboard: [
-        [{ text: '✅ Взять в работу', callback_data: `lead_done:${digits}` }]
+        [callButton(digits), takeButton(digits)]
       ]
     };
   }
@@ -76,13 +88,63 @@ async function answerCallback(callbackQueryId, text) {
   });
 }
 
-async function editMessageStatus(chatId, messageId, text) {
-  return callTelegramAPI('editMessageText', {
+async function editMessageStatus(chatId, messageId, text, status, phone) {
+  const digits = cleanPhone(phone);
+  let statusLine = '';
+  let keyboard = [];
+
+  if (status === 'progress') {
+    statusLine = '🕐 Взята в работу';
+    if (digits) {
+      keyboard = [[callButton(digits), doneButton(digits)]];
+    }
+  } else if (status === 'done') {
+    statusLine = '✅ Отработано';
+    if (digits) {
+      keyboard = [[callButton(digits)]];
+    }
+  }
+
+  const payload = {
     chat_id: chatId,
     message_id: messageId,
-    text: `${text}\n\n✅ Отработано`,
+    text: `${text}\n\n${statusLine}`,
     parse_mode: 'HTML'
-  });
+  };
+  if (keyboard.length) {
+    payload.reply_markup = { inline_keyboard: keyboard };
+  }
+  return callTelegramAPI('editMessageText', payload);
+}
+
+async function handleCallback(callbackQuery) {
+  const data = callbackQuery.data || '';
+  const chatId = callbackQuery.message.chat.id;
+  const messageId = callbackQuery.message.message_id;
+  const messageText = callbackQuery.message.text;
+
+  if (data.startsWith('lead_progress:')) {
+    const phone = data.replace('lead_progress:', '');
+    await editMessageStatus(chatId, messageId, messageText, 'progress', phone);
+    try {
+      await answerCallback(callbackQuery.id, 'Заявка взята в работу');
+    } catch (err) {
+      console.error('answerCallbackQuery failed (ignored):', err.message);
+    }
+    console.log('Lead taken in progress:', phone);
+    return;
+  }
+
+  if (data.startsWith('lead_done:')) {
+    const phone = data.replace('lead_done:', '');
+    await editMessageStatus(chatId, messageId, messageText, 'done', phone);
+    try {
+      await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
+    } catch (err) {
+      console.error('answerCallbackQuery failed (ignored):', err.message);
+    }
+    console.log('Lead marked as done:', phone);
+  }
 }
 
 app.post('/submit', async (req, res) => {
@@ -104,11 +166,9 @@ app.post('/submit', async (req, res) => {
 
     const phoneDisplay = formatPhone(phone);
 
-    const phoneDigits = cleanPhone(phone);
-    const phoneHref = phoneDigits ? `<a href="tel:+${phoneDigits}">${phoneDisplay}</a>` : phoneDisplay;
     let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
     text += `👤 Имя: ${name || '—'}\n`;
-    text += `📞 Телефон: ${phoneHref}\n`;
+    text += `📞 Телефон: ${phoneDisplay}\n`;
     text += `🔧 Услуга: ${service || '—'}\n`;
     text += `🌐 Страница: ${page || '—'}`;
     if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
@@ -135,26 +195,9 @@ app.post('/submit', async (req, res) => {
 app.post('/webhook', async (req, res) => {
   try {
     const callbackQuery = req.body.callback_query;
-    if (!callbackQuery) {
-      return res.sendStatus(200);
+    if (callbackQuery) {
+      await handleCallback(callbackQuery);
     }
-
-    const data = callbackQuery.data || '';
-    if (data.startsWith('lead_done:')) {
-      const phone = data.replace('lead_done:', '');
-      await editMessageStatus(
-        callbackQuery.message.chat.id,
-        callbackQuery.message.message_id,
-        callbackQuery.message.text
-      );
-      try {
-        await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
-      } catch (err) {
-        console.error('answerCallbackQuery failed (ignored):', err.message);
-      }
-      console.log('Lead marked as done:', phone);
-    }
-
     res.sendStatus(200);
   } catch (error) {
     console.error('Webhook error:', error);
@@ -173,20 +216,8 @@ async function pollUpdates(offset = 0) {
       for (const update of data.result) {
         offset = update.update_id + 1;
         const callbackQuery = update.callback_query;
-        if (callbackQuery && callbackQuery.data && callbackQuery.data.startsWith('lead_done:')) {
-          const phone = callbackQuery.data.replace('lead_done:', '');
-          await editMessageStatus(
-            callbackQuery.message.chat.id,
-            callbackQuery.message.message_id,
-            callbackQuery.message.text
-          );
-          try {
-            await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
-          } catch (err) {
-            // Notification may expire; message update is the important part
-            console.error('answerCallbackQuery failed (ignored):', err.message);
-          }
-          console.log('Lead marked as done via polling:', phone);
+        if (callbackQuery && callbackQuery.data) {
+          await handleCallback(callbackQuery);
         }
       }
     }
