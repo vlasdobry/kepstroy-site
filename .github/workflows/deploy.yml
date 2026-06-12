@@ -98,4 +98,5 @@ jobs:
 
             sudo docker compose pull
             sudo docker compose up -d --force-recreate
+            sudo docker compose logs --tail=100
             sudo docker image prune -f
