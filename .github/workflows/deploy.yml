@@ -26,8 +26,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (site)
-        id: meta-site
+      - name: Extract metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -35,20 +35,13 @@ jobs:
             type=raw,value=latest
             type=sha,prefix=
 
-      - name: Build and push site image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta-site.outputs.tags }}
-          labels: ${{ steps.meta-site.outputs.labels }}
-
-      - name: Build and push forms image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./form-handler
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:forms-latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
     needs: build-and-push
@@ -66,9 +59,13 @@ jobs:
             cd /opt/kepstroy-site || mkdir -p /opt/kepstroy-site
             cd /opt/kepstroy-site
 
-            # Always update docker-compose.yml to latest version
-            curl -sL https://raw.githubusercontent.com/vlasdobry/kepstroy-site/main/docker-compose.yml -o docker-compose.yml
+            # Clone latest repository to get docker-compose.yml and form-handler/
+            rm -rf repo
+            git clone --depth 1 https://github.com/vlasdobry/kepstroy-site.git repo
+            cd repo
 
+            # Pull site image from registry and build forms image locally
             sudo docker compose pull
+            sudo docker compose build
             sudo docker compose up -d --force-recreate
             sudo docker image prune -f
