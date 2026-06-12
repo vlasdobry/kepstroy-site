@@ -23,7 +23,6 @@ const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
 
 async function sendTelegramMessage(text) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  console.log('Sending Telegram request via proxy:', PROXY_URL ? 'yes' : 'no');
   const response = await fetch(url, {
     method: 'POST',
     agent: telegramAgent,
@@ -31,7 +30,6 @@ async function sendTelegramMessage(text) {
     body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'HTML' })
   });
   const body = await response.text();
-  console.log('Telegram response status:', response.status, 'body:', body.slice(0, 200));
   if (!response.ok) {
     throw new Error(`Telegram API ${response.status}: ${body}`);
   }
@@ -60,7 +58,7 @@ app.post('/submit', async (req, res) => {
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
-    res.status(500).send(`Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62 (${error.message})`);
+    res.status(500).send('Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62');
   }
 });
 

@@ -102,10 +102,9 @@ jobs:
             sudo docker compose pull
             sudo -E docker compose up -d --force-recreate
             sleep 5
-            sudo docker compose logs --tail=100
-            echo "Testing Telegram proxy..."
-            curl -s --max-time 15 -x "$TELEGRAM_PROXY_URL" "https://api.telegram.org/bot8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU/getMe" || echo "proxy test failed"
+            sudo docker compose logs --tail=20
             echo "Testing form submission..."
-            curl -s --max-time 20 -L -X POST "https://kepstroy.ru/submit" -d "name=CI+Test&phone=+79999999999&service=septiki&page=https://kepstroy.ru/&message=CI+test" -w "\nHTTP %{http_code}\n" || echo "form test failed"
-            sudo docker compose logs --tail=50
+            HTTP_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -X POST "https://kepstroy.ru/submit" -d "name=CI+Test&phone=+79999999999&service=septiki&page=https://kepstroy.ru/&message=CI+test")
+            echo "Form submission HTTP code: $HTTP_CODE"
+            if [ "$HTTP_CODE" != "302" ]; then exit 1; fi
             sudo docker image prune -f
