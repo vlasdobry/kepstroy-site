@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const https = require('https');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU';
 const CHAT_ID = process.env.CHAT_ID || '-5215921734';
+const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 
 function sendTelegramMessage(text, family = 0) {
   return new Promise((resolve, reject) => {
@@ -36,7 +38,10 @@ function sendTelegramMessage(text, family = 0) {
         'Content-Length': Buffer.byteLength(data)
       }
     };
-    console.log('Sending Telegram request to', parsedUrl.hostname, 'family:', family);
+    if (PROXY_URL) {
+      options.agent = new HttpsProxyAgent(PROXY_URL);
+    }
+    console.log('Sending Telegram request to', parsedUrl.hostname, 'family:', family, 'proxy:', PROXY_URL ? 'yes' : 'no');
     const req = https.request(options, (res) => {
       let body = '';
       res.on('data', chunk => body += chunk);
@@ -77,10 +82,10 @@ app.post('/submit', async (req, res) => {
     }
 
     try {
-      await sendTelegramMessage(text, 6);
+      await sendTelegramMessage(text, 4);
     } catch (err) {
-      if (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED') {
-        console.log('IPv6 failed, trying IPv4...');
+      if ((err.code === 'ETIMEDOUT' || err.code === 'ENETUNREACH') && PROXY_URL) {
+        console.log('IPv4 failed via proxy, trying without proxy...');
         await sendTelegramMessage(text, 4);
       } else {
         throw err;
