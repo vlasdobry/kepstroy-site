@@ -17,7 +17,7 @@ app.use(express.json());
 const BOT_TOKEN = process.env.BOT_TOKEN || '8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU';
 const CHAT_ID = process.env.CHAT_ID || '-5215921734';
 
-function sendTelegramMessage(text) {
+function sendTelegramMessage(text, family = 0) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
       chat_id: CHAT_ID,
@@ -30,12 +30,13 @@ function sendTelegramMessage(text) {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname,
       method: 'POST',
+      family,
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(data)
       }
     };
-    console.log('Sending Telegram request to', parsedUrl.hostname);
+    console.log('Sending Telegram request to', parsedUrl.hostname, 'family:', family);
     const req = https.request(options, (res) => {
       let body = '';
       res.on('data', chunk => body += chunk);
@@ -75,7 +76,17 @@ app.post('/submit', async (req, res) => {
       text += `\n💬 Сообщение: ${message}`;
     }
 
-    await sendTelegramMessage(text);
+    try {
+      await sendTelegramMessage(text, 6);
+    } catch (err) {
+      if (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED') {
+        console.log('IPv6 failed, trying IPv4...');
+        await sendTelegramMessage(text, 4);
+      } else {
+        throw err;
+      }
+    }
+
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
