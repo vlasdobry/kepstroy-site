@@ -102,6 +102,10 @@ jobs:
             sudo docker compose pull
             sudo -E docker compose up -d --force-recreate
             sleep 5
+            echo "Setting Telegram webhook..."
+            curl -s --max-time 15 -X POST "https://api.telegram.org/bot8873033823:AAFyZpFOTmj5UWwqTMM67wNXpik2Qr0qPfU/setWebhook" \
+              -H "Content-Type: application/json" \
+              -d '{"url":"https://kepstroy.ru/webhook"}' || echo "setWebhook failed"
             sudo docker compose logs --tail=20
             echo "Testing form submission..."
             HTTP_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -X POST "https://kepstroy.ru/submit" -d "name=CI+Test&phone=+79999999999&service=septiki&page=https://kepstroy.ru/&message=CI+test")

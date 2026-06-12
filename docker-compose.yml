@@ -44,7 +44,7 @@ services:
       - no-new-privileges:true
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.kepstroy-forms.rule=Host(`kepstroy.ru`) && PathPrefix(`/submit`)"
+      - "traefik.http.routers.kepstroy-forms.rule=Host(`kepstroy.ru`) && (PathPrefix(`/submit`) || PathPrefix(`/webhook`))"
       - "traefik.http.routers.kepstroy-forms.entrypoints=websecure"
       - "traefik.http.routers.kepstroy-forms.tls.certresolver=letsencrypt"
       - "traefik.http.routers.kepstroy-forms.priority=20"

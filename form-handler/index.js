@@ -26,19 +26,63 @@ function cleanPhone(phone) {
   return phone.replace(/\D/g, '');
 }
 
-async function sendTelegramMessage(text) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+function formatPhone(phone) {
+  const digits = cleanPhone(phone);
+  if (digits.length === 11 && digits.startsWith('7')) {
+    return `+7 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`;
+  }
+  if (digits.length === 10) {
+    return `+7 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 8)}-${digits.slice(8, 10)}`;
+  }
+  return phone || '—';
+}
+
+async function callTelegramAPI(method, body) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
   const response = await fetch(url, {
     method: 'POST',
     agent: telegramAgent,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'HTML' })
+    body: JSON.stringify(body)
   });
-  const body = await response.text();
+  const text = await response.text();
   if (!response.ok) {
-    throw new Error(`Telegram API ${response.status}: ${body}`);
+    throw new Error(`Telegram API ${method} ${response.status}: ${text}`);
   }
-  return body;
+  return JSON.parse(text);
+}
+
+async function sendTelegramMessage(text, phone) {
+  const digits = cleanPhone(phone);
+  const payload = {
+    chat_id: CHAT_ID,
+    text,
+    parse_mode: 'HTML'
+  };
+  if (digits) {
+    payload.reply_markup = {
+      inline_keyboard: [
+        [{ text: '✅ Отработано', callback_data: `lead_done:${digits}` }]
+      ]
+    };
+  }
+  return callTelegramAPI('sendMessage', payload);
+}
+
+async function answerCallback(callbackQueryId, text) {
+  return callTelegramAPI('answerCallbackQuery', {
+    callback_query_id: callbackQueryId,
+    text
+  });
+}
+
+async function editMessageStatus(chatId, messageId, text) {
+  return callTelegramAPI('editMessageText', {
+    chat_id: chatId,
+    message_id: messageId,
+    text: `${text}\n\n✅ Отработано`,
+    parse_mode: 'HTML'
+  });
 }
 
 app.post('/submit', async (req, res) => {
@@ -58,12 +102,11 @@ app.post('/submit', async (req, res) => {
     const clientId = req.body.client_id;
     const referrer = req.body.referrer;
 
-    const phoneDigits = cleanPhone(phone);
-    const phoneLink = phoneDigits ? `<a href="tel:+${phoneDigits}">${phone}</a>` : (phone || '—');
+    const phoneDisplay = formatPhone(phone);
 
     let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
     text += `👤 Имя: ${name || '—'}\n`;
-    text += `📞 Телефон: ${phoneLink}\n`;
+    text += `📞 Телефон: ${phoneDisplay}\n`;
     text += `🔧 Услуга: ${service || '—'}\n`;
     text += `🌐 Страница: ${page || '—'}`;
     if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
@@ -79,11 +122,37 @@ app.post('/submit', async (req, res) => {
       text += `\n💬 Сообщение: ${message}`;
     }
 
-    await sendTelegramMessage(text);
+    await sendTelegramMessage(text, phone);
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
     res.status(500).send('Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62');
+  }
+});
+
+app.post('/webhook', async (req, res) => {
+  try {
+    const callbackQuery = req.body.callback_query;
+    if (!callbackQuery) {
+      return res.sendStatus(200);
+    }
+
+    const data = callbackQuery.data || '';
+    if (data.startsWith('lead_done:')) {
+      const phone = data.replace('lead_done:', '');
+      await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
+      await editMessageStatus(
+        callbackQuery.message.chat.id,
+        callbackQuery.message.message_id,
+        callbackQuery.message.text
+      );
+      console.log('Lead marked as done:', phone);
+    }
+
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.sendStatus(200);
   }
 });
 
