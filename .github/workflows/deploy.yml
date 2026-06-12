@@ -9,7 +9,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  build-site:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,9 +33,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
-            type=sha,prefix=
 
-      - name: Build and push
+      - name: Build and push site image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -43,8 +42,41 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  build-forms:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-forms
+          tags: |
+            type=raw,value=latest
+
+      - name: Build and push forms image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./form-handler
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
   deploy:
-    needs: build-and-push
+    needs: [build-site, build-forms]
     runs-on: ubuntu-latest
     environment: production
 
@@ -55,18 +87,15 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
           script: |
             set -euxo pipefail
             cd /opt/kepstroy-site || mkdir -p /opt/kepstroy-site
             cd /opt/kepstroy-site
 
-            # Clone latest repository to get docker-compose.yml and form-handler/
-            rm -rf repo
-            git clone --depth 1 https://github.com/vlasdobry/kepstroy-site.git repo
-            cd repo
+            # Download only compose file; images are pre-built in GHCR
+            curl -fsSL https://raw.githubusercontent.com/vlasdobry/kepstroy-site/main/docker-compose.yml -o docker-compose.yml
 
-            # Pull site image from registry and build forms image locally
             sudo docker compose pull
-            sudo docker compose build --no-cache kepstroy-forms
             sudo docker compose up -d --force-recreate
             sudo docker image prune -f

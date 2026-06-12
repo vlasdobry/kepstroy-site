@@ -30,9 +30,7 @@ services:
         max-file: "3"
 
   kepstroy-forms:
-    build:
-      context: ./form-handler
-      dockerfile: Dockerfile
+    image: ghcr.io/vlasdobry/kepstroy-site-forms:latest
     container_name: kepstroy-forms
     restart: unless-stopped
     read_only: true
