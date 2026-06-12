@@ -142,12 +142,16 @@ app.post('/webhook', async (req, res) => {
     const data = callbackQuery.data || '';
     if (data.startsWith('lead_done:')) {
       const phone = data.replace('lead_done:', '');
-      await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
       await editMessageStatus(
         callbackQuery.message.chat.id,
         callbackQuery.message.message_id,
         callbackQuery.message.text
       );
+      try {
+        await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
+      } catch (err) {
+        console.error('answerCallbackQuery failed (ignored):', err.message);
+      }
       console.log('Lead marked as done:', phone);
     }
 
@@ -171,12 +175,17 @@ async function pollUpdates(offset = 0) {
         const callbackQuery = update.callback_query;
         if (callbackQuery && callbackQuery.data && callbackQuery.data.startsWith('lead_done:')) {
           const phone = callbackQuery.data.replace('lead_done:', '');
-          await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
           await editMessageStatus(
             callbackQuery.message.chat.id,
             callbackQuery.message.message_id,
             callbackQuery.message.text
           );
+          try {
+            await answerCallback(callbackQuery.id, 'Заявка отмечена как отработана');
+          } catch (err) {
+            // Notification may expire; message update is the important part
+            console.error('answerCallbackQuery failed (ignored):', err.message);
+          }
           console.log('Lead marked as done via polling:', phone);
         }
       }
