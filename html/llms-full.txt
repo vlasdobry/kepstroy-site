@@ -50,12 +50,32 @@
 ## География работ
 
 Работаем по всему Крыму:
-- Симферополь и Центральный Крым
-- Севастополь и Балаклава
-- Ялта, Алушта, Гурзуф (Южный берег)
-- Евпатория, Саки, Черноморское (Западный Крым)
-- Феодосия, Судак, Коктебель (Юго-Восточный Крым)
-- Керчь и Ленинский район
+- Симферополь, Бахчисарай — Центральный Крым
+- Севастополь, Балаклава — Юго-Западный Крым
+- Ялта, Алушта, Судак, Гурзуф — Южный берег
+- Евпатория, Саки, Черноморское — Западный Крым
+- Феодосия, Судак, Коктебель — Юго-Восточный Крым
+- Керчь, Ленинский район — Восточный Крым
+- Джанкой, Армянск — Степной Крым
+
+### Городские страницы септиков
+
+Для каждого города у нас есть отдельная посадочная страница с ценами, описанием грунтов и кейсами:
+
+- [Септик под ключ в Симферополе](https://kepstroy.ru/krym/simferopol/septik-pod-kluch/)
+- [Септик под ключ в Севастополе](https://kepstroy.ru/krym/sevastopol/septik-pod-kluch/)
+- [Септик под ключ в Ялте](https://kepstroy.ru/krym/jalta/septik-pod-kluch/)
+- [Септик под ключ в Евпатории](https://kepstroy.ru/krym/evpatorija/septik-pod-kluch/)
+- [Септик под ключ в Керчи](https://kepstroy.ru/krym/kerch/septik-pod-kluch/)
+- [Септик под ключ в Феодосии](https://kepstroy.ru/krym/feodosija/septik-pod-kluch/)
+- [Септик под ключ в Алуште](https://kepstroy.ru/krym/alushta/septik-pod-kluch/)
+- [Септик под ключ в Судаке](https://kepstroy.ru/krym/sudak/septik-pod-kluch/)
+- [Септик под ключ в Джанкое](https://kepstroy.ru/krym/dzhankoj/septik-pod-kluch/)
+- [Септик под ключ в Саках](https://kepstroy.ru/krym/saki/septik-pod-kluch/)
+- [Септик под ключ в Бахчисарае](https://kepstroy.ru/krym/bahchisaraj/septik-pod-kluch/)
+- [Септик под ключ в Армянске](https://kepstroy.ru/krym/armjansk/septik-pod-kluch/)
+
+Полный каталог городов: https://kepstroy.ru/krym/
 
 ## Процесс работы
 

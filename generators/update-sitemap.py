@@ -59,6 +59,24 @@ def main():
   </url>"""
         )
 
+    # Вспомогательные файлы для GEO и AI-агентов
+    new_urls.append(
+        f"""  <url>
+    <loc>https://kepstroy.ru/llms.txt</loc>
+    <lastmod>{TODAY}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>"""
+    )
+    new_urls.append(
+        f"""  <url>
+    <loc>https://kepstroy.ru/llms-full.txt</loc>
+    <lastmod>{TODAY}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>"""
+    )
+
     new_block = "\n".join(new_urls) + "\n"
     sitemap = sitemap.replace("</urlset>", new_block + "</urlset>")
 
