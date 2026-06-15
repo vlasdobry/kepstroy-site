@@ -163,6 +163,18 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://kepstroy.ru/llms.txt</loc>
+    <lastmod>2026-06-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/llms-full.txt</loc>
+    <lastmod>2026-06-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://kepstroy.ru/krym/</loc>
     <lastmod>2026-06-15</lastmod>
     <changefreq>weekly</changefreq>
