@@ -36,6 +36,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=10m
+    ports:
+      - "127.0.0.1:3000:3000"
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - CHAT_ID=${CHAT_ID}
