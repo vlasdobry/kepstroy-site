@@ -21,6 +21,15 @@ const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 
 const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
 
+// In-memory rate limiting storage
+const recentSubmissions = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const PHONE_COOLDOWN_MS = 60 * 1000; // 1 minute
+const MAX_SUBMISSIONS_PER_IP = 5;
+const TEST_PHONE = '79999999999';
+const TEST_NAME = 'CI Test';
+const TEST_MESSAGE = 'CI test';
+
 function cleanPhone(phone) {
   if (!phone) return '';
   return phone.replace(/\D/g, '');
@@ -35,6 +44,62 @@ function formatPhone(phone) {
     return `+7 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 8)}-${digits.slice(8, 10)}`;
   }
   return phone || '—';
+}
+
+function isTestSubmission(body) {
+  return body.name === TEST_NAME ||
+         cleanPhone(body.phone) === TEST_PHONE ||
+         body.message === TEST_MESSAGE;
+}
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress;
+}
+
+function cleanupOldSubmissions() {
+  const now = Date.now();
+  for (const [key, value] of recentSubmissions) {
+    const timestamp = value.timestamp || value;
+    if (now - timestamp > RATE_LIMIT_WINDOW_MS) {
+      recentSubmissions.delete(key);
+    }
+  }
+}
+
+function isRateLimited(ip, phone) {
+  cleanupOldSubmissions();
+  const now = Date.now();
+  const ipKey = `ip:${ip}`;
+  const phoneKey = `phone:${cleanPhone(phone)}`;
+
+  const ipEntry = recentSubmissions.get(ipKey);
+  if (ipEntry && ipEntry.count >= MAX_SUBMISSIONS_PER_IP) {
+    return true;
+  }
+
+  const phoneLast = recentSubmissions.get(phoneKey);
+  if (phoneLast && now - phoneLast < PHONE_COOLDOWN_MS) {
+    return true;
+  }
+
+  return false;
+}
+
+function recordSubmission(ip, phone) {
+  const now = Date.now();
+  const ipKey = `ip:${ip}`;
+  const phoneKey = `phone:${cleanPhone(phone)}`;
+
+  const ipEntry = recentSubmissions.get(ipKey);
+  recentSubmissions.set(ipKey, {
+    count: (ipEntry?.count || 0) + 1,
+    timestamp: now
+  });
+  recentSubmissions.set(phoneKey, now);
 }
 
 async function callTelegramAPI(method, body) {
@@ -156,6 +221,23 @@ app.post('/submit', async (req, res) => {
       return res.status(400).send('Spam detected');
     }
 
+    // Ignore CI test submissions but still return success
+    if (isTestSubmission(req.body)) {
+      console.log('CI test submission ignored:', { name, phone, message });
+      return res.redirect('https://kepstroy.ru/spasibo/');
+    }
+
+    const digits = cleanPhone(phone);
+    if (digits.length < 10) {
+      return res.status(400).send('Некорректный номер телефона');
+    }
+
+    const clientIp = getClientIp(req);
+    if (isRateLimited(clientIp, phone)) {
+      console.log('Rate limit exceeded:', { clientIp, phone });
+      return res.status(429).send('Слишком много заявок. Пожалуйста, подождите.');
+    }
+
     const utmSource = req.body.utm_source;
     const utmMedium = req.body.utm_medium;
     const utmCampaign = req.body.utm_campaign;
@@ -184,6 +266,7 @@ app.post('/submit', async (req, res) => {
       text += `\n💬 Сообщение: ${message}`;
     }
 
+    recordSubmission(clientIp, phone);
     await sendTelegramMessage(text, phone);
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {

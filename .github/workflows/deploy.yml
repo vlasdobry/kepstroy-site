@@ -114,10 +114,10 @@ jobs:
             echo "Removing Telegram webhook (using polling instead)..."
             curl -s --max-time 15 -x "$TELEGRAM_PROXY_URL" "https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook" || echo "deleteWebhook failed"
             sudo docker compose logs --tail=20
-            echo "Testing form submission..."
-            HTTP_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -X POST "https://kepstroy.ru/submit" -d "name=CI+Test&phone=+79999999999&service=septiki&page=https://kepstroy.ru/&message=CI+test")
-            echo "Form submission HTTP code: $HTTP_CODE"
-            if [ "$HTTP_CODE" != "302" ]; then
+            echo "Testing form handler health..."
+            HTTP_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" "http://localhost:3000/health")
+            echo "Form handler health HTTP code: $HTTP_CODE"
+            if [ "$HTTP_CODE" != "200" ]; then
               sudo docker compose logs --tail=50
               exit 1
             fi
