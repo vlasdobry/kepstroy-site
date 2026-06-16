@@ -1,7 +1,7 @@
 # Аудит консистентности сайта КэпСтрой
 
-**Всего HTML-файлов проверено:** 49
-**Дата:** 2026-06-15 18:32
+**Всего HTML-файлов проверено:** 53
+**Дата:** 2026-06-16 18:19
 
 ## 1. Нет title
 - Проблем не обнаружено
@@ -43,13 +43,13 @@
 - Дублей не обнаружено
 
 ## 14. Версии CSS (style.css)
-- `?v=17` — 37 файлов
+- `?v=17` — 40 файлов
   - index.html
   - kontakty/index.html
   - krym/alushta/index.html
 
 ## 15. Версии JS (main.js)
-- `?v=17` — 37 файлов
+- `?v=17` — 40 файлов
   - index.html
   - kontakty/index.html
   - krym/alushta/index.html
@@ -58,39 +58,30 @@
 - Проблем не обнаружено
 
 ## 17. Варианты формулировок про выезд инженера
-- (25x) Выезд инженера — 0 ₽ (стоимость вычитается из сметы при заказе)
+- (47x) Выезд инженера — 3 000–6 000 ₽ в зависимости от района
+  - blog/kak-vybrat-septik-dlya-chastnogo-doma-v-krymu/index.html
+  - blog/septik-yalta/index.html
+  - blog/zhibi-ili-plastik-septik-krym/index.html
   - index.html
   - krym/alushta/septik-pod-kluch/index.html
-  - krym/armjansk/septik-pod-kluch/index.html
-  - krym/bahchisaraj/septik-pod-kluch/index.html
-  - krym/dzhankoj/septik-pod-kluch/index.html
-- (24x) Выезд инженера — 0 ₽ при заказе работ
-  - krym/alushta/index.html
-  - krym/alushta/septik-pod-kluch/index.html
-  - krym/armjansk/index.html
-  - krym/armjansk/septik-pod-kluch/index.html
-  - krym/bahchisaraj/index.html
 - (13x) выезда на объект
   - blog/septik-sevastopol/index.html
   - krym/alushta/septik-pod-kluch/index.html
   - krym/armjansk/septik-pod-kluch/index.html
   - krym/bahchisaraj/septik-pod-kluch/index.html
   - krym/dzhankoj/septik-pod-kluch/index.html
+- (13x) Выезд инженера — от 3 000 ₽
+  - index.html
+  - krym/alushta/index.html
+  - krym/armjansk/index.html
+  - krym/bahchisaraj/index.html
+  - krym/dzhankoj/index.html
 - (12x) выезд инженера — после договорённости
   - krym/alushta/septik-pod-kluch/index.html
   - krym/armjansk/septik-pod-kluch/index.html
   - krym/bahchisaraj/septik-pod-kluch/index.html
   - krym/dzhankoj/septik-pod-kluch/index.html
   - krym/evpatorija/septik-pod-kluch/index.html
-- (6x) Выезд инженера — 0 ₽ при заказе работ (стоимость вычитается из сметы)
-  - blog/kak-vybrat-septik-dlya-chastnogo-doma-v-krymu/index.html
-  - blog/septik-yalta/index.html
-  - uslugi/kanalizaciya/index.html
-  - uslugi/septiki/index.html
-  - uslugi/vodosnabzhenie/index.html
-- (2x) выезд инженера — 0 ₽ при заказе работ
-  - index.html
-  - krym/index.html
 - (2x) Выезд инженера
   - krym/index.html
 - (1x) выезд инженера на участок перед покупкой
@@ -113,39 +104,37 @@
   - blog/skolko-stoit-septik-pod-klyuch-krym/index.html
 - (1x) выезд на участок и консультацию;
   - blog/ustanovka-septika-krym/index.html
-- (1x) выезд специалиста на участок — в пределах Крыма, при условии дальнейшего заказа работ
-  - blog/zhibi-ili-plastik-septik-krym/index.html
 - (1x) выезд на участок, потом расчёт, потом покупка
   - blog/zhibi-ili-plastik-septik-krym/index.html
-- (1x) Выезд — 0 ₽ при заказе работ
+- (1x) выезд инженера — 3 000–6 000 ₽ в зависимости от района
   - index.html
-- (1x) Выезд инженера в Алуште — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Алуште — 3 000–6 000 ₽ в зависимости от района
   - krym/alushta/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Армянске — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Армянске — 3 000–6 000 ₽ в зависимости от района
   - krym/armjansk/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Бахчисарае — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Бахчисарае — 3 000–6 000 ₽ в зависимости от района
   - krym/bahchisaraj/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Джанкое — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Джанкое — 3 000–6 000 ₽ в зависимости от района
   - krym/dzhankoj/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Евпатории — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Евпатории — 3 000–6 000 ₽ в зависимости от района
   - krym/evpatorija/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Феодосии — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Феодосии — 3 000–6 000 ₽ в зависимости от района
   - krym/feodosija/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Ялте — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Ялте — 3 000–6 000 ₽ в зависимости от района
   - krym/jalta/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Керчи — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Керчи — 3 000–6 000 ₽ в зависимости от района
   - krym/kerch/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Саках — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Саках — 3 000–6 000 ₽ в зависимости от района
   - krym/saki/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Севастополе — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Севастополе — 3 000–6 000 ₽ в зависимости от района
   - krym/sevastopol/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Симферополе — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Симферополе — 3 000–6 000 ₽ в зависимости от района
   - krym/simferopol/septik-pod-kluch/index.html
-- (1x) Выезд инженера в Судаке — 0 ₽ при заказе работ
+- (1x) Выезд инженера в Судаке — 3 000–6 000 ₽ в зависимости от района
   - krym/sudak/septik-pod-kluch/index.html
 - (1x) Выезд и диагностика
   - uslugi/kanalizaciya/index.html
-- (1x) выезд — 0 ₽ при заказе
+- (1x) выезд инженера — от 3 000 ₽
   - uslugi/septiki/index.html
 - (1x) выезда инженера
   - uslugi/septiki/index.html
