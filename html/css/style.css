@@ -204,7 +204,9 @@ h1, h2, h3, h4 {
   font-size: 0.9375rem;
 }
 
+.btn-primary,
 .btn--primary { background: var(--c-primary); color: white; }
+.btn-primary:hover,
 .btn--primary:hover { background: var(--c-primary-dark); color: white; }
 
 .btn--accent { background: var(--c-accent); color: white; }
@@ -2088,6 +2090,7 @@ html, body {
 .section--bg,
 .footer,
 .btn,
+.btn-primary,
 .btn--primary,
 .btn--accent,
 .btn--outline,
