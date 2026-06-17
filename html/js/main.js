@@ -74,7 +74,7 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
     const honeypot = form.querySelector('.form-honeypot');
     if (honeypot && honeypot.value) return;
 
-    const formData = new FormData(form);
+    const formData = new URLSearchParams(new FormData(form));
     if (!formData.get('page')) {
       formData.append('page', window.location.href);
     }
@@ -171,7 +171,7 @@ if (contactForm) {
       return;
     }
 
-    const formData = new FormData(contactForm);
+    const formData = new URLSearchParams(new FormData(contactForm));
     formData.append('page', window.location.href);
     await appendTrackingData(formData);
     const submitBtn = contactForm.querySelector('button[type="submit"]');
@@ -352,7 +352,6 @@ quizContainers.forEach(container => {
       const honeypot = quizForm.querySelector('.form-honeypot');
       if (honeypot && honeypot.value) return;
 
-      const formData = new FormData(quizForm);
       const submitBtn = quizForm.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
 
@@ -363,7 +362,7 @@ quizContainers.forEach(container => {
         if (sel) answers['q' + (i + 1)] = sel.dataset.value;
       });
 
-      const quizData = new FormData(quizForm);
+      const quizData = new URLSearchParams(new FormData(quizForm));
       quizData.append('service', 'Квиз: септик');
       quizData.append('message', 'Ответы квиза: ' + JSON.stringify(answers));
       quizData.append('page', window.location.href);

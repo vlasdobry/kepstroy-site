@@ -451,11 +451,11 @@
     </div>
   </section>
 
-  <!-- Реальные кейсы -->
+  <!-- Выполненные работы -->
   <section class="section section--bg">
     <div class="container">
       <div class="section-head">
-        <h2 class="section-title">Реальные кейсы</h2>
+        <h2 class="section-title">Выполненные работы</h2>
         <p class="section-subtitle">История объектов с деталями монтажа и решениями под геологию</p>
       </div>
       <div class="cases-grid">
@@ -471,8 +471,8 @@
                 2 дня
               </span>
               <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                175 000 ₽
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h6c2 0 3 1 3 3s-1 3-3 3H8v-6Z"/><path d="M6 11h8"/><path d="M8 15v5"/><path d="M6 20h6"/></svg>
+                175 000
               </span>
             </div>
           </div>
@@ -490,8 +490,8 @@
                 1 день
               </span>
               <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                160 000 ₽
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h6c2 0 3 1 3 3s-1 3-3 3H8v-6Z"/><path d="M6 11h8"/><path d="M8 15v5"/><path d="M6 20h6"/></svg>
+                160 000
               </span>
             </div>
           </div>
@@ -509,8 +509,8 @@
                 2 дня
               </span>
               <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                189 000 ₽
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h6c2 0 3 1 3 3s-1 3-3 3H8v-6Z"/><path d="M6 11h8"/><path d="M8 15v5"/><path d="M6 20h6"/></svg>
+                189 000
               </span>
             </div>
           </div>
@@ -528,8 +528,8 @@
                 1 день
               </span>
               <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                180 000 ₽
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h6c2 0 3 1 3 3s-1 3-3 3H8v-6Z"/><path d="M6 11h8"/><path d="M8 15v5"/><path d="M6 20h6"/></svg>
+                180 000
               </span>
             </div>
           </div>
@@ -853,7 +853,7 @@
     </div>
   </div>
 
-  <script src="../../js/main.js?v=17"></script>
+  <script src="../../js/main.js?v=18"></script>
   <script>
     // FAQ toggle
     function toggleFaq(btn) {
@@ -1018,7 +1018,7 @@
           btn.disabled = true;
           btn.textContent = 'Отправка...';
 
-          const formData = new FormData(els.calcForm);
+          const formData = new URLSearchParams(new FormData(els.calcForm));
           fetch(els.calcForm.action, {
             method: 'POST',
             body: formData
