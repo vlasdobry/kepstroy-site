@@ -10,8 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent / "html"
 TEMPLATE_DIR = Path(__file__).resolve().parent
 OUT_DIR = BASE_DIR
 
-PHONE = "+79068972037"
-PHONE_FORMATTED = "+7 (906) 897-20-37"
+PHONE = "+79784615962"
+PHONE_FORMATTED = "+7 (978) 461-59-62"
 
 
 def format_phone(phone: str) -> str:

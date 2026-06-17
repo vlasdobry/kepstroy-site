@@ -271,7 +271,7 @@ app.post('/submit', async (req, res) => {
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
-    res.status(500).send('Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (906) 897-20-37');
+    res.status(500).send('Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62');
   }
 });
 

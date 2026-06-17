@@ -8,8 +8,8 @@ from collections import defaultdict
 from urllib.parse import urlparse
 
 BASE = Path(__file__).resolve().parent.parent / "html"
-PHONE = "+7 (906) 897-20-37"
-PHONE_RAW = "+79068972037"
+PHONE = "+7 (978) 461-59-62"
+PHONE_RAW = "+79784615962"
 
 results = {
     "total_html": 0,
