@@ -2152,6 +2152,7 @@ h1, h2, h3, h4, p, span, a, li, div {
 /* Form consent checkbox */
 .form-consent {
   margin-top: 1rem;
+  margin-bottom: 1rem;
   font-size: 0.8rem;
   color: var(--c-text);
   line-height: 1.4;
