@@ -3,8 +3,9 @@ FROM nginx:alpine
 # Remove the IPv6 entrypoint script that tries to modify read-only default.conf
 RUN rm -f /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
 
-# Copy site files and custom nginx config
+# Copy site files, portfolio images, and custom nginx config
 COPY html/ /usr/share/nginx/html/
+COPY images/portfolio/ /usr/share/nginx/html/images/portfolio/
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Create required directories with proper permissions for nginx user (uid 101)
