@@ -9,7 +9,22 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run pre-deploy validation
+        run: python scripts/validate.py
+
   build-site:
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,6 +58,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   build-forms:
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
