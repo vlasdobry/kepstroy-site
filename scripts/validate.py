@@ -157,8 +157,8 @@ def check_required_seo(errors):
             errors.append(f"{rel}: missing Yandex.Metrika script")
         if '"@type": "Person"' not in text:
             errors.append(f"{rel}: missing Person schema")
-        if "info@kepstroy.ru" not in text:
-            errors.append(f"{rel}: missing email info@kepstroy.ru")
+        if "info@kepstroy.ru" in text:
+            errors.append(f"{rel}: stale email info@kepstroy.ru found")
         if "<link rel=\"canonical\"" not in text:
             errors.append(f"{rel}: missing canonical link")
         if "<title>" not in text or "</title>" not in text:
