@@ -1497,6 +1497,7 @@ body.modal-open {
   height: 0;
 }
 .calc-type-card__body {
+  display: block;
   padding: 1rem 1.25rem;
   background: white;
   border: 2px solid var(--c-border);
@@ -1512,18 +1513,21 @@ body.modal-open {
   box-shadow: var(--shadow-sm);
 }
 .calc-type-card__name {
+  display: block;
   font-weight: 700;
   color: var(--c-text-dark);
   font-size: 0.95rem;
   margin-bottom: 0.25rem;
 }
 .calc-type-card__desc {
+  display: block;
   font-size: 0.8rem;
   color: var(--c-text-mut);
   line-height: 1.4;
   margin-bottom: 0.5rem;
 }
 .calc-type-card__price {
+  display: block;
   font-weight: 800;
   color: var(--c-primary);
   font-size: 0.9rem;

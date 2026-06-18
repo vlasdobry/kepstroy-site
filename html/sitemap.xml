@@ -2,9 +2,51 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://kepstroy.ru/</loc>
-    <lastmod>2026-05-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/uslugi/septiki/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/uslugi/kanalizaciya/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/uslugi/vodosnabzhenie/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/uslugi/gazosnabzhenie/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/uslugi/elektrosnabzhenie/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/uslugi/yuridicheskoe-soprovozhdenie-podklyuchenij/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/uslugi/zabory/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/blog/</loc>
@@ -19,19 +61,13 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://kepstroy.ru/blog/septik-ili-vygrebnaya-yama-krym/</loc>
+    <loc>https://kepstroy.ru/blog/kanalizaciya-v-chastnom-dome-krym/</loc>
     <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://kepstroy.ru/blog/skolko-stoit-septik-pod-klyuch-krym/</loc>
-    <lastmod>2026-06-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/blog/zhibi-ili-plastik-septik-krym/</loc>
+    <loc>https://kepstroy.ru/blog/podklyuchenie-gaza-krym-2026/</loc>
     <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
@@ -43,19 +79,7 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://kepstroy.ru/blog/ustanovka-septika-krym/</loc>
-    <lastmod>2026-06-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/blog/kanalizaciya-v-chastnom-dome-krym/</loc>
-    <lastmod>2026-06-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/blog/septik-simferopol/</loc>
+    <loc>https://kepstroy.ru/blog/septik-ili-vygrebnaya-yama-krym/</loc>
     <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
@@ -67,303 +91,237 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://kepstroy.ru/blog/septik-simferopol/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://kepstroy.ru/blog/septik-yalta/</loc>
     <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://kepstroy.ru/blog/podklyuchenie-gaza-krym-2026/</loc>
-    <lastmod>2026-06-16</lastmod>
+    <loc>https://kepstroy.ru/blog/skolko-stoit-septik-pod-klyuch-krym/</loc>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://kepstroy.ru/uslugi/septiki/</loc>
-    <lastmod>2026-05-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://kepstroy.ru/blog/ustanovka-septika-krym/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://kepstroy.ru/uslugi/kanalizaciya/</loc>
-    <lastmod>2026-05-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/uslugi/vodosnabzhenie/</loc>
-    <lastmod>2026-06-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/uslugi/gazosnabzhenie/</loc>
-    <lastmod>2026-06-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/uslugi/elektrosnabzhenie/</loc>
-    <lastmod>2026-06-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/uslugi/yuridicheskoe-soprovozhdenie-podklyuchenij/</loc>
-    <lastmod>2026-06-16</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://kepstroy.ru/blog/zhibi-ili-plastik-septik-krym/</loc>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/portfolio/</loc>
-    <lastmod>2026-05-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kepstroy.ru/tseny/</loc>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/o-nas/</loc>
-    <lastmod>2026-05-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/tseny/</loc>
-    <lastmod>2026-05-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/kontakty/</loc>
-    <lastmod>2026-05-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://kepstroy.ru/uslugi/zabory/</loc>
-    <lastmod>2026-05-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/uslugi/vodosnabzhenie/</loc>
-    <lastmod>2026-05-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
     <loc>https://kepstroy.ru/lead-magnet/</loc>
-    <lastmod>2026-05-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/spasibo/</loc>
-    <lastmod>2026-05-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/politika-konfidencialnosti/</loc>
-    <lastmod>2026-05-26</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/llms.txt</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/llms-full.txt</loc>
-    <lastmod>2026-06-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/llms.txt</loc>
-    <lastmod>2026-06-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/llms-full.txt</loc>
-    <lastmod>2026-06-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/llms.txt</loc>
-    <lastmod>2026-06-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/llms-full.txt</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/simferopol/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/simferopol/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/sevastopol/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/sevastopol/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/jalta/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/jalta/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/evpatorija/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/evpatorija/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/kerch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/kerch/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/feodosija/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/feodosija/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/alushta/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/alushta/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/sudak/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/sudak/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/dzhankoj/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/dzhankoj/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/saki/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/saki/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/bahchisaraj/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/bahchisaraj/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/armjansk/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kepstroy.ru/krym/armjansk/septik-pod-kluch/</loc>
-    <lastmod>2026-06-15</lastmod>
+    <lastmod>2026-06-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/llms.txt</loc>
-    <lastmod>2026-06-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://kepstroy.ru/llms-full.txt</loc>
-    <lastmod>2026-06-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
   </url>
 </urlset>
