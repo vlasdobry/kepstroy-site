@@ -68,9 +68,22 @@ img {
 }
 
 .blog-header__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1.35rem;
   font-weight: 800;
   color: var(--c-text);
+}
+.blog-header__logo::before {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 28px;
+  background-image: url("../images/logo-icon.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
 }
 
 .blog-header__logo span {

@@ -269,6 +269,16 @@ h1, h2, h3, h4 {
   font-weight: 900;
   color: var(--c-text-dark);
 }
+.logo::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 36px;
+  background-image: url("../images/logo-icon.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
 .logo span { color: var(--c-primary); }
 
 .header__contact-main { text-align: right; }
@@ -1430,6 +1440,72 @@ body.modal-open {
   }
 }
 
+/* Contact page form */
+.contact-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.contact-form .form-group {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.contact-form label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--c-text-mut);
+}
+.contact-form .input,
+.contact-form select,
+.contact-form textarea {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--c-border);
+  border-radius: var(--rad-md);
+  font-family: inherit;
+  font-size: 1rem;
+  background: white;
+  transition: var(--transition);
+}
+.contact-form .input:focus,
+.contact-form select:focus,
+.contact-form textarea:focus {
+  border-color: var(--c-primary);
+  outline: none;
+}
+.contact-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.contact-form .form-consent,
+.contact-form .contact-form__submit {
+  grid-column: 1 / -1;
+}
+.contact-form .form-consent label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--c-text-mut);
+  cursor: pointer;
+}
+.contact-form .form-consent input {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+.contact-form .btn {
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .contact-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ==========================================================================
    CALCULATOR
    ========================================================================== */
@@ -1880,6 +1956,10 @@ html, body {
   .logo {
     font-size: 1.4rem;
   }
+  .logo::before {
+    width: 28px;
+    height: 28px;
+  }
   .header__phone {
     font-size: 1rem;
   }
@@ -2209,6 +2289,10 @@ h1, h2, h3, h4, p, span, a, li, div {
   }
   .logo {
     font-size: 1.25rem;
+  }
+  .logo::before {
+    width: 24px;
+    height: 24px;
   }
 }
 
