@@ -78,8 +78,8 @@ img {
 .blog-header__logo::before {
   content: "";
   display: block;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   background-image: url("../images/logo-icon.png");
   background-size: contain;
   background-repeat: no-repeat;

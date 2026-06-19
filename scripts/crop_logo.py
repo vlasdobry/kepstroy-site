@@ -22,7 +22,7 @@ def crop_logo():
     max_x, max_y = 0, 0
     
     for y in range(height):
-        for x in range(width // 2): # только левая половина
+        for x in range(int(width * 0.33)): # только левая треть, чтобы не захватить текст
             r, g, b, a = img.getpixel((x, y))
             # Если пиксель не белый
             if r < 245 or g < 245 or b < 245:
