@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <link rel="icon" type="image/x-icon" href="../images/favicon/favicon.ico">
-  <link rel="icon" type="image/svg+xml" href="../images/favicon/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon/favicon-32x32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="../images/favicon/apple-touch-icon.png">
+  <link rel="icon" type="image/x-icon" href="../images/favicon/favicon.ico?v=2">
+  <link rel="icon" type="image/svg+xml" href="../images/favicon/favicon.svg?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon/favicon-32x32.png?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../images/favicon/apple-touch-icon.png?v=2">
   <meta name="yandex-verification" content="42d19edda2426210" />
   <meta charset="UTF-8">
   <meta name="color-scheme" content="light only">
@@ -147,19 +147,19 @@
           </div>
         </div>
         <div>
-          <div style="background: var(--color-bg); border-radius: var(--radius-xl); padding: 2rem; box-shadow: var(--shadow-md); border: 1px solid var(--color-border);">
-            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Оставить заявку</h3>
-            <form id="contact-form" action="#" method="POST">
+          <div class="service-form" style="padding: 1.75rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem;">Оставить заявку</h3>
+            <form id="contact-form" class="contact-form" action="/submit" method="POST">
               <div class="form-honeypot">
                 <input type="text" name="website" tabindex="-1" autocomplete="off">
               </div>
               <div class="form-group">
                 <label for="name">Ваше имя</label>
-                <input type="text" id="name" name="name" required placeholder="Иван">
+                <input type="text" id="name" name="name" class="input" required placeholder="Иван">
               </div>
               <div class="form-group">
                 <label for="phone">Телефон *</label>
-                <input type="tel" id="phone" name="phone" required placeholder="+7 (978) 461-59-62" pattern="[\+\d\s\(\)-]{10,20}">
+                <input type="tel" id="phone" name="phone" class="input" required placeholder="+7 (978) 461-59-62" pattern="[\+\d\s\(\)-]{10,20}">
               </div>
               <div class="form-group">
                 <label for="service">Услуга</label>
@@ -182,7 +182,7 @@
                   <span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span>
                 </label>
               </div>
-              <button type="submit" class="btn btn-primary" style="width: 100%;">Отправить заявку</button>
+              <button type="submit" class="btn btn--accent contact-form__submit">Отправить заявку</button>
             </form>
           </div>
         </div>
