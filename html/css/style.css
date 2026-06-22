@@ -218,6 +218,14 @@ h1, h2, h3, h4 {
 .btn-group { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
 
 .btn--white { background: white; color: var(--c-text-dark); }
+
+/* CTA section (phone call block) */
+.cta-section {
+  text-align: center;
+}
+.cta-section .btn {
+  margin-top: 0.5rem;
+}
 .btn--white:hover { background: var(--c-bg-mut); }
 
 .badge {
