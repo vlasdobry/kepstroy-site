@@ -5,15 +5,34 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
 
-// Allow CORS from the website
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+const ALLOWED_ORIGINS = new Set(['https://kepstroy.ru', 'https://www.kepstroy.ru']);
+const ALLOWED_HOSTS = new Set(['kepstroy.ru', 'www.kepstroy.ru']);
+
+// Allow CORS from the website. CORS is not anti-spam; server-side checks below do that.
 app.use(cors({
-  origin: ['https://kepstroy.ru', 'https://www.kepstroy.ru'],
+  origin(origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('CORS origin denied'));
+  },
   methods: ['POST'],
   allowedHeaders: ['Content-Type']
 }));
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: '20kb' }));
+app.use(express.json({ limit: '20kb' }));
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  next();
+});
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
@@ -21,43 +40,66 @@ const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 
 const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
 
-// In-memory rate limiting storage
+// In-memory rate limiting storage. Enough for a single small container.
 const recentSubmissions = new Map();
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const PHONE_COOLDOWN_MS = 60 * 1000; // 1 minute
-const MAX_SUBMISSIONS_PER_IP = 5;
+const PHONE_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_SUBMISSIONS_PER_IP = 3;
+const MAX_FIELD_LENGTH = 1000;
 const TEST_PHONE = '79999999999';
 const TEST_NAME = 'CI Test';
 const TEST_MESSAGE = 'CI test';
+const SPAM_PATTERNS = [
+  /\bhttps?:\/\//i,
+  /\bt\.me\//i,
+  /\btelegram\b/i,
+  /\bwhatsapp\b/i,
+  /\bgoogle\s*search\s*index\b/i,
+  /\bsearchregister\b/i,
+  /\bregister\s+.+\s+now\b/i,
+  /провер(?:ка|ки)\s+контрагент/i,
+  /книг[аи]\s+покупок/i,
+  /книг[аи]\s+продаж/i
+];
 
 function cleanPhone(phone) {
   if (!phone) return '';
   return phone.replace(/\D/g, '');
 }
 
-function formatPhone(phone) {
+function normalizePhone(phone) {
   const digits = cleanPhone(phone);
+  if (digits.length === 10) return `7${digits}`;
+  if (digits.length === 11 && digits.startsWith('8')) return `7${digits.slice(1)}`;
+  return digits;
+}
+
+function isLikelyRussianLeadPhone(phone) {
+  const digits = normalizePhone(phone);
+  if (!/^7\d{10}$/.test(digits)) return false;
+
+  const national = digits.slice(1);
+  return national.startsWith('9') ||
+         national.startsWith('365') ||
+         national.startsWith('869');
+}
+
+function formatPhone(phone) {
+  const digits = normalizePhone(phone);
   if (digits.length === 11 && digits.startsWith('7')) {
     return `+7 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`;
-  }
-  if (digits.length === 10) {
-    return `+7 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 8)}-${digits.slice(8, 10)}`;
   }
   return phone || '—';
 }
 
 function isTestSubmission(body) {
   return body.name === TEST_NAME ||
-         cleanPhone(body.phone) === TEST_PHONE ||
+         normalizePhone(body.phone) === TEST_PHONE ||
          body.message === TEST_MESSAGE;
 }
 
 function getClientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  return req.socket.remoteAddress;
+  return req.ip || req.socket.remoteAddress || 'unknown';
 }
 
 function cleanupOldSubmissions() {
@@ -74,7 +116,7 @@ function isRateLimited(ip, phone) {
   cleanupOldSubmissions();
   const now = Date.now();
   const ipKey = `ip:${ip}`;
-  const phoneKey = `phone:${cleanPhone(phone)}`;
+  const phoneKey = `phone:${normalizePhone(phone)}`;
 
   const ipEntry = recentSubmissions.get(ipKey);
   if (ipEntry && ipEntry.count >= MAX_SUBMISSIONS_PER_IP) {
@@ -92,7 +134,7 @@ function isRateLimited(ip, phone) {
 function recordSubmission(ip, phone) {
   const now = Date.now();
   const ipKey = `ip:${ip}`;
-  const phoneKey = `phone:${cleanPhone(phone)}`;
+  const phoneKey = `phone:${normalizePhone(phone)}`;
 
   const ipEntry = recentSubmissions.get(ipKey);
   recentSubmissions.set(ipKey, {
@@ -117,6 +159,47 @@ async function callTelegramAPI(method, body) {
   return JSON.parse(text);
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function hasValidBrowserSource(req) {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) return true;
+
+  const referer = req.headers.referer || req.headers.referrer;
+  if (!referer) return false;
+
+  try {
+    return ALLOWED_HOSTS.has(new URL(referer).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function hasSuspiciousContent(body) {
+  const text = ['name', 'service', 'message']
+    .map((key) => body[key] || '')
+    .join('\n');
+  return SPAM_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function hasOversizedField(body) {
+  return Object.values(body).some((value) => String(value || '').length > MAX_FIELD_LENGTH);
+}
+
+function fieldHasValue(value) {
+  if (Array.isArray(value)) {
+    return value.some((item) => String(item || '').trim().length > 0);
+  }
+  return String(value || '').trim().length > 0;
+}
+
 function callButton(digits) {
   return { text: '📞 Позвонить', url: `https://kepstroy.ru/call/?phone=${digits}` };
 }
@@ -130,7 +213,7 @@ function doneButton(digits) {
 }
 
 async function sendTelegramMessage(text, phone) {
-  const digits = cleanPhone(phone);
+  const digits = normalizePhone(phone);
   const payload = {
     chat_id: CHAT_ID,
     text,
@@ -154,7 +237,7 @@ async function answerCallback(callbackQueryId, text) {
 }
 
 async function editMessageStatus(chatId, messageId, text, status, phone) {
-  const digits = cleanPhone(phone);
+  const digits = normalizePhone(phone);
   let statusLine = '';
   let keyboard = [];
 
@@ -216,8 +299,31 @@ app.post('/submit', async (req, res) => {
   try {
     const { name, phone, service, page, message } = req.body;
 
-    // Basic spam honeypot: if "website" field is present and filled, reject
-    if (req.body.website) {
+    if (!hasValidBrowserSource(req)) {
+      console.log('Submission rejected: invalid browser source', {
+        ip: getClientIp(req),
+        origin: req.headers.origin,
+        referer: req.headers.referer || req.headers.referrer
+      });
+      return res.status(403).send('Forbidden');
+    }
+
+    // Honeypots: real users never fill these fields.
+    if (fieldHasValue(req.body.website) || fieldHasValue(req.body.company)) {
+      return res.status(400).send('Spam detected');
+    }
+
+    if (req.body.form_source !== 'kepstroy') {
+      return res.status(400).send('Invalid form');
+    }
+
+    if (hasOversizedField(req.body) || hasSuspiciousContent(req.body)) {
+      console.log('Submission rejected: suspicious content', {
+        ip: getClientIp(req),
+        phone,
+        service,
+        page
+      });
       return res.status(400).send('Spam detected');
     }
 
@@ -227,8 +333,8 @@ app.post('/submit', async (req, res) => {
       return res.redirect('https://kepstroy.ru/spasibo/');
     }
 
-    const digits = cleanPhone(phone);
-    if (digits.length < 10) {
+    const digits = normalizePhone(phone);
+    if (!isLikelyRussianLeadPhone(phone)) {
       return res.status(400).send('Некорректный номер телефона');
     }
 
@@ -249,25 +355,25 @@ app.post('/submit', async (req, res) => {
     const phoneDisplay = formatPhone(phone);
 
     let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
-    text += `👤 Имя: ${name || '—'}\n`;
-    text += `📞 Телефон: ${phoneDisplay}\n`;
-    text += `🔧 Услуга: ${service || '—'}\n`;
-    text += `🌐 Страница: ${page || '—'}`;
+    text += `👤 Имя: ${escapeHtml(name || '—')}\n`;
+    text += `📞 Телефон: ${escapeHtml(phoneDisplay)}\n`;
+    text += `🔧 Услуга: ${escapeHtml(service || '—')}\n`;
+    text += `🌐 Страница: ${escapeHtml(page || '—')}`;
     if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
-      text += `\n📊 UTM: ${utmSource || '-'} / ${utmMedium || '-'} / ${utmCampaign || '-'} / content: ${utmContent || '-'} / term: ${utmTerm || '-'}`;
+      text += `\n📊 UTM: ${escapeHtml(utmSource || '-')} / ${escapeHtml(utmMedium || '-')} / ${escapeHtml(utmCampaign || '-')} / content: ${escapeHtml(utmContent || '-')} / term: ${escapeHtml(utmTerm || '-')}`;
     }
     if (clientId) {
-      text += `\n🆔 Client ID: ${clientId}`;
+      text += `\n🆔 Client ID: ${escapeHtml(clientId)}`;
     }
     if (referrer) {
-      text += `\n↩️ Referrer: ${referrer}`;
+      text += `\n↩️ Referrer: ${escapeHtml(referrer)}`;
     }
     if (message) {
-      text += `\n💬 Сообщение: ${message}`;
+      text += `\n💬 Сообщение: ${escapeHtml(message)}`;
     }
 
     recordSubmission(clientIp, phone);
-    await sendTelegramMessage(text, phone);
+    await sendTelegramMessage(text, digits);
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);
@@ -277,6 +383,11 @@ app.post('/submit', async (req, res) => {
 
 app.post('/webhook', async (req, res) => {
   try {
+    const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (!expectedSecret || req.headers['x-telegram-bot-api-secret-token'] !== expectedSecret) {
+      return res.sendStatus(404);
+    }
+
     const callbackQuery = req.body.callback_query;
     if (callbackQuery) {
       await handleCallback(callbackQuery);

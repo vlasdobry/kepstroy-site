@@ -20,7 +20,14 @@ services:
       - 'traefik.http.middlewares.kepstroy-redirect-www.redirectregex.regex=^https://www\.kepstroy\.ru/(.*)'
       - "traefik.http.middlewares.kepstroy-redirect-www.redirectregex.replacement=https://kepstroy.ru/$${1}"
       - "traefik.http.middlewares.kepstroy-redirect-www.redirectregex.permanent=true"
-      - "traefik.http.routers.kepstroy.middlewares=kepstroy-redirect-www"
+      - "traefik.http.routers.kepstroy.middlewares=kepstroy-redirect-www,kepstroy-secure-headers"
+      - "traefik.http.middlewares.kepstroy-secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.kepstroy-secure-headers.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.kepstroy-secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.kepstroy-secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.kepstroy-secure-headers.headers.frameDeny=false"
+      - "traefik.http.middlewares.kepstroy-secure-headers.headers.customFrameOptionsValue=SAMEORIGIN"
+      - "traefik.http.middlewares.kepstroy-secure-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
     networks:
       - web
     logging:
@@ -51,6 +58,7 @@ services:
       - "traefik.http.routers.kepstroy-forms.tls.certresolver=letsencrypt"
       - "traefik.http.routers.kepstroy-forms.priority=20"
       - "traefik.http.services.kepstroy-forms.loadbalancer.server.port=3000"
+      - "traefik.http.routers.kepstroy-forms.middlewares=kepstroy-secure-headers"
     networks:
       - web
     logging:

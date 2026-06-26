@@ -461,6 +461,11 @@
             </div>
 
             <form class="calc-form" id="calc-form" action="/submit" method="POST">
+          <input type="hidden" name="form_source" value="kepstroy">
+          <div class="form-honeypot" aria-hidden="true">
+            <input type="text" name="website" tabindex="-1" autocomplete="off">
+            <input type="text" name="company" tabindex="-1" autocomplete="off">
+          </div>
               <input type="hidden" name="service" value="Калькулятор септика">
               <input type="hidden" name="septic_type" id="form-type">
               <input type="hidden" name="region" id="form-region">
@@ -600,6 +605,11 @@
       </div>
       <div class="service-form">
         <form id="septic-form" class="service-form__grid" action="/submit" method="POST">
+          <input type="hidden" name="form_source" value="kepstroy">
+          <div class="form-honeypot" aria-hidden="true">
+            <input type="text" name="website" tabindex="-1" autocomplete="off">
+            <input type="text" name="company" tabindex="-1" autocomplete="off">
+          </div>
           <input type="hidden" name="service" value="Септики">
 
           <div>
@@ -928,6 +938,11 @@
       <h3 class="modal__title">Заказать обратный звонок</h3>
       <p class="modal__desc">Оставьте номер — перезвоним в течение 15 минут</p>
       <form action="/submit" method="POST">
+          <input type="hidden" name="form_source" value="kepstroy">
+          <div class="form-honeypot" aria-hidden="true">
+            <input type="text" name="website" tabindex="-1" autocomplete="off">
+            <input type="text" name="company" tabindex="-1" autocomplete="off">
+          </div>
         <input type="hidden" name="service" value="Обратный звонок (септики)">
         <div style="margin-bottom: 1rem;">
           <input type="text" name="name" placeholder="Ваше имя" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem;" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
