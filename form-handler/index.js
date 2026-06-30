@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const { HttpsProxyAgent } = require('https-proxy-agent');
+const { buildLeadMessage } = require('./lead-message');
 
 const app = express();
 
@@ -159,14 +160,6 @@ async function callTelegramAPI(method, body) {
   return JSON.parse(text);
 }
 
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function hasValidBrowserSource(req) {
   const origin = req.headers.origin;
@@ -344,36 +337,14 @@ app.post('/submit', async (req, res) => {
       return res.status(429).send('Слишком много заявок. Пожалуйста, подождите.');
     }
 
-    const utmSource = req.body.utm_source;
-    const utmMedium = req.body.utm_medium;
-    const utmCampaign = req.body.utm_campaign;
-    const utmContent = req.body.utm_content;
-    const utmTerm = req.body.utm_term;
-    const clientId = req.body.client_id;
-    const referrer = req.body.referrer;
-
     const phoneDisplay = formatPhone(phone);
+    const text = buildLeadMessage({
+      ...req.body,
+      phone: phoneDisplay
+    });
 
-    let text = `🚀 Новая заявка с сайта КэпСтрой\n\n`;
-    text += `👤 Имя: ${escapeHtml(name || '—')}\n`;
-    text += `📞 Телефон: ${escapeHtml(phoneDisplay)}\n`;
-    text += `🔧 Услуга: ${escapeHtml(service || '—')}\n`;
-    text += `🌐 Страница: ${escapeHtml(page || '—')}`;
-    if (utmSource || utmMedium || utmCampaign || utmContent || utmTerm) {
-      text += `\n📊 UTM: ${escapeHtml(utmSource || '-')} / ${escapeHtml(utmMedium || '-')} / ${escapeHtml(utmCampaign || '-')} / content: ${escapeHtml(utmContent || '-')} / term: ${escapeHtml(utmTerm || '-')}`;
-    }
-    if (clientId) {
-      text += `\n🆔 Client ID: ${escapeHtml(clientId)}`;
-    }
-    if (referrer) {
-      text += `\n↩️ Referrer: ${escapeHtml(referrer)}`;
-    }
-    if (message) {
-      text += `\n💬 Сообщение: ${escapeHtml(message)}`;
-    }
-
-    recordSubmission(clientIp, phone);
     await sendTelegramMessage(text, digits);
+    recordSubmission(clientIp, phone);
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
     console.error('Form handler error:', error);

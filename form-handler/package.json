@@ -4,7 +4,8 @@
   "description": "Form handler for kepstroy.ru — sends leads to Telegram",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

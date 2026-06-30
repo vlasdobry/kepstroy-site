@@ -20,6 +20,23 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: form-handler/package-lock.json
+
+      - name: Test form handler
+        working-directory: form-handler
+        run: |
+          npm ci
+          npm test
+          npm audit --omit=dev
+
+      - name: Run site readiness tests
+        run: python -m unittest discover -s tests -v
+
       - name: Run pre-deploy validation
         run: python scripts/validate.py
 
@@ -110,7 +127,7 @@ jobs:
           command_timeout: 10m
           envs: BOT_TOKEN,CHAT_ID,TELEGRAM_PROXY_URL
           script: |
-            set -euxo pipefail
+            set -euo pipefail
             cd /opt/kepstroy-site || mkdir -p /opt/kepstroy-site
             cd /opt/kepstroy-site
 
@@ -140,4 +157,23 @@ jobs:
               sudo docker compose logs --tail=50
               exit 1
             fi
+
+            echo "Testing form validation path..."
+            FORM_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" \
+              -X POST "http://localhost:3000/submit" \
+              -H "Origin: https://kepstroy.ru" \
+              --data-urlencode "form_source=kepstroy" \
+              --data-urlencode "name=CI Test" \
+              --data-urlencode "phone=79999999999" \
+              --data-urlencode "message=CI test")
+            echo "Form smoke test HTTP code: $FORM_CODE"
+            if [ "$FORM_CODE" != "302" ]; then
+              sudo docker compose logs --tail=50
+              exit 1
+            fi
+
+            echo "Testing Telegram API connectivity..."
+            curl -fsS --max-time 20 -x "$TELEGRAM_PROXY_URL" \
+              "https://api.telegram.org/bot${BOT_TOKEN}/getMe" > /dev/null
+
             sudo docker image prune -f

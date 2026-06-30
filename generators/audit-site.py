@@ -236,8 +236,8 @@ def write_report():
     lines.append("")
 
     lines.append("## 18. Рекомендации")
-    lines.append("- Привести все CSS/JS к единой версии `?v=17`.")
-    lines.append("- Добавить canonical и Метрику на служебные страницы: call, lead-magnet, spasibo.")
+    lines.append("- Поддерживать согласованные cache-busting версии CSS/JS в HTML и шаблонах.")
+    lines.append("- Не включать служебные страницы call и spasibo в sitemap; сохранять для них noindex.")
     lines.append("- Укоротить title/description в блог-статьях, где > лимита.")
     lines.append("- Добавить Schema.org на страницы услуг (`/uslugi/*`) и информационные страницы.")
     lines.append("- Проверить и унифицировать формулировки про выезд инженера.")

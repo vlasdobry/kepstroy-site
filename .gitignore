@@ -24,3 +24,7 @@ node_modules/
 *.pem
 *.key
 id_rsa*
+
+# Python cache
+__pycache__/
+*.py[cod]

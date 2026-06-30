@@ -40,33 +40,30 @@ if (stickyPhone) {
   updateStickyPhone();
 }
 
-// === Phone Click Tracking (Yandex Metrica) ===
-document.querySelectorAll('a[href^="tel:"]').forEach(link => {
-  link.addEventListener('click', () => {
-    if (typeof ym !== 'undefined') {
-      ym(109754800, 'reachGoal', 'phone_click');
-    }
-  });
-});
 
 // === Smart Call: Desktop → Modal, Mobile → tel: ===
 document.querySelectorAll('.js-smart-call').forEach(btn => {
   btn.addEventListener('click', function (e) {
     const isMobile = window.innerWidth <= 768;
+    const hasModal = typeof openModal === 'function';
+    const action = window.KepstroyTracking
+      ? window.KepstroyTracking.resolveSmartCallAction({ isMobile, hasModal })
+      : (isMobile || !hasModal ? 'phone' : 'callback');
 
-    if (isMobile) {
+    if (action === 'phone') {
+      trackGoal('phone_click');
       window.location.href = 'tel:+79784615962';
-    } else {
-      if (typeof openModal === 'function') openModal();
+      return;
     }
 
-    if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'phone_click');
+    openModal();
+    trackGoal('callback_open');
   });
 });
 
 // === Universal form handler for all /submit forms ===
 document.querySelectorAll('form[action="/submit"]').forEach(form => {
-  if (form.id === 'contact-form' || form.classList.contains('quiz-form-inner')) return;
+  if (form.id === 'contact-form') return;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -90,7 +87,7 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
     try {
       const response = await fetch('/submit', { method: 'POST', body: formData });
       if (response.ok) {
-        if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'form_submit');
+        trackGoal('form_submit');
         window.location.href = '/spasibo/';
       } else {
         throw new Error('Submit failed');
@@ -105,58 +102,23 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
   });
 });
 
-// === UTM & Client ID tracking ===
-function getUTMParams() {
-  const params = new URLSearchParams(window.location.search);
-  const utm = {};
-  ['source', 'medium', 'campaign', 'content', 'term'].forEach(key => {
-    const value = params.get(`utm_${key}`);
-    if (value) utm[key] = value;
-  });
-  return utm;
-}
-
-function saveUTMParams() {
-  const utm = getUTMParams();
-  if (Object.keys(utm).length > 0) {
-    sessionStorage.setItem('kepstroy_utm', JSON.stringify(utm));
+// === Traffic attribution and Yandex.Metrica goals ===
+function trackGoal(goal) {
+  if (window.KepstroyTracking) {
+    window.KepstroyTracking.trackGoal(goal);
+    return;
   }
-}
-
-function getStoredUTM() {
-  try {
-    return JSON.parse(sessionStorage.getItem('kepstroy_utm') || '{}');
-  } catch {
-    return {};
-  }
-}
-
-function getYandexClientId() {
-  return new Promise((resolve) => {
-    if (typeof ym === 'undefined') return resolve(null);
-    try {
-      ym(109754800, 'getClientID', (clientID) => {
-        resolve(clientID);
-      });
-    } catch {
-      resolve(null);
-    }
-    // Fallback if callback never fires
-    setTimeout(() => resolve(null), 500);
-  });
+  if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', goal);
 }
 
 async function appendTrackingData(formData) {
-  const utm = getStoredUTM();
-  Object.entries(utm).forEach(([key, value]) => {
-    formData.append(`utm_${key}`, value);
-  });
-  formData.append('referrer', document.referrer || '');
-  const clientId = await getYandexClientId();
-  if (clientId) formData.append('client_id', clientId);
+  if (window.KepstroyTracking) {
+    await window.KepstroyTracking.appendTo(formData);
+    return;
+  }
+  formData.set('current_page', window.location.href);
+  formData.set('original_referrer', document.referrer || '');
 }
-
-saveUTMParams();
 
 // === Form Handling ===
 const contactForm = document.getElementById('contact-form');
@@ -188,9 +150,7 @@ if (contactForm) {
 
       if (response.ok) {
         // Track form submission
-        if (typeof ym !== 'undefined') {
-          ym(109754800, 'reachGoal', 'form_submit');
-        }
+        trackGoal('form_submit');
 
         // Show success
         contactForm.innerHTML = `
@@ -211,27 +171,6 @@ if (contactForm) {
   });
 }
 
-// === Scroll Tracking (50% depth) ===
-let scrollTracked = false;
-window.addEventListener('scroll', () => {
-  if (scrollTracked) return;
-
-  const scrollPercent = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100;
-  if (scrollPercent >= 50) {
-    scrollTracked = true;
-    if (typeof ym !== 'undefined') {
-      ym(109754800, 'reachGoal', 'scroll_50');
-    }
-  }
-});
-
-// === Time on site tracking (2 minutes) ===
-setTimeout(() => {
-  if (typeof ym !== 'undefined') {
-    ym(109754800, 'reachGoal', 'time_2min');
-  }
-}, 120000);
-
 // === Smooth scroll for anchor links ===
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
@@ -247,161 +186,6 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       });
     }
   });
-});
-
-// === Quiz ===
-const quizContainers = document.querySelectorAll('.quiz-container');
-
-quizContainers.forEach(container => {
-  const steps = container.querySelectorAll('.quiz-step');
-  const prevBtn = container.querySelector('.quiz-prev');
-  const nextBtn = container.querySelector('.quiz-next');
-  const submitBtn = container.querySelector('.quiz-submit');
-  const progressBar = container.querySelector('.quiz-progress-bar');
-  const result = container.querySelector('.quiz-result');
-  let currentStep = 0;
-
-  function updateStep() {
-    steps.forEach((step, i) => {
-      step.classList.toggle('active', i === currentStep);
-    });
-    if (progressBar) {
-      progressBar.style.width = ((currentStep + 1) / steps.length * 100) + '%';
-    }
-    if (prevBtn) prevBtn.style.display = currentStep > 0 ? 'inline-flex' : 'none';
-    if (nextBtn) nextBtn.style.display = currentStep < steps.length - 1 ? 'inline-flex' : 'none';
-    if (submitBtn) submitBtn.style.display = currentStep === steps.length - 1 ? 'inline-flex' : 'none';
-  }
-
-  // Handle option clicks
-  steps.forEach((step, stepIndex) => {
-    const options = step.querySelectorAll('.quiz-option');
-    options.forEach(opt => {
-      opt.addEventListener('click', () => {
-        options.forEach(o => o.classList.remove('selected'));
-        opt.classList.add('selected');
-        if (stepIndex < steps.length - 1) {
-          setTimeout(() => {
-            currentStep++;
-            updateStep();
-          }, 300);
-        }
-      });
-    });
-  });
-
-  if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      if (currentStep > 0) {
-        currentStep--;
-        updateStep();
-      }
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      const currentStepEl = steps[currentStep];
-      const selected = currentStepEl.querySelector('.quiz-option.selected');
-      if (!selected) {
-        alert('Выберите вариант ответа');
-        return;
-      }
-      if (currentStep < steps.length - 1) {
-        currentStep++;
-        updateStep();
-      }
-    });
-  }
-
-  if (submitBtn) {
-    submitBtn.addEventListener('click', async () => {
-      const lastStep = steps[steps.length - 1];
-      const selected = lastStep.querySelector('.quiz-option.selected');
-      if (!selected) {
-        alert('Выберите вариант ответа');
-        return;
-      }
-
-      // Collect answers
-      const answers = {};
-      steps.forEach((step, i) => {
-        const sel = step.querySelector('.quiz-option.selected');
-        if (sel) {
-          answers['q' + (i + 1)] = sel.dataset.value;
-        }
-      });
-
-      // Show form
-      container.querySelector('.quiz-steps').style.display = 'none';
-      if (prevBtn) prevBtn.style.display = 'none';
-      if (nextBtn) nextBtn.style.display = 'none';
-      if (submitBtn) submitBtn.style.display = 'none';
-      if (container.querySelector('.quiz-form')) {
-        container.querySelector('.quiz-form').style.display = 'block';
-      }
-    });
-  }
-
-  // Quiz form submit
-  const quizForm = container.querySelector('.quiz-form-inner');
-  if (quizForm) {
-    quizForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const honeypot = quizForm.querySelector('.form-honeypot');
-      if (honeypot && honeypot.value) return;
-
-      const submitBtn = quizForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-
-      // Collect quiz answers
-      const answers = {};
-      steps.forEach((step, i) => {
-        const sel = step.querySelector('.quiz-option.selected');
-        if (sel) answers['q' + (i + 1)] = sel.dataset.value;
-      });
-
-      const quizData = new URLSearchParams(new FormData(quizForm));
-      quizData.append('service', 'Квиз: септик');
-      quizData.append('message', 'Ответы квиза: ' + JSON.stringify(answers));
-      quizData.append('page', window.location.href);
-      await appendTrackingData(quizData);
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Отправка...';
-
-      try {
-        const response = await fetch('/submit', {
-          method: 'POST',
-          body: quizData
-        });
-
-        if (response.ok) {
-          if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', 'quiz_submit');
-          quizForm.innerHTML = `
-            <div style="text-align:center;padding:2rem;">
-              <div style="font-size:3rem;margin-bottom:1rem;">✓</div>
-              <h3 style="margin-bottom:.5rem;">Заявка отправлена!</h3>
-              <p style="color:var(--color-text-light);margin-bottom:1rem;">Андрей перезвонит в течение 15 минут.</p>
-              <div style="background:var(--color-bg-alt);padding:1.5rem;border-radius:var(--radius-lg);margin-top:1rem;">
-                <strong>Бонус:</strong> PDF-гайд «Как выбрать септик и не переплатить»<br>
-                <small>Отправим в WhatsApp или Telegram</small>
-              </div>
-            </div>
-          `;
-        } else {
-          throw new Error('Submit failed');
-        }
-      } catch (error) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        alert('Ошибка отправки. Позвоните напрямую: +7 (978) 461-59-62');
-      }
-    });
-  }
-
-  updateStep();
 });
 
 // === Header scroll effect ===

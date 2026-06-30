@@ -20,6 +20,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import urlparse
 
+from readiness_checks import check_traffic_readiness
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HTML_ROOT = REPO_ROOT / "html"
 NGINX_CONF = REPO_ROOT / "nginx.conf"
@@ -189,6 +191,7 @@ def main():
     check_nginx_config(errors)
     check_required_seo(errors)
     check_metrica_noscript_position(errors)
+    check_traffic_readiness(REPO_ROOT, errors)
 
     if errors:
         print("VALIDATION FAILED", file=sys.stderr)

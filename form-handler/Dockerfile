@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 
-COPY index.js ./
+COPY index.js lead-message.js ./
 
 EXPOSE 3000
 
