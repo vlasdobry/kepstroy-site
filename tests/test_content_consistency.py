@@ -1,6 +1,7 @@
 import json
 import re
 import unittest
+from html import unescape
 from pathlib import Path
 
 
@@ -11,6 +12,8 @@ KANALIZACIYA_PAGE = HTML_ROOT / "uslugi" / "kanalizaciya" / "index.html"
 PRICES_PAGE = HTML_ROOT / "tseny" / "index.html"
 HOME_PAGE = HTML_ROOT / "index.html"
 CITY_TEMPLATE = REPO_ROOT / "generators" / "city-septik-template.html"
+CITY_INDEX_TEMPLATE = REPO_ROOT / "generators" / "city-index-template.html"
+CITY_DATA = REPO_ROOT / "generators" / "city-septik-data.json"
 LLMS_FILES = [HTML_ROOT / "llms.txt", HTML_ROOT / "llms-full.txt"]
 CONFIRMATIONS_REPORT = (
     REPO_ROOT / "docs" / "reports" / "kepstroy.ru" / "andrey-confirmations-required.md"
@@ -29,6 +32,14 @@ SERVICE_SLUGS = {
     "yuridicheskoe-soprovozhdenie-podklyuchenij",
     "zabory",
 }
+CONFIRMED_SEPTIC_PRICES = {
+    "ЖБ кольца (2 кольца)": "140 000 ₽",
+    "ЖБ кольца (3 кольца)": "180 000 ₽",
+    "Пластиковый септик Панда": "160 000 ₽",
+    "Панда Лайт": "198 000 ₽",
+    "Панда Аэро": "197 050 ₽",
+    "Дренажный колодец": "60 000 ₽",
+}
 
 
 def city_pages():
@@ -40,6 +51,43 @@ def city_pages():
 
 def city_sources():
     return [CITY_TEMPLATE, *city_pages()]
+
+
+def city_index_pages():
+    pages = sorted((HTML_ROOT / "krym").glob("*/index.html"))
+    if len(pages) != 12:
+        raise AssertionError(f"Expected exactly 12 city index pages, found {len(pages)}")
+    return pages
+
+
+def production_html():
+    return sorted(HTML_ROOT.rglob("*.html"))
+
+
+def public_claim_sources():
+    return [*production_html(), CITY_TEMPLATE, CITY_INDEX_TEMPLATE, CITY_DATA]
+
+
+def plain_text(source):
+    return " ".join(unescape(re.sub(r"<[^>]+>", " ", source)).split())
+
+
+def html_table_rows(source):
+    rows = []
+    for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", source, re.DOTALL | re.IGNORECASE):
+        cells = [
+            plain_text(cell)
+            for cell in re.findall(
+                r"<t[dh]\b[^>]*>(.*?)</t[dh]>", row, re.DOTALL | re.IGNORECASE
+            )
+        ]
+        if len(cells) >= 2:
+            rows.append((cells[0], cells[1]))
+    return rows
+
+
+def slice_between(source, start, end):
+    return source[source.index(start) : source.index(end, source.index(start))]
 
 
 def json_ld_documents(path):
@@ -123,6 +171,186 @@ class ContentConsistencyTests(unittest.TestCase):
         self.assertIn("Работаем по всему Крыму", source)
         self.assertIn(ENGINEER_TERMS, source)
 
+    def test_all_public_sources_avoid_exact_service_and_callback_timings(self):
+        service_timing = re.compile(
+            r"(?:монтаж|установ\w*|смонтир\w*|сдела\w*|"
+            r"работ(?:ы|а|у|ами|ах)?)\b[^.!?]{0,100}"
+            r"(?:за\s+|от\s+|занима\w*\s+)?"
+            r"(?:\d+(?:[,.]\d+)?|один)(?:[–-]\d+)?\s+"
+            r"(?:рабоч\w+\s+)?(?:час\w*|д(?:ень|ня|ней)|недел\w*)|"
+            r"(?:\d+(?:[,.]\d+)?|один)(?:[–-]\d+)?\s+"
+            r"(?:рабоч\w+\s+)?(?:час\w*|д(?:ень|ня|ней)|недел\w*)"
+            r"[^.!?]{0,80}(?:монтаж|срок\s+работ)",
+            re.IGNORECASE,
+        )
+        callback_timing = re.compile(
+            r"(?:перезвон|свяж|ответ|звон|рассчита|смет|консультац)"
+            r"[^.!?]{0,100}(?:5|10[–-]15|15|30)\s+минут|"
+            r"(?:5|10[–-]15|15|30)\s+минут[^.!?]{0,100}"
+            r"(?:перезвон|свяж|ответ|звон|рассчита|смет|консультац)",
+            re.IGNORECASE,
+        )
+        failures = []
+        for path in public_claim_sources():
+            source = path.read_text(encoding="utf-8")
+            text = plain_text(source) if path.suffix == ".html" else source
+            if (
+                service_timing.search(text)
+                or callback_timing.search(text)
+                or re.search(r"в\s+день\s+заявки", text, re.IGNORECASE)
+            ):
+                failures.append(path.relative_to(REPO_ROOT).as_posix())
+        self.assertEqual([], failures)
+
+    def test_unverified_company_absolutes_are_absent_sitewide(self):
+        forbidden = re.compile(
+            r"(?:100|200)\+\s+(?:(?:реализованн\w+|выполненн\w+)\s+)?(?:объект|проект)|"
+            r"10\+\s+лет|"
+            r"гаранти\w*[^.!?<\n]{0,70}(?:1\s+год|12\s+месяц)|"
+            r"(?:1\s+год|12\s+месяц)[^.!?<\n]{0,70}гаранти\w*|"
+            r"нет\s+обязательной\s+предоплат|"
+            r"оплат\w*[^.!?<\n]{0,80}(?:после\s+при[её]мк|по\s+факт)",
+            re.IGNORECASE,
+        )
+        failures = []
+        for path in public_claim_sources():
+            source = path.read_text(encoding="utf-8")
+            text = plain_text(source) if path.suffix == ".html" else source
+            text = text.replace(ENGINEER_TERMS, "")
+            if forbidden.search(text):
+                failures.append(path.relative_to(REPO_ROOT).as_posix())
+        self.assertEqual([], failures)
+
+    def test_drilling_is_not_presented_as_a_confirmed_company_service(self):
+        offering_pages = [
+            HOME_PAGE,
+            PRICES_PAGE,
+            HTML_ROOT / "uslugi" / "vodosnabzhenie" / "index.html",
+            HTML_ROOT / "krym" / "index.html",
+            *city_index_pages(),
+            CITY_INDEX_TEMPLATE,
+            *LLMS_FILES,
+        ]
+        failures = []
+        for path in offering_pages:
+            if re.search(r"бурен|скважин", path.read_text(encoding="utf-8"), re.I):
+                failures.append(path.relative_to(REPO_ROOT).as_posix())
+
+        water_article = (
+            HTML_ROOT / "blog" / "vodosnabzhenie-chastnogo-doma-krym" / "index.html"
+        ).read_text(encoding="utf-8")
+        self.assertNotRegex(
+            water_article,
+            r"чаще\s+всего\s+бурим|от\s+проекта\s+и\s+бурения|"
+            r'href="/uslugi/vodosnabzhenie/"[^>]*>скважин',
+        )
+        self.assertEqual([], failures)
+
+    def test_unconfirmed_non_septic_price_tables_use_neutral_estimates(self):
+        targets = [
+            KANALIZACIYA_PAGE,
+            PRICES_PAGE,
+            HTML_ROOT / "uslugi" / "vodosnabzhenie" / "index.html",
+            HTML_ROOT / "uslugi" / "zabory" / "index.html",
+            HTML_ROOT / "uslugi" / "elektrosnabzhenie" / "index.html",
+        ]
+        keywords = re.compile(
+            r"прокладка\s+труб|центральн\w+\s+сет|насосн|разводка\s+труб|"
+            r"профнастил|штакетник|рабица|деревянный\s+забор|"
+            r"технических\s+условий|трубостойк|сетевой\s+компани",
+            re.IGNORECASE,
+        )
+        failures = []
+        for path in targets:
+            for label, price in html_table_rows(path.read_text(encoding="utf-8")):
+                if keywords.search(label) and "₽" in price:
+                    failures.append(
+                        f"{path.relative_to(REPO_ROOT).as_posix()}: {label} = {price}"
+                    )
+        self.assertEqual([], failures)
+
+        for path in [HOME_PAGE, CITY_INDEX_TEMPLATE, *city_index_pages()]:
+            source = path.read_text(encoding="utf-8")
+            for title in ["Канализация", "Водоснабжение", "Заборы", "Электроснабжение"]:
+                cards = re.findall(
+                    rf'class="service-tile__title">[^<]*{title}[^<]*<.*?'
+                    rf'class="service-tile__price">([^<]+)',
+                    source,
+                    re.DOTALL | re.IGNORECASE,
+                )
+                for value in cards:
+                    self.assertNotRegex(value, r"\d", f"{path}: {title} = {value}")
+
+    def test_unconfirmed_non_septic_tariffs_are_not_published_as_exact_offers(self):
+        subject = (
+            r"(?:центральн\w*\s+(?:канализац\w*|сет\w*)|"
+            r"(?:прокладк\w*|трасс\w*|канализационн\w*)"
+            r"[^\n]{0,40}труб\w*|"
+            r"насос\w*|"
+            r"(?:подключен\w*|монтаж\w*)\s+(?:к\s+)?"
+            r"(?:водопровод\w*|водоснабжен\w*|электроснабжен\w*|электросет\w*)|"
+            r"(?:монтаж\w*|строительств\w*)\s+забор\w*)"
+        )
+        exact_price = r"\d[\d\s]*(?:[–-]\d[\d\s]*)?\s*₽"
+        forbidden = re.compile(
+            rf"(?:{subject})[^\n]*{exact_price}|"
+            rf"{exact_price}[^\n]*(?:{subject})",
+            re.IGNORECASE,
+        )
+        failures = []
+        for path in public_claim_sources():
+            text = path.read_text(encoding="utf-8").replace(ENGINEER_TERMS, "")
+            if forbidden.search(text):
+                failures.append(path.relative_to(REPO_ROOT).as_posix())
+        self.assertEqual([], failures)
+
+    def test_main_and_septic_cases_have_no_unverified_budget_or_duration(self):
+        targets = {
+            HOME_PAGE: ("<!-- Cases (Before/After) -->", "<!-- Reviews Block -->"),
+            SEPTIKI_PAGE: ("<!-- Выполненные работы -->", "<!-- Форма заявки -->"),
+        }
+        forbidden = re.compile(
+            r"\d[\d\s]*\s*₽|\b\d+(?:[,.]\d+)?(?:[–-]\d+)?\s+"
+            r"(?:час\w*|д(?:ень|ня|ней))\b",
+            re.IGNORECASE,
+        )
+        for path, markers in targets.items():
+            section = slice_between(path.read_text(encoding="utf-8"), *markers)
+            self.assertNotRegex(section, forbidden, path.as_posix())
+            self.assertIn("По смете после осмотра", section)
+            self.assertIn("Срок работ согласуем после осмотра участка", section)
+
+    def test_city_data_contains_no_unverified_case_review_or_delivery_claims(self):
+        cities = json.loads(CITY_DATA.read_text(encoding="utf-8"))["cities"]
+        forbidden_keys = {
+            "delivery",
+            "case_title",
+            "case_text",
+            "case_price",
+            "case_duration",
+            "case_residents",
+            "case_distance",
+            "reviews",
+        }
+        failures = [city["slug"] for city in cities if forbidden_keys & city.keys()]
+        self.assertEqual([], failures)
+
+    def test_city_visit_copy_uses_movement_grammar_and_neutral_faq_logic(self):
+        data = json.loads(CITY_DATA.read_text(encoding="utf-8"))["cities"]
+        template = CITY_TEMPLATE.read_text(encoding="utf-8")
+        self.assertNotIn("Выезд в ${city_dative}", template)
+        self.assertIn("выезда на объект в городе ${city_dative}", template)
+        self.assertIn("Дату выезда согласуем по телефону.", template)
+        self.assertIn("Срок работ определим после осмотра участка", template)
+        pages_by_slug = {path.parents[1].name: path for path in city_pages()}
+        for city in data:
+            path = pages_by_slug[city["slug"]]
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn(f"Выезд в {city['city_dative']}", source)
+            self.assertIn(f"выезда на объект в городе {city['city_dative']}", source)
+            self.assertIn("Дату выезда согласуем по телефону.", source)
+            self.assertIn("Срок работ определим после осмотра участка", source)
+
     def test_calculator_static_recommendation_matches_neutral_js_copy(self):
         source = SEPTIKI_PAGE.read_text(encoding="utf-8")
         static_match = re.search(
@@ -176,6 +404,8 @@ class ContentConsistencyTests(unittest.TestCase):
             PRICES_PAGE,
             *LLMS_FILES,
             *city_sources(),
+            CITY_INDEX_TEMPLATE,
+            *city_index_pages(),
         ]
         missing = []
         for path in targets:
@@ -221,24 +451,54 @@ class ContentConsistencyTests(unittest.TestCase):
         for name in ["septic_type", "region", "distance", "people", "price"]:
             self.assertIn(f'name="{name}"', source)
 
+    def test_calculator_dom_references_resolve_and_removed_ids_stay_removed(self):
+        source = SEPTIKI_PAGE.read_text(encoding="utf-8")
+        calculator = slice_between(
+            source, "// ========== CALCULATOR ==========", "// Modal"
+        )
+        referenced_ids = set(re.findall(r"document\.getElementById\('([^']+)'\)", calculator))
+        document_ids = set(re.findall(r'\bid="([^"]+)"', source))
+        self.assertTrue(referenced_ids)
+        self.assertEqual(set(), referenced_ids - document_ids)
+        for stale_id in [
+            "val-discount",
+            "val-multiplier",
+            "val-region",
+            "val-pipe",
+            "val-extra",
+            "val-raw",
+            "btn-price",
+        ]:
+            self.assertNotIn(stale_id, referenced_ids)
+            self.assertNotIn(stale_id, document_ids)
+        self.assertRegex(calculator, r"parseInt\([^)]*,\s*10\)\s*\|\|\s*5")
+
     def test_septic_catalogs_use_only_confirmed_variant_prices(self):
-        expected = {
-            "ЖБ кольца (2 кольца)": "140 000 ₽",
-            "ЖБ кольца (3 кольца)": "180 000 ₽",
-            "Пластиковый септик Панда": "160 000 ₽",
-            "Панда Лайт": "198 000 ₽",
-            "Панда Аэро": "197 050 ₽",
-            "Дренажный колодец": "60 000 ₽",
-        }
-        targets = [PRICES_PAGE, HTML_ROOT / "llms-full.txt", *city_sources()]
+        html_targets = [PRICES_PAGE, *city_sources()]
         failures = []
-        for path in targets:
+        for path in html_targets:
             source = path.read_text(encoding="utf-8")
-            for label, price in expected.items():
-                if label not in source or price not in source:
-                    failures.append(
-                        f"{path.relative_to(REPO_ROOT).as_posix()}: {label} = {price}"
-                    )
+            if path == PRICES_PAGE:
+                section = slice_between(source, ">Септики</h3>", ">Канализация</h3>")
+            else:
+                section = slice_between(source, "Цены на установку септика", "<!-- Generic work examples -->")
+            actual = {
+                label: price
+                for label, price in html_table_rows(section)
+                if "₽" in price
+            }
+            if actual != CONFIRMED_SEPTIC_PRICES:
+                failures.append(
+                    f"{path.relative_to(REPO_ROOT).as_posix()}: {actual}"
+                )
+
+        llms = (HTML_ROOT / "llms-full.txt").read_text(encoding="utf-8")
+        llms_section = slice_between(llms, "Типы септиков:", "Особенности монтажа")
+        llms_pairs = dict(
+            re.findall(r"\*\*([^*]+)\*\*\s+—\s+([\d ]+₽)", llms_section)
+        )
+        if llms_pairs != CONFIRMED_SEPTIC_PRICES:
+            failures.append(f"html/llms-full.txt: {llms_pairs}")
         self.assertEqual([], failures)
 
     def test_autonomous_sewer_price_is_scoped_to_confirmed_septic_package(self):

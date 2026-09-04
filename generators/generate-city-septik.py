@@ -62,13 +62,6 @@ def main():
         city_dir = OUT_DIR / "krym" / slug / "septik-pod-kluch"
         city_dir.mkdir(parents=True, exist_ok=True)
 
-        reviews = city.get("reviews", [])
-        review_map = {}
-        for i, review in enumerate(reviews[:3], start=1):
-            review_map[f"review{i}_text"] = review.get("text", "")
-            review_map[f"review{i}_name"] = review.get("name", "")
-            review_map[f"review{i}_location"] = review.get("location", "")
-
         context = {
             "city": city["city"],
             "city_genitive": city["city_genitive"],
@@ -78,18 +71,10 @@ def main():
             "soil_type": city["soil_type"],
             "frost_depth": city["frost_depth"],
             "districts": city["districts"],
-            "delivery": city["delivery"],
-            "case_title": city["case_title"],
-            "case_text": city["case_text"],
-            "case_price": city["case_price"],
-            "case_duration": city["case_duration"],
-            "case_residents": city["case_residents"],
-            "case_distance": city["case_distance"],
             "phone": PHONE,
             "phone_formatted": PHONE_FORMATTED,
             "neighbor_links": build_neighbor_links(cities, slug),
             "footer_links": build_footer_links(cities, slug),
-            **review_map,
         }
 
         html = template.safe_substitute(context)
