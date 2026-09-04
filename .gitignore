@@ -28,3 +28,6 @@ id_rsa*
 # Python cache
 __pycache__/
 *.py[cod]
+
+# Isolated local development
+.worktrees/
