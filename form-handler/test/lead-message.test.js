@@ -124,3 +124,34 @@ test('keeps literal user HTML escaped across Telegram status round trips', () =>
   assert.doesNotMatch(donePayload, /Взята в работу/);
   assert.match(donePayload, /✅ Отработано$/);
 });
+
+test('preserves a user-provided done suffix when adding progress status', () => {
+  const initialPayload = buildLeadMessage({
+    message: 'Пользовательский текст\n\n✅ Отработано'
+  });
+  const callbackText = decodeTelegramHtml(initialPayload);
+
+  const progressPayload = buildLeadStatusMessage(callbackText, 'progress');
+
+  assert.equal((progressPayload.match(/✅ Отработано/g) || []).length, 1);
+  assert.match(progressPayload, /💬 Сообщение: Пользовательский текст\n\n✅ Отработано/);
+  assert.match(progressPayload, /🕐 Взята в работу$/);
+});
+
+test('preserves a user progress suffix while replacing only the appended progress status', () => {
+  const initialPayload = buildLeadMessage({
+    message: 'Пользовательский текст\n\n🕐 Взята в работу'
+  });
+  const firstCallbackText = decodeTelegramHtml(initialPayload);
+  const progressPayload = buildLeadStatusMessage(firstCallbackText, 'progress');
+
+  assert.equal((progressPayload.match(/🕐 Взята в работу/g) || []).length, 2);
+
+  const secondCallbackText = decodeTelegramHtml(progressPayload);
+  const donePayload = buildLeadStatusMessage(secondCallbackText, 'done');
+
+  assert.equal((donePayload.match(/🕐 Взята в работу/g) || []).length, 1);
+  assert.equal((donePayload.match(/✅ Отработано/g) || []).length, 1);
+  assert.match(donePayload, /💬 Сообщение: Пользовательский текст\n\n🕐 Взята в работу/);
+  assert.match(donePayload, /✅ Отработано$/);
+});

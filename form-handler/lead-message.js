@@ -19,12 +19,12 @@ const LEAD_STATUS_LINES = {
 const buildLeadStatusMessage = (text, status) => {
   let leadText = String(text ?? '');
 
-  Object.values(LEAD_STATUS_LINES).forEach((statusLine) => {
-    const suffix = `\n\n${statusLine}`;
+  if (status === 'done') {
+    const suffix = `\n\n${LEAD_STATUS_LINES.progress}`;
     if (leadText.endsWith(suffix)) {
       leadText = leadText.slice(0, -suffix.length);
     }
-  });
+  }
 
   const statusLine = LEAD_STATUS_LINES[status];
   return statusLine
