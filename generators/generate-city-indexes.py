@@ -45,6 +45,7 @@ def main():
             "city": city["city"],
             "city_genitive": city["city_genitive"],
             "city_dative": city["city_dative"],
+            "city_prepositional": city["city_prepositional"],
             "slug": slug,
             "phone": PHONE,
             "phone_formatted": PHONE_FORMATTED,

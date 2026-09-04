@@ -308,12 +308,14 @@ class ContentConsistencyTests(unittest.TestCase):
 
     def test_main_and_septic_galleries_do_not_claim_unverified_completed_cases(self):
         targets = {
-            HOME_PAGE: ("<!-- Cases (Before/After) -->", "<!-- Call CTA Block"),
+            HOME_PAGE: ("<!-- Equipment and work examples -->", "<!-- Call CTA Block"),
             SEPTIKI_PAGE: ("<!-- Примеры оборудования -->", "<!-- Форма заявки -->"),
         }
         cities = r"Симферопол|Севастопол|Ялт|Евпатори|Фиолент"
         for path, markers in targets.items():
-            section = slice_between(path.read_text(encoding="utf-8"), *markers)
+            source = path.read_text(encoding="utf-8")
+            self.assertIn(markers[0], source, path.as_posix())
+            section = slice_between(source, *markers)
             self.assertIn("Примеры оборудования и этапов работ по Крыму", section)
             self.assertNotRegex(
                 section,
@@ -326,6 +328,24 @@ class ContentConsistencyTests(unittest.TestCase):
                 4,
                 path.as_posix(),
             )
+
+        home_examples = slice_between(
+            HOME_PAGE.read_text(encoding="utf-8"),
+            "<!-- Equipment and work examples -->",
+            "<!-- Call CTA Block",
+        )
+        self.assertNotRegex(
+            home_examples,
+            r'class="(?:case-item|case-media)"|>\s*(?:До начала|До работ|Процесс|Результат)\s*<',
+        )
+        self.assertEqual(4, len(re.findall(r"<figure\b", home_examples)))
+        for label in (
+            "Этап земляных работ",
+            "Монтаж оборудования",
+            "Прокладка коммуникаций",
+            "Железобетонный колодец",
+        ):
+            self.assertIn(label, home_examples)
 
         home = HOME_PAGE.read_text(encoding="utf-8")
         self.assertNotIn('id="reviews"', home)
@@ -430,6 +450,106 @@ class ContentConsistencyTests(unittest.TestCase):
             self.assertIn(f"выезда на объект в городе {city['city_dative']}", source)
             self.assertIn("Дату выезда согласуем по телефону.", source)
             self.assertIn("Срок работ определим после осмотра участка", source)
+
+    def test_city_indexes_use_explicit_prepositional_case(self):
+        expected = {
+            "simferopol": "Симферополе",
+            "sevastopol": "Севастополе",
+            "jalta": "Ялте",
+            "alushta": "Алуште",
+            "evpatorija": "Евпатории",
+            "feodosija": "Феодосии",
+            "kerch": "Керчи",
+            "sudak": "Судаке",
+            "dzhankoj": "Джанкое",
+            "saki": "Саках",
+            "bahchisaraj": "Бахчисарае",
+            "armjansk": "Армянске",
+        }
+        data = json.loads(CITY_DATA.read_text(encoding="utf-8"))["cities"]
+        self.assertEqual(
+            expected,
+            {city["slug"]: city["city_prepositional"] for city in data},
+        )
+
+        template = CITY_INDEX_TEMPLATE.read_text(encoding="utf-8")
+        generator = (REPO_ROOT / "generators" / "generate-city-indexes.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"city_prepositional": city["city_prepositional"]', generator)
+        for phrase in (
+            "КэпСтрой: услуги в ${city_prepositional}",
+            "Установка септиков, канализации и водоснабжения в ${city_prepositional}",
+            "Земляные работы в городе <span style=\"color: var(--c-primary);\">${city_prepositional}</span>",
+            "Работаем в городе ${city_prepositional}",
+            "Услуги в городе ${city_prepositional}",
+            "Монтаж автономной канализации в городе ${city_prepositional}",
+        ):
+            self.assertIn(phrase, template)
+
+        pages_by_slug = {path.parent.name: path for path in city_index_pages()}
+        for city in data:
+            source = pages_by_slug[city["slug"]].read_text(encoding="utf-8")
+            prepositional = city["city_prepositional"]
+            for phrase in (
+                f"КэпСтрой: услуги в {prepositional}",
+                f"Установка септиков, канализации и водоснабжения в {prepositional}",
+                f"Земляные работы в городе <span style=\"color: var(--c-primary);\">{prepositional}</span>",
+                f"Работаем в городе {prepositional}",
+                f"Услуги в городе {prepositional}",
+                f"Монтаж автономной канализации в городе {prepositional}",
+            ):
+                self.assertIn(phrase, source, city["slug"])
+            self.assertNotRegex(
+                source,
+                rf"в городе {re.escape(city['city'])}\b",
+                city["slug"],
+            )
+
+    def test_septic_faq_json_ld_matches_visible_maintenance_answer(self):
+        question = "Как часто нужно откачивать септик?"
+        source = SEPTIKI_PAGE.read_text(encoding="utf-8")
+        visible_match = re.search(
+            rf'<div class="faq-item">.*?<span>{re.escape(question)}</span>.*?'
+            r'<div class="faq-answer-inner">\s*(.*?)\s*</div>',
+            source,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(visible_match)
+        visible_answer = plain_text(visible_match.group(1))
+
+        faq_nodes = [
+            node
+            for document in json_ld_documents(SEPTIKI_PAGE)
+            for node in document.get("@graph", [document])
+            if node.get("@type") == "FAQPage"
+        ]
+        self.assertEqual(1, len(faq_nodes))
+        schema_answer = next(
+            item["acceptedAnswer"]["text"]
+            for item in faq_nodes[0]["mainEntity"]
+            if item["name"] == question
+        )
+        self.assertEqual(visible_answer, schema_answer)
+
+    def test_septic_install_article_table_omits_redundant_timing_column(self):
+        source = (
+            HTML_ROOT / "blog" / "ustanovka-septika-krym" / "index.html"
+        ).read_text(encoding="utf-8")
+        section = slice_between(
+            source, "<h3>Сколько это занимает по времени</h3>", "</table>"
+        )
+        rows = re.findall(r"<tr\b[^>]*>(.*?)</tr>", section, re.DOTALL)
+        cells = [
+            [
+                plain_text(cell)
+                for cell in re.findall(r"<t[dh]\b[^>]*>(.*?)</t[dh]>", row, re.DOTALL)
+            ]
+            for row in rows
+        ]
+        self.assertEqual(["Сложность объекта", "Что входит"], cells[0])
+        self.assertTrue(all(len(row) == 2 for row in cells), cells)
+        self.assertNotIn("После осмотра участка", section)
 
     def test_calculator_static_recommendation_matches_neutral_js_copy(self):
         source = SEPTIKI_PAGE.read_text(encoding="utf-8")
@@ -616,11 +736,11 @@ class ContentConsistencyTests(unittest.TestCase):
                 path.as_posix(),
             )
 
-        self.assertIn("в городе ${city}", template)
+        self.assertIn("в городе ${city_prepositional}", template)
         self.assertIn("Выезд на объект согласуем заранее", template)
         for city in data:
             source = pages[city["slug"]].read_text(encoding="utf-8")
-            self.assertIn(f"в городе {city['city']}", source)
+            self.assertIn(f"в городе {city['city_prepositional']}", source)
             self.assertIn("Выезд на объект согласуем заранее", source)
 
     def test_autonomous_sewer_price_is_scoped_to_confirmed_septic_package(self):
