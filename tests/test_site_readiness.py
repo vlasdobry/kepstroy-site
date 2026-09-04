@@ -105,10 +105,8 @@ class SiteReadinessTests(unittest.TestCase):
         self.assertIn('"test"', package)
     def test_deploy_validation_runs_frontend_form_runtime_tests(self):
         workflow = (REPO_ROOT / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8")
-        self.assertIn(
-            "node --test --test-isolation=none tests/test_form_runtime.cjs",
-            workflow,
-        )
+        self.assertIn("node --test tests/test_form_runtime.cjs", workflow)
+        self.assertNotIn("--test-isolation", workflow)
     def test_main_script_has_no_orphan_quiz_tracking(self):
         pages = "\n".join(text for _, text in production_pages())
         main_js = (HTML_ROOT / "js" / "main.js").read_text(encoding="utf-8")
