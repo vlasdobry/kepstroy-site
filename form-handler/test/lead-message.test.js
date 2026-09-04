@@ -1,7 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { buildLeadMessage } = require('../lead-message');
+const { buildLeadMessage, buildLeadStatusMessage } = require('../lead-message');
+
+const decodeTelegramHtml = (value) => value
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/&amp;/g, '&');
 
 test('includes the complete traffic attribution in the Telegram lead', () => {
   const text = buildLeadMessage({
@@ -81,4 +88,39 @@ test('includes escaped calculator qualification before attribution and message',
 
   assert.ok(attributionPosition > previousPosition);
   assert.ok(messagePosition > attributionPosition);
+});
+
+test('omits blank qualification values but preserves numeric zero', () => {
+  const text = buildLeadMessage({
+    septic_type: undefined,
+    region: null,
+    distance: '',
+    people: '   ',
+    price: 0
+  });
+
+  assert.doesNotMatch(text, /Тип септика:/);
+  assert.doesNotMatch(text, /Район:/);
+  assert.doesNotMatch(text, /Расстояние до дома:/);
+  assert.doesNotMatch(text, /Количество проживающих:/);
+  assert.match(text, /Расчётная стоимость: 0/);
+});
+
+test('keeps literal user HTML escaped across Telegram status round trips', () => {
+  const initialPayload = buildLeadMessage({ name: '<b>Иван & Ко</b>' });
+  const firstCallbackText = decodeTelegramHtml(initialPayload);
+
+  const progressPayload = buildLeadStatusMessage(firstCallbackText, 'progress');
+
+  assert.match(progressPayload, /&lt;b&gt;Иван &amp; Ко&lt;\/b&gt;/);
+  assert.doesNotMatch(progressPayload, /<b>Иван & Ко<\/b>/);
+
+  const secondCallbackText = decodeTelegramHtml(progressPayload);
+  const donePayload = buildLeadStatusMessage(secondCallbackText, 'done');
+
+  assert.match(donePayload, /&lt;b&gt;Иван &amp; Ко&lt;\/b&gt;/);
+  assert.doesNotMatch(donePayload, /<b>Иван & Ко<\/b>/);
+  assert.doesNotMatch(donePayload, /&amp;lt;b&amp;gt;/);
+  assert.doesNotMatch(donePayload, /Взята в работу/);
+  assert.match(donePayload, /✅ Отработано$/);
 });

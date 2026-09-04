@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const { HttpsProxyAgent } = require('https-proxy-agent');
-const { buildLeadMessage } = require('./lead-message');
+const { buildLeadMessage, buildLeadStatusMessage } = require('./lead-message');
 
 const app = express();
 
@@ -231,16 +231,13 @@ async function answerCallback(callbackQueryId, text) {
 
 async function editMessageStatus(chatId, messageId, text, status, phone) {
   const digits = normalizePhone(phone);
-  let statusLine = '';
   let keyboard = [];
 
   if (status === 'progress') {
-    statusLine = '🕐 Взята в работу';
     if (digits) {
       keyboard = [[callButton(digits), doneButton(digits)]];
     }
   } else if (status === 'done') {
-    statusLine = '✅ Отработано';
     if (digits) {
       keyboard = [[callButton(digits)]];
     }
@@ -249,7 +246,7 @@ async function editMessageStatus(chatId, messageId, text, status, phone) {
   const payload = {
     chat_id: chatId,
     message_id: messageId,
-    text: `${text}\n\n${statusLine}`,
+    text: buildLeadStatusMessage(text, status),
     parse_mode: 'HTML'
   };
   if (keyboard.length) {

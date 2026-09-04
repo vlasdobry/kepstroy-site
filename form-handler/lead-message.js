@@ -1,4 +1,4 @@
-const escapeHtml = (value) => String(value || '')
+const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;')
@@ -6,7 +6,30 @@ const escapeHtml = (value) => String(value || '')
   .replace(/'/g, '&#39;');
 
 const appendIfPresent = (lines, label, value) => {
-  if (value) lines.push(`${label}: ${escapeHtml(value)}`);
+  if (value !== undefined && value !== null && String(value).trim()) {
+    lines.push(`${label}: ${escapeHtml(value)}`);
+  }
+};
+
+const LEAD_STATUS_LINES = {
+  progress: '🕐 Взята в работу',
+  done: '✅ Отработано'
+};
+
+const buildLeadStatusMessage = (text, status) => {
+  let leadText = String(text ?? '');
+
+  Object.values(LEAD_STATUS_LINES).forEach((statusLine) => {
+    const suffix = `\n\n${statusLine}`;
+    if (leadText.endsWith(suffix)) {
+      leadText = leadText.slice(0, -suffix.length);
+    }
+  });
+
+  const statusLine = LEAD_STATUS_LINES[status];
+  return statusLine
+    ? `${escapeHtml(leadText)}\n\n${statusLine}`
+    : escapeHtml(leadText);
 };
 
 const buildLeadMessage = (lead) => {
@@ -42,4 +65,4 @@ const buildLeadMessage = (lead) => {
   return lines.join('\n');
 };
 
-module.exports = { buildLeadMessage, escapeHtml };
+module.exports = { buildLeadMessage, buildLeadStatusMessage, escapeHtml };
