@@ -61,6 +61,11 @@ document.querySelectorAll('.js-smart-call').forEach(btn => {
   });
 });
 
+function hasFilledHoneypot(form) {
+  return Array.from(form.querySelectorAll('.form-honeypot input'))
+    .some(input => input.value.trim());
+}
+
 // === Universal form handler for all /submit forms ===
 document.querySelectorAll('form[action="/submit"]').forEach(form => {
   if (form.id === 'contact-form') return;
@@ -70,8 +75,7 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
 
     if (form.dataset.submitting === 'true') return;
 
-    const honeypot = form.querySelector('.form-honeypot');
-    if (honeypot && honeypot.value) return;
+    if (hasFilledHoneypot(form)) return;
 
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalHtml = submitBtn ? submitBtn.innerHTML : '';
@@ -108,11 +112,15 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
 
 // === Traffic attribution and Yandex.Metrica goals ===
 function trackGoal(goal) {
-  if (window.KepstroyTracking) {
-    window.KepstroyTracking.trackGoal(goal);
-    return;
+  try {
+    if (window.KepstroyTracking) {
+      window.KepstroyTracking.trackGoal(goal);
+      return;
+    }
+    if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', goal);
+  } catch {
+    // Analytics must never change the result of a user action.
   }
-  if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', goal);
 }
 
 async function appendTrackingData(formData) {
@@ -132,8 +140,7 @@ if (contactForm) {
     e.preventDefault();
 
     // Honeypot check
-    const honeypot = contactForm.querySelector('.form-honeypot');
-    if (honeypot && honeypot.value) {
+    if (hasFilledHoneypot(contactForm)) {
       return;
     }
 
