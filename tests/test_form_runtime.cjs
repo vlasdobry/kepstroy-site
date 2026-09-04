@@ -4,6 +4,7 @@ const { test } = require('node:test');
 const vm = require('node:vm');
 
 const mainScript = readFileSync('html/js/main.js', 'utf8');
+const initialUrl = 'https://kepstroy.ru/uslugi/septiki/';
 
 function createHarness({
   appendTracking = async () => {},
@@ -17,10 +18,27 @@ function createHarness({
   const goals = [];
   let fetchCalls = 0;
 
+  let buttonHtml = 'Отправить <span>расчёт</span>';
+  let buttonText = 'Отправить расчёт';
   const button = {
     disabled: false,
-    innerHTML: 'Отправить <span>расчёт</span>',
-    textContent: 'Отправить расчёт',
+    get innerHTML() {
+      return buttonHtml;
+    },
+    set innerHTML(value) {
+      buttonHtml = String(value);
+      buttonText = buttonHtml.replace(/<[^>]*>/g, '');
+    },
+    get textContent() {
+      return buttonText;
+    },
+    set textContent(value) {
+      buttonText = String(value);
+      buttonHtml = buttonText
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    },
   };
   const honeypotInputs = [
     { name: 'website', value: honeypotValue },
@@ -75,7 +93,7 @@ function createHarness({
     addEventListener() {},
     innerHeight: 800,
     innerWidth: 1280,
-    location: { href: 'https://kepstroy.ru/uslugi/septiki/' },
+    location: { href: initialUrl },
     scrollY: 0,
   };
   const document = {
@@ -135,6 +153,11 @@ function assertFormRestored(harness) {
   assert.equal(harness.button.innerHTML, 'Отправить <span>расчёт</span>');
 }
 
+function assertNoSuccessSideEffects(harness) {
+  assert.deepEqual(harness.goals, []);
+  assert.equal(harness.window.location.href, initialUrl);
+}
+
 test('double submit while attribution is pending sends one POST', async () => {
   let releaseTracking;
   const trackingPending = new Promise(resolve => {
@@ -144,6 +167,9 @@ test('double submit while attribution is pending sends one POST', async () => {
 
   const firstSubmit = harness.form.submit();
   const secondSubmit = harness.form.submit();
+  assert.equal(harness.button.disabled, true);
+  assert.equal(harness.button.innerHTML, 'Отправка...');
+  assert.equal(harness.button.textContent, 'Отправка...');
   releaseTracking();
   await Promise.all([firstSubmit, secondSubmit]);
 
@@ -151,16 +177,25 @@ test('double submit while attribution is pending sends one POST', async () => {
 });
 
 test('rejected attribution sends no POST and restores the form', async () => {
+  let rejectTracking;
+  const trackingPending = new Promise((resolve, reject) => {
+    rejectTracking = reject;
+  });
   const harness = createHarness({
-    appendTracking: async () => {
-      throw new Error('tracking unavailable');
-    },
+    appendTracking: () => trackingPending,
   });
 
-  await harness.form.submit();
+  const submit = harness.form.submit();
+  assert.equal(harness.button.disabled, true);
+  assert.equal(harness.button.innerHTML, 'Отправка...');
+  assert.equal(harness.button.textContent, 'Отправка...');
+  rejectTracking(new Error('tracking unavailable'));
+  await submit;
 
   assert.equal(harness.fetchCalls, 0);
   assertFormRestored(harness);
+  assert.equal(harness.button.textContent, 'Отправить расчёт');
+  assertNoSuccessSideEffects(harness);
   assert.equal(harness.alerts.length, 1);
 });
 
@@ -175,6 +210,8 @@ for (const [name, fetchResult] of [
 
     assert.equal(harness.fetchCalls, 1);
     assertFormRestored(harness);
+    assert.equal(harness.button.textContent, 'Отправить расчёт');
+    assertNoSuccessSideEffects(harness);
     assert.equal(harness.alerts.length, 1);
   });
 }

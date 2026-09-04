@@ -34,6 +34,9 @@ jobs:
           npm test
           npm audit --omit=dev
 
+      - name: Test frontend form runtime
+        run: node --test --test-isolation=none tests/test_form_runtime.cjs
+
       - name: Run site readiness tests
         run: python -m unittest discover -s tests -v
 
