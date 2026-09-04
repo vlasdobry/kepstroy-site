@@ -225,10 +225,19 @@ img {
 }
 
 .blog-article table {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
   border-collapse: collapse;
   margin: 1.5rem 0;
   font-size: 0.95rem;
+}
+
+.blog-article table:focus-visible {
+  outline: 3px solid var(--c-primary);
+  outline-offset: 3px;
 }
 
 .blog-article th,
@@ -269,9 +278,16 @@ img {
 }
 
 .blog-faq__question {
+  display: block;
+  width: 100%;
   padding: 1rem 1.25rem 1rem 2.75rem;
   font-weight: 700;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
   background: var(--c-bg);
+  border: 0;
   margin: 0;
   cursor: pointer;
   position: relative;

@@ -3,21 +3,112 @@ const menuToggle = document.querySelector('.menu-toggle');
 const mobileMenu = document.querySelector('.mobile-menu');
 
 if (menuToggle && mobileMenu) {
+  function setMenuOpen(isOpen, { restoreFocus = false } = {}) {
+    menuToggle.classList.toggle('active', isOpen);
+    mobileMenu.classList.toggle('active', isOpen);
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    menuToggle.setAttribute('aria-label', isOpen ? 'Закрыть меню' : 'Открыть меню');
+    mobileMenu.setAttribute('aria-hidden', String(!isOpen));
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    if (restoreFocus) menuToggle.focus();
+  }
+
+  setMenuOpen(false);
+
   menuToggle.addEventListener('click', () => {
-    menuToggle.classList.toggle('active');
-    mobileMenu.classList.toggle('active');
-    document.body.style.overflow = mobileMenu.classList.contains('active') ? 'hidden' : '';
+    setMenuOpen(menuToggle.getAttribute('aria-expanded') !== 'true');
   });
 
   // Close menu on link click
   mobileMenu.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', () => {
-      menuToggle.classList.remove('active');
-      mobileMenu.classList.remove('active');
-      document.body.style.overflow = '';
+      setMenuOpen(false);
     });
   });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && menuToggle.getAttribute('aria-expanded') === 'true') {
+      event.preventDefault();
+      setMenuOpen(false, { restoreFocus: true });
+    }
+  });
 }
+
+// === Scrollable article tables ===
+document.querySelectorAll('.blog-article table').forEach(table => {
+  if (!table.getAttribute('tabindex')) table.setAttribute('tabindex', '0');
+  if (!table.getAttribute('aria-label')) table.setAttribute('aria-label', 'Прокручиваемая таблица');
+});
+
+// === Accessible modal ===
+const defaultModalOverlay = document.getElementById('modalOverlay');
+let activeModalOverlay = null;
+let modalReturnFocus = null;
+
+function modalDialog(overlay) {
+  return overlay ? overlay.querySelector('[role="dialog"]') || overlay.querySelector('.modal') : null;
+}
+
+function modalFocusables(overlay) {
+  const dialog = modalDialog(overlay);
+  if (!dialog) return [];
+  return Array.from(dialog.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  ));
+}
+
+function openModal(overlay = defaultModalOverlay) {
+  if (!overlay) return;
+  modalReturnFocus = document.activeElement;
+  activeModalOverlay = overlay;
+  overlay.classList.add('active');
+  document.body.classList.add('modal-open');
+  const firstMeaningfulField = overlay.querySelector(
+    'input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), select:not([disabled]), textarea:not([disabled])'
+  );
+  const focusTarget = firstMeaningfulField || modalFocusables(overlay)[0];
+  if (focusTarget) focusTarget.focus();
+}
+
+function closeModal(overlay = activeModalOverlay || defaultModalOverlay) {
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  document.body.classList.remove('modal-open');
+  activeModalOverlay = null;
+  if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
+    modalReturnFocus.focus();
+  }
+  modalReturnFocus = null;
+}
+
+window.KepstroyModal = { open: openModal, close: closeModal };
+
+document.addEventListener('keydown', (event) => {
+  if (!activeModalOverlay || !activeModalOverlay.classList.contains('active')) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeModal();
+    return;
+  }
+
+  if (event.key !== 'Tab') return;
+  const focusables = modalFocusables(activeModalOverlay);
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  } else if (!focusables.includes(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+  }
+});
 
 // === Sticky Phone Bar - show after scrolling past first viewport ===
 const stickyPhone = document.querySelector('.sticky-phone');

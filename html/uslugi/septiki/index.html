@@ -230,11 +230,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
         +7 (978) 461-59-62
       </a>
-      <button class="menu-toggle" aria-label="Открыть меню"><span></span><span></span><span></span></button>
+      <button type="button" class="menu-toggle" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span><span></span></button>
     </div>
   </header>
 
-  <div class="mobile-menu">
+  <div id="mobile-menu" class="mobile-menu">
     <a href="/uslugi/septiki/">Септики</a>
     <a href="/uslugi/kanalizaciya/">Канализация</a>
     <a href="/uslugi/gazosnabzhenie/">Газ</a>
@@ -355,7 +355,7 @@
           <div class="calc-step">
             <div class="calc-step__num">2</div>
             <div class="calc-step__content">
-              <h4 class="calc-step__title">Количество проживающих</h4>
+              <label class="calc-step__title" for="calc-people">Количество проживающих</label>
               <select class="calc-select" id="calc-people">
                 <option value="1-2">1–2 человека</option>
                 <option value="3-4" selected>3–4 человека</option>
@@ -370,7 +370,7 @@
           <div class="calc-step">
             <div class="calc-step__num">3</div>
             <div class="calc-step__content">
-              <h4 class="calc-step__title">Район установки</h4>
+              <label class="calc-step__title" for="calc-region">Район установки</label>
               <select class="calc-select" id="calc-region">
                 <option value="sevastopol">Севастополь и Балаклава</option>
                 <option value="simferopol">Симферополь и Центральный Крым</option>
@@ -403,7 +403,7 @@
           <div class="calc-step">
             <div class="calc-step__num">4</div>
             <div class="calc-step__content">
-              <h4 class="calc-step__title">Расстояние до дома</h4>
+              <label class="calc-step__title" for="calc-distance">Расстояние до дома</label>
               <div class="calc-range-wrap">
                 <input type="range" class="calc-range" id="calc-distance" min="1" max="30" value="5">
                 <div class="calc-range__info">
@@ -447,8 +447,10 @@
               <input type="hidden" name="people" id="form-people">
               <input type="hidden" name="price" id="form-price">
 
-              <input type="text" name="name" class="calc-input" placeholder="Ваше имя" required>
-              <input type="tel" name="phone" class="calc-input" placeholder="+7 (___) ___-__-__" required>
+              <label class="visually-hidden" for="calc-name">Ваше имя</label>
+              <input type="text" id="calc-name" name="name" class="calc-input" placeholder="Ваше имя" required>
+              <label class="visually-hidden" for="calc-phone">Телефон</label>
+              <input type="tel" id="calc-phone" name="phone" class="calc-input" placeholder="+7 (___) ___-__-__" required>
               <div class="form-consent">
                 <label>
                   <input type="checkbox" name="consent" required>
@@ -551,12 +553,12 @@
           <input type="hidden" name="service" value="Септики">
 
           <div>
-            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Ваше имя</label>
-            <input type="text" name="name" placeholder="Андрей" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
+            <label for="septic-name" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Ваше имя</label>
+            <input type="text" id="septic-name" name="name" placeholder="Андрей" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
           </div>
           <div>
-            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Телефон</label>
-            <input type="tel" name="phone" placeholder="+7 (978) 461-59-62" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
+            <label for="septic-phone" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--c-text-dark);">Телефон</label>
+            <input type="tel" id="septic-phone" name="phone" placeholder="+7 (978) 461-59-62" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem; background: white; transition: var(--transition);" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
           </div>
           <div style="display: flex; align-items: flex-end;">
             <button type="submit" class="btn btn--accent" style="width: 100%; padding: 0.875rem 1.5rem; font-size: 1rem; font-weight: 700;">
@@ -625,66 +627,66 @@
       </div>
       <div class="faq-list">
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="septic-faq-answer-1">
             <span>Какой септик выбрать, если мы живём в Крыму только летом?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="septic-faq-answer-1">
             <div class="faq-answer-inner">
               Если вы приезжаете наездами, лучшим выбором станет септик из ЖБ колец или энергонезависимая пластиковая станция. ЖБ кольца не боятся отключения электричества и простаивают зимой без последствий. При возобновлении использования система выходит на рабочий режим сразу — без дополнительных вложений.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="septic-faq-answer-2">
             <span>Что делать, если у меня на Фиоленте / ЮБК сплошная скала?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="septic-faq-answer-2">
             <div class="faq-answer-inner">
               Мы специализируемся на скальном монтаже в Севастополе и на Южном берегу. Привозим мощный мини-экскаватор с гидромолотом, который аккуратно дробит породу без ущерба для ландшафта. Вам не нужно искать технику самостоятельно — всё оборудование и дополнительные материалы включены в смету.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="septic-faq-answer-3">
             <span>Как часто нужно откачивать септик?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="septic-faq-answer-3">
             <div class="faq-answer-inner">
               Регламент обслуживания зависит от типа септика, выбранной модели и режима эксплуатации. Инженер уточнит требования к обслуживанию до заключения договора.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="septic-faq-answer-4">
             <span>У меня в Саках вода стоит прямо у поверхности. Септик не всплывёт?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="septic-faq-answer-4">
             <div class="faq-answer-inner">
               Для участков с высоким уровнем грунтовых вод (УГВ) в Евпатории, Саках и на западе Крыма мы применяем технологию жёсткого «якорения»: на дно котлована укладывается тяжёлая железобетонная плита, к которой септик крепится прочными натяжными стропами. Плюс плотно засыпанная цементно-песчаная смесь полностью фиксирует бак — всплытие исключено.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="septic-faq-answer-5">
             <span>Какие документы предоставляются после монтажа?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="septic-faq-answer-5">
             <div class="faq-answer-inner">
               Перечень документов уточняется и фиксируется в договоре.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="septic-faq-answer-6">
             <span>Сколько времени длится установка под ключ?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="septic-faq-answer-6">
             <div class="faq-answer-inner">
               Срок монтажа инженер определяет после осмотра участка и фиксирует в договоре. Он зависит от грунта, выбранного оборудования и состава работ.
             </div>
@@ -800,9 +802,9 @@
 
   <!-- Modal -->
   <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal">
-      <button class="modal__close" onclick="closeModal()">✕</button>
-      <h3 class="modal__title">Заказать обратный звонок</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="septic-modal-title">
+      <button type="button" class="modal__close" onclick="closeModal()" aria-label="Закрыть">✕</button>
+      <h3 id="septic-modal-title" class="modal__title">Заказать обратный звонок</h3>
       <p class="modal__desc">Оставьте номер для обратного звонка</p>
       <form action="/submit" method="POST">
           <input type="hidden" name="form_source" value="kepstroy">
@@ -812,10 +814,12 @@
           </div>
         <input type="hidden" name="service" value="Обратный звонок (септики)">
         <div style="margin-bottom: 1rem;">
-          <input type="text" name="name" placeholder="Ваше имя" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem;" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
+          <label class="visually-hidden" for="septic-modal-name">Ваше имя</label>
+          <input type="text" id="septic-modal-name" name="name" placeholder="Ваше имя" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem;" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
         </div>
         <div style="margin-bottom: 1.5rem;">
-          <input type="tel" name="phone" placeholder="+7 (978) 461-59-62" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem;" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
+          <label class="visually-hidden" for="septic-modal-phone">Телефон</label>
+          <input type="tel" id="septic-modal-phone" name="phone" placeholder="+7 (978) 461-59-62" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--c-border); border-radius: var(--rad-md); font-size: 1rem;" onfocus="this.style.borderColor='var(--c-primary)'" onblur="this.style.borderColor='var(--c-border)'">
         </div>
         <div class="form-consent">
           <label>
@@ -834,8 +838,15 @@
     function toggleFaq(btn) {
       const item = btn.closest('.faq-item');
       const wasActive = item.classList.contains('active');
-      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
-      if (!wasActive) item.classList.add('active');
+      document.querySelectorAll('.faq-item').forEach(i => {
+        i.classList.remove('active');
+        const question = i.querySelector('.faq-question');
+        if (question) question.setAttribute('aria-expanded', 'false');
+      });
+      if (!wasActive) {
+        item.classList.add('active');
+        btn.setAttribute('aria-expanded', 'true');
+      }
     }
 
     // ========== CALCULATOR ==========
@@ -930,16 +941,13 @@
 
     // Modal
     function openModal() {
-      document.getElementById('modalOverlay').classList.add('active');
-      document.body.classList.add('modal-open');
+      const modal = document.getElementById('modalOverlay');
+      window.KepstroyModal.open(modal);
     }
     function closeModal() {
-      document.getElementById('modalOverlay').classList.remove('active');
-      document.body.classList.remove('modal-open');
+      const modal = document.getElementById('modalOverlay');
+      window.KepstroyModal.close(modal);
     }
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeModal();
-    });
   </script>
 <div class="cookie-banner" id="cookieBanner">
   <p>Мы используем cookies для аналитики (Яндекс.Метрика). Продолжая использовать сайт, вы соглашаетесь с <a href="/politika-konfidencialnosti/">политикой конфиденциальности</a>.</p>

@@ -794,6 +794,7 @@ h1, h2, h3, h4 {
   .header__top { display: block; }
   .nav-main { display: flex; }
   .burger { display: none; }
+  .menu-toggle { display: none; }
 }
 
 @media (max-width: 991px) {
@@ -1085,7 +1086,7 @@ h1, h2, h3, h4 {
   margin-top: 1rem;
 }
 
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
   .nav-desktop { display: flex; }
   .menu-toggle { display: none; }
 }
@@ -1112,6 +1113,22 @@ h1, h2, h3, h4 {
 }
 .modal-overlay.active {
   display: flex;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#callback {
+  scroll-margin-top: 7rem;
 }
 .modal {
   background: white;

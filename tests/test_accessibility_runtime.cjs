@@ -112,16 +112,22 @@ function createMainHarness() {
 
   const modalTrigger = new FakeElement({ tagName: 'BUTTON', ownerDocument: document });
   const closeButton = new FakeElement({ tagName: 'BUTTON', classes: ['modal__close'], ownerDocument: document });
+  const honeypotInput = new FakeElement({ tagName: 'INPUT', ownerDocument: document });
+  honeypotInput.setAttribute('tabindex', '-1');
   const firstInput = new FakeElement({ tagName: 'INPUT', ownerDocument: document });
   const consent = new FakeElement({ tagName: 'INPUT', ownerDocument: document });
   const submit = new FakeElement({ tagName: 'BUTTON', ownerDocument: document });
   const focusables = [closeButton, firstInput, consent, submit];
   const dialog = new FakeElement({ classes: ['modal'], ownerDocument: document });
-  dialog.querySelectorAll = () => focusables;
+  dialog.querySelectorAll = selector => selector.includes(':not([tabindex="-1"])')
+    ? focusables
+    : [honeypotInput, ...focusables];
   const overlay = new FakeElement({ classes: ['modal-overlay'], ownerDocument: document });
   overlay.querySelector = selector => {
     if (selector === '[role="dialog"]' || selector === '.modal') return dialog;
-    if (selector.includes('input:not([type="hidden"])')) return firstInput;
+    if (selector.includes('input:not([type="hidden"])')) {
+      return selector.includes(':not([tabindex="-1"])') ? firstInput : honeypotInput;
+    }
     return null;
   };
 
@@ -173,6 +179,7 @@ function createMainHarness() {
     dialog,
     document,
     firstInput,
+    honeypotInput,
     menuLink,
     menuToggle,
     mobileMenu,
@@ -400,6 +407,35 @@ test('wide article tables stay inside a 360px document viewport', { skip: !chrom
 
     assert.ok(layout.documentWidth <= layout.viewportWidth, JSON.stringify(layout));
     assert.ok(layout.tables.some(table => table.scrollWidth > table.clientWidth), JSON.stringify(layout));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('navigation always exposes exactly one control path at supported widths', { skip: !chromium }, async () => {
+  const css = readFileSync('html/css/style.css', 'utf8');
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const width of [360, 768, 900, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 800 } });
+      await page.setContent(`
+        <style>${css}</style>
+        <nav class="nav-main"><a href="#">Услуги</a></nav>
+        <button type="button" class="menu-toggle">Меню</button>
+      `);
+      const state = await page.evaluate(() => ({
+        nav: getComputedStyle(document.querySelector('.nav-main')).display,
+        toggle: getComputedStyle(document.querySelector('.menu-toggle')).display,
+      }));
+      if (width < 1024) {
+        assert.equal(state.nav, 'none', `${width}: desktop nav visible`);
+        assert.notEqual(state.toggle, 'none', `${width}: menu toggle hidden`);
+      } else {
+        assert.equal(state.nav, 'flex', `${width}: desktop nav hidden`);
+        assert.equal(state.toggle, 'none', `${width}: menu toggle visible`);
+      }
+      await page.close();
+    }
   } finally {
     await browser.close();
   }

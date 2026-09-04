@@ -221,11 +221,11 @@
         <button type="button" class="header__callback" onclick="openModal()">Заказать звонок</button>
       </div>
 
-      <button class="menu-toggle" aria-label="Открыть меню"><span></span><span></span><span></span></button>
+      <button type="button" class="menu-toggle" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span><span></span></button>
     </div>
   </header>
 
-  <div class="mobile-menu">
+  <div id="mobile-menu" class="mobile-menu">
     <a href="#services">Услуги</a>
     <a href="#cases">Наши работы</a>
     <a href="#workflow">Этапы</a>
@@ -426,9 +426,12 @@
             <input type="text" name="company" tabindex="-1" autocomplete="off">
           </div>
           <div class="cta-form__grid">
-            <input type="text" name="name" class="input cta-form__input" placeholder="Ваше имя" required>
-            <input type="tel" name="phone" class="input cta-form__input" placeholder="+7 (___) ___-__-__" required>
-            <select name="service" class="input cta-form__input" required>
+            <label class="visually-hidden" for="home-cta-name">Ваше имя</label>
+            <input type="text" id="home-cta-name" name="name" class="input cta-form__input" placeholder="Ваше имя" required>
+            <label class="visually-hidden" for="home-cta-phone">Телефон</label>
+            <input type="tel" id="home-cta-phone" name="phone" class="input cta-form__input" placeholder="+7 (___) ___-__-__" required>
+            <label class="visually-hidden" for="home-cta-service">Тип работ</label>
+            <select id="home-cta-service" name="service" class="input cta-form__input" required>
               <option value="" disabled selected>Тип работ</option>
               <option value="septiki">Септики</option>
               <option value="kanalizaciya">Канализация</option>
@@ -667,66 +670,66 @@
       </div>
       <div class="faq-list">
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="home-faq-answer-1">
             <span>Какие инженерные системы вы подключаете под ключ в Крыму?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="home-faq-answer-1">
             <div class="faq-answer-inner">
               Монтируем водоснабжение, канализацию, септики, газоснабжение, электроснабжение, заборы и ограждения. Работаем с частными домами и организациями по всему Крыму — от проекта и сметы до запуска системы.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="home-faq-answer-2">
             <span>Сколько стоит установка септика под ключ?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="home-faq-answer-2">
             <div class="faq-answer-inner">
               Септик из 2 ЖБ колец — от 140 000 ₽, из 3 колец — от 180 000 ₽, пластиковый септик Панда — от 160 000 ₽. Точная цена зависит от грунта, района Крыма и расстояния до дома. Выезд инженера — 3 000–6 000 ₽. При заключении договора сумма возвращается.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="home-faq-answer-3">
             <span>В каких городах Крыма вы работаете?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="home-faq-answer-3">
             <div class="faq-answer-inner">
               Работаем по всему Крыму: Симферополь, Севастополь, Ялта, Алушта, Евпатория, Керчь, Феодосия, Бахчисарай, Судак, Саки, Джанкой, Армянск и другие населённые пункты.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="home-faq-answer-4">
             <span>Как быстро выезжает инженер и составляет смету?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="home-faq-answer-4">
             <div class="faq-answer-inner">
               Свяжемся для уточнения задачи. Консультация по телефону — бесплатно. Выезд инженера — 3 000–6 000 ₽. При заключении договора сумма возвращается. Срок согласуем после осмотра участка.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="home-faq-answer-5">
             <span>Какая гарантия на работы?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="home-faq-answer-5">
             <div class="faq-answer-inner">
               Условия гарантии, порядок оплаты и стоимость работ фиксируются в договоре.
             </div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button type="button" class="faq-question" onclick="toggleFaq(this)" aria-expanded="false" aria-controls="home-faq-answer-6">
             <span>Нужна ли предоплата?</span>
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
+          <div class="faq-answer" id="home-faq-answer-6">
             <div class="faq-answer-inner">
               Порядок оплаты фиксируется в договоре. Выезд инженера — 3 000–6 000 ₽. При заключении договора сумма возвращается.
             </div>
@@ -791,9 +794,9 @@
 
   <!-- Modal -->
   <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal" onclick="event.stopPropagation()">
-      <button class="modal__close" onclick="closeModal()" aria-label="Закрыть">&times;</button>
-      <h3 class="modal__title">Узнайте стоимость работ</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="home-modal-title" onclick="event.stopPropagation()">
+      <button type="button" class="modal__close" onclick="closeModal()" aria-label="Закрыть">&times;</button>
+      <h3 id="home-modal-title" class="modal__title">Узнайте стоимость работ</h3>
       <p class="modal__desc">Введите номер телефона. Свяжемся для уточнения задачи.</p>
       <form id="modal-form" action="/submit" method="POST">
           <input type="hidden" name="form_source" value="kepstroy">
@@ -803,7 +806,8 @@
           </div>
         <input type="hidden" name="service" value="Обратный звонок">
         <div class="form-group">
-          <input type="tel" name="phone" class="input" placeholder="+7 (___) ___-__-__" required>
+          <label class="visually-hidden" for="home-modal-phone">Телефон</label>
+          <input type="tel" id="home-modal-phone" name="phone" class="input" placeholder="+7 (___) ___-__-__" required>
         </div>
         <div class="form-consent">
           <label>
@@ -819,21 +823,25 @@
   <script src="js/main.js?v=20"></script>
   <script>
     function openModal() {
-      document.getElementById('modalOverlay').classList.add('active');
-      document.body.classList.add('modal-open');
+      const modal = document.getElementById('modalOverlay');
+      window.KepstroyModal.open(modal);
     }
     function closeModal() {
-      document.getElementById('modalOverlay').classList.remove('active');
-      document.body.classList.remove('modal-open');
+      const modal = document.getElementById('modalOverlay');
+      window.KepstroyModal.close(modal);
     }
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeModal();
-    });
     function toggleFaq(btn) {
       const item = btn.closest('.faq-item');
       const wasActive = item.classList.contains('active');
-      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
-      if (!wasActive) item.classList.add('active');
+      document.querySelectorAll('.faq-item').forEach(i => {
+        i.classList.remove('active');
+        const question = i.querySelector('.faq-question');
+        if (question) question.setAttribute('aria-expanded', 'false');
+      });
+      if (!wasActive) {
+        item.classList.add('active');
+        btn.setAttribute('aria-expanded', 'true');
+      }
     }
   </script>
 <div class="cookie-banner" id="cookieBanner">

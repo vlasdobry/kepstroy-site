@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!question || !answer) return;
 
     answer.style.display = 'none';
+    question.setAttribute('aria-expanded', 'false');
 
     question.addEventListener('click', function () {
       const isOpen = answer.style.display === 'block';
@@ -18,11 +19,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (otherAnswer && otherAnswer !== answer) {
           otherAnswer.style.display = 'none';
           otherQuestion.classList.remove('is-open');
+          otherQuestion.setAttribute('aria-expanded', 'false');
         }
       });
 
       answer.style.display = isOpen ? 'none' : 'block';
       question.classList.toggle('is-open', !isOpen);
+      question.setAttribute('aria-expanded', String(!isOpen));
     });
   });
 });
