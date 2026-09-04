@@ -438,8 +438,12 @@ class ContentConsistencyTests(unittest.TestCase):
     def test_city_visit_copy_uses_movement_grammar_and_neutral_faq_logic(self):
         data = json.loads(CITY_DATA.read_text(encoding="utf-8"))["cities"]
         template = CITY_TEMPLATE.read_text(encoding="utf-8")
+        generator = (REPO_ROOT / "generators" / "generate-city-septik.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"city_prepositional": city["city_prepositional"]', generator)
         self.assertNotIn("Выезд в ${city_dative}", template)
-        self.assertIn("выезда на объект в городе ${city_dative}", template)
+        self.assertIn("выезда на объект в ${city_prepositional}", template)
         self.assertIn("Дату выезда согласуем по телефону.", template)
         self.assertIn("Срок работ определим после осмотра участка", template)
         pages_by_slug = {path.parents[1].name: path for path in city_pages()}
@@ -447,7 +451,9 @@ class ContentConsistencyTests(unittest.TestCase):
             path = pages_by_slug[city["slug"]]
             source = path.read_text(encoding="utf-8")
             self.assertNotIn(f"Выезд в {city['city_dative']}", source)
-            self.assertIn(f"выезда на объект в городе {city['city_dative']}", source)
+            self.assertIn(
+                f"выезда на объект в {city['city_prepositional']}", source
+            )
             self.assertIn("Дату выезда согласуем по телефону.", source)
             self.assertIn("Срок работ определим после осмотра участка", source)
 
@@ -480,10 +486,10 @@ class ContentConsistencyTests(unittest.TestCase):
         for phrase in (
             "КэпСтрой: услуги в ${city_prepositional}",
             "Установка септиков, канализации и водоснабжения в ${city_prepositional}",
-            "Земляные работы в городе <span style=\"color: var(--c-primary);\">${city_prepositional}</span>",
-            "Работаем в городе ${city_prepositional}",
-            "Услуги в городе ${city_prepositional}",
-            "Монтаж автономной канализации в городе ${city_prepositional}",
+            "Земляные работы в <span style=\"color: var(--c-primary);\">${city_prepositional}</span>",
+            "Работаем в ${city_prepositional}",
+            "Услуги в ${city_prepositional}",
+            "Монтаж автономной канализации в ${city_prepositional}",
         ):
             self.assertIn(phrase, template)
 
@@ -494,16 +500,51 @@ class ContentConsistencyTests(unittest.TestCase):
             for phrase in (
                 f"КэпСтрой: услуги в {prepositional}",
                 f"Установка септиков, канализации и водоснабжения в {prepositional}",
-                f"Земляные работы в городе <span style=\"color: var(--c-primary);\">{prepositional}</span>",
-                f"Работаем в городе {prepositional}",
-                f"Услуги в городе {prepositional}",
-                f"Монтаж автономной канализации в городе {prepositional}",
+                f"Земляные работы в <span style=\"color: var(--c-primary);\">{prepositional}</span>",
+                f"Работаем в {prepositional}",
+                f"Услуги в {prepositional}",
+                f"Монтаж автономной канализации в {prepositional}",
             ):
                 self.assertIn(phrase, source, city["slug"])
             self.assertNotRegex(
                 source,
                 rf"в городе {re.escape(city['city'])}\b",
                 city["slug"],
+            )
+
+    def test_city_pages_do_not_combine_city_with_prepositional_case(self):
+        data = json.loads(CITY_DATA.read_text(encoding="utf-8"))["cities"]
+        templates = [CITY_INDEX_TEMPLATE, CITY_TEMPLATE]
+        for path in templates:
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn("в городе ${city_prepositional}", source, path.name)
+            self.assertNotIn("в городе ${city_dative}", source, path.name)
+
+        pages = [*city_index_pages(), *city_pages()]
+        self.assertEqual(24, len(pages))
+        for path in pages:
+            source = path.read_text(encoding="utf-8")
+            slug = (
+                path.parents[1].name
+                if path.parent.name == "septik-pod-kluch"
+                else path.parent.name
+            )
+            city = next(item for item in data if item["slug"] == slug)
+            self.assertNotIn(
+                f"в городе {city['city_prepositional']}", source, path.as_posix()
+            )
+            if path.parent.name == "septik-pod-kluch":
+                self.assertIn(
+                    "Монтаж автономной канализации "
+                    f"в {city['city_prepositional']} и районе",
+                    source,
+                    path.as_posix(),
+                )
+        saki_pages = [path for path in pages if "saki" in path.parts]
+        self.assertEqual(2, len(saki_pages))
+        for path in saki_pages:
+            self.assertNotIn(
+                "в городе Саках", path.read_text(encoding="utf-8"), path.as_posix()
             )
 
     def test_septic_faq_json_ld_matches_visible_maintenance_answer(self):
@@ -736,11 +777,11 @@ class ContentConsistencyTests(unittest.TestCase):
                 path.as_posix(),
             )
 
-        self.assertIn("в городе ${city_prepositional}", template)
+        self.assertIn("в ${city_prepositional}", template)
         self.assertIn("Выезд на объект согласуем заранее", template)
         for city in data:
             source = pages[city["slug"]].read_text(encoding="utf-8")
-            self.assertIn(f"в городе {city['city_prepositional']}", source)
+            self.assertIn(f"в {city['city_prepositional']}", source)
             self.assertIn("Выезд на объект согласуем заранее", source)
 
     def test_autonomous_sewer_price_is_scoped_to_confirmed_septic_package(self):

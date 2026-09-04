@@ -66,6 +66,7 @@ def main():
             "city": city["city"],
             "city_genitive": city["city_genitive"],
             "city_dative": city["city_dative"],
+            "city_prepositional": city["city_prepositional"],
             "slug": slug,
             "region": city.get("region", "Крым"),
             "soil_type": city["soil_type"],
