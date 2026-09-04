@@ -44,3 +44,41 @@ test('escapes user-controlled HTML in every field', () => {
   assert.match(text, /&lt;b&gt;Иван&lt;\/b&gt;/);
   assert.match(text, /&lt;tag&gt;/);
 });
+
+test('includes escaped calculator qualification before attribution and message', () => {
+  const text = buildLeadMessage({
+    service: 'Калькулятор септика',
+    septic_type: '<b>Панда & Аэро</b>',
+    region: '<i>Ялта</i>',
+    distance: '< 15 "км"',
+    people: "4' & <5>",
+    price: '<strong>198 000 ₽</strong>',
+    utm_source: 'yandex',
+    message: 'Перезвоните'
+  });
+
+  const qualificationLines = [
+    'Тип септика: &lt;b&gt;Панда &amp; Аэро&lt;/b&gt;',
+    'Район: &lt;i&gt;Ялта&lt;/i&gt;',
+    'Расстояние до дома: &lt; 15 &quot;км&quot;',
+    'Количество проживающих: 4&#39; &amp; &lt;5&gt;',
+    'Расчётная стоимость: &lt;strong&gt;198 000 ₽&lt;/strong&gt;'
+  ];
+
+  qualificationLines.forEach((line) => assert.match(text, new RegExp(line)));
+  assert.doesNotMatch(text, /<(?:b|i|strong)>/);
+
+  const servicePosition = text.indexOf('Услуга:');
+  const attributionPosition = text.indexOf('UTM:');
+  const messagePosition = text.indexOf('Сообщение:');
+  let previousPosition = servicePosition;
+
+  qualificationLines.forEach((line) => {
+    const position = text.indexOf(line);
+    assert.ok(position > previousPosition);
+    previousPosition = position;
+  });
+
+  assert.ok(attributionPosition > previousPosition);
+  assert.ok(messagePosition > attributionPosition);
+});

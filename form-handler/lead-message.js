@@ -19,6 +19,12 @@ const buildLeadMessage = (lead) => {
     `🌐 Страница: ${escapeHtml(lead.current_page || lead.page || '—')}`
   ];
 
+  appendIfPresent(lines, 'Тип септика', lead.septic_type);
+  appendIfPresent(lines, 'Район', lead.region);
+  appendIfPresent(lines, 'Расстояние до дома', lead.distance);
+  appendIfPresent(lines, 'Количество проживающих', lead.people);
+  appendIfPresent(lines, 'Расчётная стоимость', lead.price);
+
   if (lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.utm_term) {
     lines.push(
       `📊 UTM: ${escapeHtml(lead.utm_source || '-')} / ${escapeHtml(lead.utm_medium || '-')} / ${escapeHtml(lead.utm_campaign || '-')} / content: ${escapeHtml(lead.utm_content || '-')} / term: ${escapeHtml(lead.utm_term || '-')}`
