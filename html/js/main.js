@@ -68,23 +68,26 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    if (form.dataset.submitting === 'true') return;
+
     const honeypot = form.querySelector('.form-honeypot');
     if (honeypot && honeypot.value) return;
 
-    const formData = new URLSearchParams(new FormData(form));
-    if (!formData.get('page')) {
-      formData.append('page', window.location.href);
-    }
-    await appendTrackingData(formData);
-
     const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn ? submitBtn.textContent : '';
+    const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+    form.dataset.submitting = 'true';
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Отправка...';
     }
 
     try {
+      const formData = new URLSearchParams(new FormData(form));
+      if (!formData.get('page')) {
+        formData.append('page', window.location.href);
+      }
+      await appendTrackingData(formData);
+
       const response = await fetch('/submit', { method: 'POST', body: formData });
       if (response.ok) {
         trackGoal('form_submit');
@@ -93,9 +96,10 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
         throw new Error('Submit failed');
       }
     } catch (error) {
+      delete form.dataset.submitting;
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+        submitBtn.innerHTML = originalHtml;
       }
       alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62');
     }
