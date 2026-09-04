@@ -151,6 +151,8 @@ class FrontendFormContractsTests(unittest.TestCase):
                     {"Рассчитать стоимость", "Заказать звонок"},
                     set(targets),
                 )
+                self.assertEqual("#callback", targets["Рассчитать стоимость"])
+                self.assertTrue(targets["Заказать звонок"].startswith("tel:"))
                 ids = set(re.findall(r'\bid=["\']([^"\']+)["\']', page))
                 for target in targets.values():
                     self.assertIsNotNone(target)
