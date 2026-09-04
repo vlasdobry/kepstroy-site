@@ -329,8 +329,29 @@ class ContentConsistencyTests(unittest.TestCase):
 
         home = HOME_PAGE.read_text(encoding="utf-8")
         self.assertNotIn('id="reviews"', home)
-        self.assertNotIn("review-card", home)
         self.assertNotRegex(home, r"Авито\s+и\s+Яндекс\.Карт")
+        for path in [HOME_PAGE, SEPTIKI_PAGE]:
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn("review-card", source, path.as_posix())
+            self.assertNotIn('aria-label="5 из 5 звезд"', source, path.as_posix())
+
+    def test_main_workflow_has_no_fixed_price_or_post_acceptance_payment_promise(self):
+        source = HOME_PAGE.read_text(encoding="utf-8")
+        workflow = slice_between(
+            source, '<section id="workflow"', '<section id="real-works"'
+        )
+        forbidden = re.compile(
+            r"(?:фиксир\w*[^.<]{0,40}цен\w*|цен\w*[^.<]{0,40}фиксир\w*)|"
+            r"(?:оплат\w*[^.<]{0,80}(?:при[её]м|провер)|"
+            r"(?:при[её]м|провер)[^.<]{0,80}оплат\w*)",
+            re.IGNORECASE,
+        )
+        self.assertNotRegex(workflow, forbidden)
+        self.assertIn("После осмотра согласуем состав работ и смету.", workflow)
+        self.assertIn("Сдача объекта", workflow)
+        self.assertIn(
+            "Проверяем результат и передаём объект заказчику.", workflow
+        )
 
     def test_listed_blog_service_timelines_are_non_contractual_and_not_exact(self):
         targets = {
