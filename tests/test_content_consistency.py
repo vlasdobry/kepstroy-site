@@ -9,8 +9,12 @@ HTML_ROOT = REPO_ROOT / "html"
 SEPTIKI_PAGE = HTML_ROOT / "uslugi" / "septiki" / "index.html"
 KANALIZACIYA_PAGE = HTML_ROOT / "uslugi" / "kanalizaciya" / "index.html"
 PRICES_PAGE = HTML_ROOT / "tseny" / "index.html"
+HOME_PAGE = HTML_ROOT / "index.html"
 CITY_TEMPLATE = REPO_ROOT / "generators" / "city-septik-template.html"
 LLMS_FILES = [HTML_ROOT / "llms.txt", HTML_ROOT / "llms-full.txt"]
+CONFIRMATIONS_REPORT = (
+    REPO_ROOT / "docs" / "reports" / "kepstroy.ru" / "andrey-confirmations-required.md"
+)
 ENGINEER_TERMS = (
     "Выезд инженера — 3 000–6 000 ₽. "
     "При заключении договора сумма возвращается."
@@ -83,6 +87,87 @@ class ContentConsistencyTests(unittest.TestCase):
             if forbidden.search(path.read_text(encoding="utf-8")):
                 failures.append(path.relative_to(REPO_ROOT).as_posix())
         self.assertEqual([], failures)
+
+    def test_city_delivery_is_quoted_only_after_the_object_address_is_known(self):
+        failures = []
+        forbidden = re.compile(
+            r"\$\{delivery\}|"
+            r"доставк[^.<\n]{0,100}(?:бесплат|от\s+\d[\d\s]*\s*₽)",
+            re.IGNORECASE,
+        )
+        expected = "Стоимость доставки рассчитывается после уточнения адреса объекта."
+        for path in city_sources():
+            source = path.read_text(encoding="utf-8")
+            if expected not in source or forbidden.search(source):
+                failures.append(path.relative_to(REPO_ROOT).as_posix())
+        self.assertEqual([], failures)
+
+    def test_homepage_has_no_unconfirmed_response_or_estimate_timing(self):
+        source = HOME_PAGE.read_text(encoding="utf-8")
+        forbidden = re.compile(
+            r"(?:консультац|смет|расч[её]т|перезвон|свяж|выезд)"
+            r"[^.<\n]{0,80}(?:сегодня|в\s+(?:тот\s+же\s+)?день"
+            r"(?:\s+(?:обращения|звонка|заявки))?)|"
+            r"(?:сегодня|в\s+тот\s+же\s+день)[^.<\n]{0,50}"
+            r"(?:консультац|смет|расч[её]т|перезвон|свяж|выезд)|"
+            r"обычно\s+в\s+течение\s+1[–-]2\s+дней|"
+            r"(?:смет|расч[её]т|консультац|перезвон|свяж)"
+            r"[^.<\n]{0,80}(?:5|10[–-]15|15|30)\s+минут|"
+            r"работ[^.<\n]{0,60}(?:за|от)\s*(?:1|1[–-]3)\s+"
+            r"(?:рабоч\w+\s+)?дн",
+            re.IGNORECASE,
+        )
+        self.assertNotRegex(source, forbidden)
+        self.assertIn("Свяжемся для уточнения задачи.", source)
+        self.assertIn("Срок согласуем после осмотра участка.", source)
+        self.assertIn("Работаем по всему Крыму", source)
+        self.assertIn(ENGINEER_TERMS, source)
+
+    def test_calculator_static_recommendation_matches_neutral_js_copy(self):
+        source = SEPTIKI_PAGE.read_text(encoding="utf-8")
+        static_match = re.search(
+            r'id="people-recommendation"[^>]*>([^<]+)</p>', source
+        )
+        self.assertIsNotNone(static_match)
+        static_copy = static_match.group(1).strip()
+        js_copies = re.findall(
+            r"'(?:1-2|3-4|5-6|7\+)':\s*'([^']+)'", source
+        )
+        self.assertEqual(4, len(js_copies))
+        self.assertEqual({static_copy}, set(js_copies))
+        self.assertEqual(
+            "Выбор показывает базовый ориентир. Подходящую модель и итоговую "
+            "стоимость инженер подтвердит после осмотра участка.",
+            static_copy,
+        )
+
+    def test_llms_water_supply_does_not_claim_unconfirmed_drilling(self):
+        for path in LLMS_FILES:
+            source = path.read_text(encoding="utf-8")
+            self.assertNotRegex(source, r"бурен|скважин", path.name)
+            self.assertIn("/uslugi/vodosnabzhenie/", source, path.name)
+            self.assertRegex(source, r"Подключение[^.\n]{0,60}сет", path.name)
+
+    def test_owner_confirmation_registry_tracks_all_deferred_claims(self):
+        self.assertTrue(CONFIRMATIONS_REPORT.exists())
+        source = CONFIRMATIONS_REPORT.read_text(encoding="utf-8")
+        required = [
+            "бурение",
+            "год основания",
+            "200+",
+            "гарантия",
+            "оплата",
+            "срок монтажа",
+            "цены и сроки кейсов по септикам",
+            "СЭС",
+            "центральная канализация",
+            "прокладка труб",
+            "насос",
+            "забор",
+            "электроснабжение",
+        ]
+        missing = [item for item in required if item.lower() not in source.lower()]
+        self.assertEqual([], missing)
 
     def test_target_pages_use_the_same_confirmed_engineer_visit_terms(self):
         targets = [
