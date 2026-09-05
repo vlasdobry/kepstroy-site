@@ -4,7 +4,7 @@
 
 **Ветка:** `feature/generators-page`
 
-**Статус:** локальная проверка пройдена; изменения не объединены с `main` и не развёрнуты в production. Полный security-аудит не подтверждён, потому что Deep Security Scan не стартовал.
+**Статус:** локальная проверка и независимые spec/quality/security/full-branch reviews пройдены (PASS); изменения не объединены с `main` и не развёрнуты в production. Полный security-аудит не подтверждён, потому что Deep Security Scan не стартовал.
 
 ## Scope и ограничения
 
@@ -124,4 +124,4 @@ if ($secretLike) { $secretLike; throw 'Secret-like filenames found in branch dif
 Invoke-Checked { git status --short } 'Git status'
 ```
 
-Следующий gate: повторный независимый code review после исправлений, затем отдельное решение пользователя о merge и production-deploy.
+Следующий gate: отдельное решение пользователя о merge, затем production-deploy и последующий smoke.
