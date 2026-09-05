@@ -12,22 +12,6 @@ MAIN_PAGE = HTML_ROOT / "index.html"
 SEPTIKI_PAGE = REPO_ROOT / "html" / "uslugi" / "septiki" / "index.html"
 THANK_YOU_PAGE = REPO_ROOT / "html" / "spasibo" / "index.html"
 CITY_SEPTIK_TEMPLATE = REPO_ROOT / "generators" / "city-septik-template.html"
-BLOG_FAQ_PAGES = [
-    HTML_ROOT / "blog" / slug / "index.html"
-    for slug in (
-        "kak-vybrat-septik-dlya-chastnogo-doma-v-krymu",
-        "kanalizaciya-v-chastnom-dome-krym",
-        "septik-dlya-dachi-krym",
-        "septik-ili-vygrebnaya-yama-krym",
-        "septik-simferopol",
-        "skolko-stoit-septik-pod-klyuch-krym",
-        "ustanovka-septika-krym",
-        "vodosnabzhenie-chastnogo-doma-krym",
-        "zhibi-ili-plastik-septik-krym",
-    )
-]
-
-
 def city_septik_sources():
     pages = sorted((HTML_ROOT / "krym").glob("*/septik-pod-kluch/index.html"))
     if len(pages) != 12:
@@ -48,6 +32,22 @@ def opening_tag_with_class(source, class_name):
         if class_name in attrs.get("class", "").split():
             return match.group("tag").lower(), attrs
     raise AssertionError(f"Element with class {class_name!r} was not found")
+
+
+def opening_tags_with_class(source, class_name):
+    matches = []
+    for match in re.finditer(r"<(?P<tag>[a-z][a-z0-9]*)\b(?P<attrs>[^>]*)>", source, re.IGNORECASE):
+        attrs = dict(
+            (name.lower(), value)
+            for name, _, value in re.findall(
+                r"([\w:-]+)\s*=\s*(['\"])(.*?)\2",
+                match.group("attrs"),
+                re.DOTALL,
+            )
+        )
+        if class_name in attrs.get("class", "").split():
+            matches.append((match.group("tag").lower(), attrs))
+    return matches
 
 
 def prominent_cta_targets(source):
@@ -117,37 +117,39 @@ class FrontendFormContractsTests(unittest.TestCase):
                 )
 
     def test_blog_faq_questions_are_semantic_buttons_with_linked_answers(self):
-        for path in BLOG_FAQ_PAGES:
+        faq_pages = []
+        for path in sorted((HTML_ROOT / "blog").glob("*/index.html")):
+            page = path.read_text(encoding="utf-8")
+            if "blog-faq__question" not in page or "blog-faq__answer" not in page:
+                continue
+            faq_pages.append(path)
             with self.subTest(path=path.relative_to(REPO_ROOT).as_posix()):
-                page = path.read_text(encoding="utf-8")
-                self.assertNotRegex(page, r'<p\b[^>]*class=["\']blog-faq__question["\']')
-                items = re.findall(
-                    r'<div class="blog-faq__item">(?P<body>.*?)</div>',
-                    page,
-                    re.DOTALL,
-                )
-                self.assertGreater(len(items), 0)
-                for item in items:
-                    button = re.search(
-                        r'<button\b(?P<attrs>[^>]*)>',
-                        item,
-                    )
-                    self.assertIsNotNone(button)
-                    attrs = dict(
-                        (name.lower(), value)
-                        for name, _, value in re.findall(
-                            r"([\w:-]+)\s*=\s*(['\"])(.*?)\2", button.group("attrs")
-                        )
-                    )
-                    self.assertIn("blog-faq__question", attrs.get("class", "").split())
+                self.assertIn('/js/blog-accordion.js', page)
+                questions = opening_tags_with_class(page, "blog-faq__question")
+                answers = opening_tags_with_class(page, "blog-faq__answer")
+                self.assertGreater(len(questions), 0)
+                self.assertEqual(len(questions), len(answers))
+                answer_ids = {attrs.get("id") for _, attrs in answers}
+                self.assertNotIn(None, answer_ids)
+                self.assertEqual(len(answers), len(answer_ids))
+                controls = []
+                for tag, attrs in questions:
+                    self.assertEqual("button", tag)
                     self.assertEqual("button", attrs.get("type"))
                     self.assertEqual("false", attrs.get("aria-expanded"))
                     answer_id = attrs.get("aria-controls")
                     self.assertIsNotNone(answer_id)
-                    self.assertRegex(
-                        item,
-                        rf'<p\b[^>]*class="blog-faq__answer"[^>]*\bid="{re.escape(answer_id)}"',
-                    )
+                    controls.append(answer_id)
+                    self.assertIn(answer_id, answer_ids)
+                self.assertEqual(len(controls), len(set(controls)))
+        self.assertGreaterEqual(len(faq_pages), 12)
+
+        table_pages = {
+            path
+            for path in (HTML_ROOT / "blog").glob("*/index.html")
+            if "<table" in path.read_text(encoding="utf-8")
+        }
+        self.assertTrue(table_pages.issubset(set(faq_pages)))
 
     def test_primary_form_controls_have_programmatic_labels(self):
         expected = {

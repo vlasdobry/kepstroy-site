@@ -1,0 +1,10 @@
+{
+  "name": "kepstroy-site-tests",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

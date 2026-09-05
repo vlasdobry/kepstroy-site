@@ -25,7 +25,18 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: form-handler/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            form-handler/package-lock.json
+
+      - name: Install frontend test dependencies
+        run: npm ci
+
+      - name: Install Chromium for accessibility tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Test frontend accessibility runtime
+        run: CI=true node --test --test-isolation=none tests/test_accessibility_runtime.cjs
 
       - name: Test form handler
         working-directory: form-handler

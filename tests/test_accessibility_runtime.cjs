@@ -37,6 +37,9 @@ class FakeElement {
     this.classList = new FakeClassList(classes);
     this.ownerDocument = ownerDocument;
     this.attributes = new Map();
+    this.disabled = false;
+    this.hidden = false;
+    this.isConnected = true;
     this.listeners = new Map();
     this.style = {};
   }
@@ -76,6 +79,10 @@ class FakeElement {
   setAttribute(name, value) {
     this.attributes.set(name, String(value));
   }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
+  }
 }
 
 function createMainHarness() {
@@ -107,8 +114,12 @@ function createMainHarness() {
   const menuToggle = new FakeElement({ tagName: 'BUTTON', classes: ['menu-toggle'], ownerDocument: document });
   menuToggle.setAttribute('aria-expanded', 'false');
   const menuLink = new FakeElement({ tagName: 'A', ownerDocument: document });
+  const lastMenuLink = new FakeElement({ tagName: 'A', ownerDocument: document });
+  const backgroundButton = new FakeElement({ tagName: 'BUTTON', ownerDocument: document });
   const mobileMenu = new FakeElement({ classes: ['mobile-menu'], ownerDocument: document });
-  mobileMenu.querySelectorAll = selector => selector === 'a' ? [menuLink] : [];
+  mobileMenu.querySelectorAll = selector => selector.includes('a[href]') || selector === 'a'
+    ? [menuLink, lastMenuLink]
+    : [];
 
   const modalTrigger = new FakeElement({ tagName: 'BUTTON', ownerDocument: document });
   const closeButton = new FakeElement({ tagName: 'BUTTON', classes: ['modal__close'], ownerDocument: document });
@@ -131,7 +142,6 @@ function createMainHarness() {
     return null;
   };
 
-  const table = new FakeElement({ tagName: 'TABLE', ownerDocument: document });
   const header = new FakeElement({ tagName: 'HEADER', classes: ['header'], ownerDocument: document });
   document.querySelector = selector => ({
     '.menu-toggle': menuToggle,
@@ -143,10 +153,20 @@ function createMainHarness() {
     '.js-smart-call': [],
     'form[action="/submit"]': [],
     'a[href^="#"]': [],
-    '.blog-article table': [table],
   })[selector] ?? [];
   document.getElementById = id => id === 'modalOverlay' ? overlay : null;
 
+  const mediaListeners = [];
+  const desktopMedia = {
+    matches: false,
+    addEventListener(type, listener) {
+      if (type === 'change') mediaListeners.push(listener);
+    },
+    change(matches) {
+      this.matches = matches;
+      for (const listener of mediaListeners) listener({ matches });
+    },
+  };
   const window = {
     addEventListener(type, listener) {
       const listeners = windowListeners.get(type) || [];
@@ -156,6 +176,10 @@ function createMainHarness() {
     innerHeight: 800,
     innerWidth: 900,
     location: { href: 'https://kepstroy.ru/' },
+    matchMedia(query) {
+      assert.equal(query, '(min-width: 1024px)');
+      return desktopMedia;
+    },
     scrollY: 0,
   };
 
@@ -174,12 +198,15 @@ function createMainHarness() {
   vm.runInNewContext(mainScript, sandbox);
 
   return {
+    backgroundButton,
     closeButton,
     consent,
+    desktopMedia,
     dialog,
     document,
     firstInput,
     honeypotInput,
+    lastMenuLink,
     menuLink,
     menuToggle,
     mobileMenu,
@@ -187,7 +214,6 @@ function createMainHarness() {
     overlay,
     sandbox,
     submit,
-    table,
   };
 }
 
@@ -207,6 +233,30 @@ test('mobile menu synchronizes aria state and Escape restores toggle focus', () 
   assert.equal(harness.mobileMenu.classList.contains('active'), false);
   assert.equal(harness.document.body.style.overflow, '');
   assert.equal(harness.document.activeElement, harness.menuToggle);
+});
+
+test('mobile menu traps Tab and closes when desktop navigation appears', () => {
+  const harness = createMainHarness();
+  harness.menuToggle.click();
+
+  harness.document.activeElement = harness.lastMenuLink;
+  let event = harness.document.dispatch('keydown', { key: 'Tab', shiftKey: false });
+  assert.equal(event.defaultPrevented, true);
+  assert.equal(harness.document.activeElement, harness.menuToggle);
+
+  event = harness.document.dispatch('keydown', { key: 'Tab', shiftKey: true });
+  assert.equal(event.defaultPrevented, true);
+  assert.equal(harness.document.activeElement, harness.lastMenuLink);
+
+  harness.document.activeElement = harness.backgroundButton;
+  event = harness.document.dispatch('keydown', { key: 'Tab', shiftKey: false });
+  assert.equal(event.defaultPrevented, true);
+  assert.equal(harness.document.activeElement, harness.menuToggle);
+
+  harness.desktopMedia.change(true);
+  assert.equal(harness.menuToggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(harness.mobileMenu.classList.contains('active'), false);
+  assert.equal(harness.document.body.style.overflow, '');
 });
 
 test('modal moves focus, traps Tab, closes on Escape and restores its trigger', () => {
@@ -231,11 +281,35 @@ test('modal moves focus, traps Tab, closes on Escape and restores its trigger', 
   assert.equal(harness.document.activeElement, harness.modalTrigger);
 });
 
-test('blog tables become keyboard-focusable scroll regions', () => {
+test('repeated modal open preserves the original trigger and current focus', () => {
   const harness = createMainHarness();
+  harness.document.activeElement = harness.modalTrigger;
 
-  assert.equal(harness.table.getAttribute('tabindex'), '0');
-  assert.equal(harness.table.getAttribute('aria-label'), 'Прокручиваемая таблица');
+  harness.sandbox.openModal();
+  harness.document.activeElement = harness.submit;
+  harness.sandbox.openModal();
+
+  assert.equal(harness.document.activeElement, harness.submit);
+  harness.sandbox.closeModal();
+  assert.equal(harness.document.activeElement, harness.modalTrigger);
+});
+
+test('modal close falls back safely when its trigger was disconnected', () => {
+  const harness = createMainHarness();
+  harness.document.activeElement = harness.modalTrigger;
+
+  harness.sandbox.openModal();
+  harness.modalTrigger.isConnected = false;
+  harness.sandbox.closeModal();
+
+  assert.equal(harness.document.activeElement, harness.document.body);
+
+  const hiddenHarness = createMainHarness();
+  hiddenHarness.document.activeElement = hiddenHarness.modalTrigger;
+  hiddenHarness.sandbox.openModal();
+  hiddenHarness.modalTrigger.hidden = true;
+  hiddenHarness.sandbox.closeModal();
+  assert.equal(hiddenHarness.document.activeElement, hiddenHarness.document.body);
 });
 
 function createBlogAccordionHarness() {
@@ -263,12 +337,14 @@ function createBlogAccordionHarness() {
   }
 
   const entries = [createItem(1), createItem(2)];
-  document.querySelectorAll = selector => selector === '.blog-faq__item'
-    ? entries.map(entry => entry.item)
-    : [];
+  const table = new FakeElement({ tagName: 'TABLE', ownerDocument: document });
+  document.querySelectorAll = selector => ({
+    '.blog-faq__item': entries.map(entry => entry.item),
+    '.blog-article table': [table],
+  })[selector] ?? [];
   vm.runInNewContext(blogAccordionScript, { document });
   document.dispatch('DOMContentLoaded');
-  return entries;
+  return { entries, table };
 }
 
 function pressNativeButton(button, key) {
@@ -279,7 +355,7 @@ function pressNativeButton(button, key) {
 }
 
 test('blog FAQ supports Enter and Space while keeping one aria-expanded item open', () => {
-  const [first, second] = createBlogAccordionHarness();
+  const [first, second] = createBlogAccordionHarness().entries;
 
   pressNativeButton(first.question, 'Enter');
   assert.equal(first.question.getAttribute('aria-expanded'), 'true');
@@ -296,7 +372,20 @@ test('blog FAQ supports Enter and Space while keeping one aria-expanded item ope
   assert.equal(second.answer.style.display, 'none');
 });
 
-test('calculator updates all 288 supported combinations without missing data or NaN', () => {
+test('blog accordion initializes article tables as keyboard scroll regions', () => {
+  const { table } = createBlogAccordionHarness();
+
+  assert.equal(table.getAttribute('tabindex'), '0');
+  assert.equal(table.getAttribute('aria-label'), 'Прокручиваемая таблица');
+});
+
+function selectValues(page, id) {
+  const select = page.match(new RegExp(`<select[^>]*id="${id}"[^>]*>([\\s\\S]*?)<\\/select>`));
+  assert.ok(select, `Missing select #${id}`);
+  return [...select[1].matchAll(/<option[^>]*value="([^"]+)"/g)].map(match => match[1]);
+}
+
+test('calculator updates all 2880 HTML-declared combinations without missing data or NaN', () => {
   const page = readFileSync('html/uslugi/septiki/index.html', 'utf8');
   const start = page.indexOf('// ========== CALCULATOR ==========');
   const end = page.indexOf('// Modal', start);
@@ -310,9 +399,17 @@ test('calculator updates all 288 supported combinations without missing data or 
     plastic: 160000,
     drain: 60000,
   };
-  const regions = ['sevastopol', 'simferopol', 'yalta', 'evpatoria', 'feodosia', 'kerch'];
-  const peopleValues = ['1-2', '3-4', '5-6', '7+'];
-  const distances = ['1', '5', '30'];
+  const typeValues = [...page.matchAll(/<input[^>]*type="radio"[^>]*name="septic_type"[^>]*value="([^"]+)"/g)]
+    .map(match => match[1]);
+  const regions = selectValues(page, 'calc-region');
+  const peopleValues = selectValues(page, 'calc-people');
+  const range = page.match(/<input[^>]*type="range"[^>]*id="calc-distance"[^>]*min="(\d+)"[^>]*max="(\d+)"/);
+  assert.ok(range, 'Missing calculator distance range bounds');
+  const distances = Array.from(
+    { length: Number(range[2]) - Number(range[1]) + 1 },
+    (_, index) => String(Number(range[1]) + index),
+  );
+  assert.deepEqual([...typeValues].sort(), Object.keys(typePrices).sort());
   const controls = new Map();
   for (const id of [
     'calc-region', 'calc-people', 'people-recommendation', 'calc-distance', 'range-value',
@@ -324,7 +421,7 @@ test('calculator updates all 288 supported combinations without missing data or 
   controls.get('calc-region').value = regions[0];
   controls.get('calc-people').value = peopleValues[0];
   controls.get('calc-distance').value = distances[0];
-  const radios = Object.keys(typePrices).map((value, index) => {
+  const radios = typeValues.map((value, index) => {
     const radio = new FakeElement({ tagName: 'INPUT' });
     radio.value = value;
     radio.checked = index === 0;
@@ -376,26 +473,32 @@ test('calculator updates all 288 supported combinations without missing data or 
       }
     }
   }
-  assert.equal(combinations, 288);
+  assert.equal(combinations, 2880);
 });
 
 let chromium = null;
+let playwrightLoadError = null;
 try {
   ({ chromium } = require('playwright'));
-} catch {
-  // The structural contract still runs where the optional browser runtime is absent.
+} catch (error) {
+  playwrightLoadError = error;
+}
+if (!chromium && process.env.CI && process.env.CI !== 'false') {
+  throw new Error(`Playwright is mandatory in CI: ${playwrightLoadError && playwrightLoadError.message}`);
 }
 
 test('wide article tables stay inside a 360px document viewport', { skip: !chromium }, async () => {
   const css = readFileSync('html/css/blog.css', 'utf8');
-  const article = readFileSync('html/blog/vodosnabzhenie-chastnogo-doma-krym/index.html', 'utf8');
-  const tables = [...article.matchAll(/<table[\s\S]*?<\/table>/g)].map(match => match[0]);
-  assert.ok(tables.length > 0);
+  const articlePage = readFileSync('html/blog/vodosnabzhenie-chastnogo-doma-krym/index.html', 'utf8');
+  const article = articlePage.match(/<article class="blog-article">[\s\S]*?<\/article>/);
+  assert.ok(article);
 
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
-    await page.setContent(`<style>${css}</style><main class="blog-article">${tables.join('')}</main>`);
+    await page.setContent(`<style>${css}</style>${article[0]}`);
+    await page.addScriptTag({ content: blogAccordionScript });
+    await page.evaluate(() => document.dispatchEvent(new Event('DOMContentLoaded')));
     const layout = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,
@@ -407,6 +510,10 @@ test('wide article tables stay inside a 360px document viewport', { skip: !chrom
 
     assert.ok(layout.documentWidth <= layout.viewportWidth, JSON.stringify(layout));
     assert.ok(layout.tables.some(table => table.scrollWidth > table.clientWidth), JSON.stringify(layout));
+    for (const table of await page.locator('table').all()) {
+      assert.equal(await table.getAttribute('tabindex'), '0');
+      assert.equal(await table.getAttribute('aria-label'), 'Прокручиваемая таблица');
+    }
   } finally {
     await browser.close();
   }

@@ -3,6 +3,15 @@ const menuToggle = document.querySelector('.menu-toggle');
 const mobileMenu = document.querySelector('.mobile-menu');
 
 if (menuToggle && mobileMenu) {
+  function menuFocusables() {
+    return [
+      menuToggle,
+      ...Array.from(mobileMenu.querySelectorAll(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )),
+    ];
+  }
+
   function setMenuOpen(isOpen, { restoreFocus = false } = {}) {
     menuToggle.classList.toggle('active', isOpen);
     mobileMenu.classList.toggle('active', isOpen);
@@ -27,18 +36,38 @@ if (menuToggle && mobileMenu) {
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && menuToggle.getAttribute('aria-expanded') === 'true') {
+    if (menuToggle.getAttribute('aria-expanded') !== 'true') return;
+
+    if (event.key === 'Escape') {
       event.preventDefault();
       setMenuOpen(false, { restoreFocus: true });
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+    const focusables = menuFocusables();
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    } else if (!focusables.includes(document.activeElement)) {
+      event.preventDefault();
+      first.focus();
     }
   });
-}
 
-// === Scrollable article tables ===
-document.querySelectorAll('.blog-article table').forEach(table => {
-  if (!table.getAttribute('tabindex')) table.setAttribute('tabindex', '0');
-  if (!table.getAttribute('aria-label')) table.setAttribute('aria-label', 'Прокручиваемая таблица');
-});
+  if (typeof window.matchMedia === 'function') {
+    const desktopNavigation = window.matchMedia('(min-width: 1024px)');
+    desktopNavigation.addEventListener('change', (event) => {
+      if (event.matches) setMenuOpen(false);
+    });
+    if (desktopNavigation.matches) setMenuOpen(false);
+  }
+}
 
 // === Accessible modal ===
 const defaultModalOverlay = document.getElementById('modalOverlay');
@@ -59,6 +88,7 @@ function modalFocusables(overlay) {
 
 function openModal(overlay = defaultModalOverlay) {
   if (!overlay) return;
+  if (activeModalOverlay === overlay && overlay.classList.contains('active')) return;
   modalReturnFocus = document.activeElement;
   activeModalOverlay = overlay;
   overlay.classList.add('active');
@@ -70,14 +100,37 @@ function openModal(overlay = defaultModalOverlay) {
   if (focusTarget) focusTarget.focus();
 }
 
+function canRestoreModalFocus(element) {
+  return Boolean(
+    element
+    && element.isConnected !== false
+    && element.disabled !== true
+    && element.hidden !== true
+    && typeof element.focus === 'function'
+    && (!element.getClientRects || element.getClientRects().length > 0)
+    && (!element.getAttribute || (
+      element.getAttribute('tabindex') !== '-1'
+      && element.getAttribute('aria-hidden') !== 'true'
+    ))
+  );
+}
+
+function focusModalFallback() {
+  if (!document.body || typeof document.body.focus !== 'function') return;
+  const previousTabindex = document.body.getAttribute('tabindex');
+  if (previousTabindex === null) document.body.setAttribute('tabindex', '-1');
+  document.body.focus();
+  if (previousTabindex === null) document.body.removeAttribute('tabindex');
+  else document.body.setAttribute('tabindex', previousTabindex);
+}
+
 function closeModal(overlay = activeModalOverlay || defaultModalOverlay) {
-  if (!overlay) return;
+  if (!overlay || !overlay.classList.contains('active')) return;
   overlay.classList.remove('active');
   document.body.classList.remove('modal-open');
   activeModalOverlay = null;
-  if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
-    modalReturnFocus.focus();
-  }
+  if (canRestoreModalFocus(modalReturnFocus)) modalReturnFocus.focus();
+  else focusModalFallback();
   modalReturnFocus = null;
 }
 

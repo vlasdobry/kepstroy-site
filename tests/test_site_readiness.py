@@ -1,3 +1,4 @@
+import json
 import re
 import unittest
 import xml.etree.ElementTree as ET
@@ -105,8 +106,37 @@ class SiteReadinessTests(unittest.TestCase):
         self.assertIn('"test"', package)
     def test_deploy_validation_runs_frontend_form_runtime_tests(self):
         workflow = (REPO_ROOT / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8")
-        self.assertIn("node --test tests/test_form_runtime.cjs", workflow)
-        self.assertNotIn("--test-isolation", workflow)
+        step = re.search(
+            r"- name: Test frontend form runtime\s+run:\s*(?P<command>[^\n]+)",
+            workflow,
+        )
+
+        self.assertIsNotNone(step)
+        command = step.group("command").strip()
+        self.assertEqual("node --test tests/test_form_runtime.cjs", command)
+        self.assertNotIn("--test-isolation", command)
+
+    def test_deploy_validation_installs_and_requires_accessibility_browser_tests(self):
+        workflow = (REPO_ROOT / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8")
+        package_path = REPO_ROOT / "package.json"
+        lock_path = REPO_ROOT / "package-lock.json"
+
+        self.assertTrue(package_path.exists(), "Root package.json is required for browser tests")
+        self.assertTrue(lock_path.exists(), "Root package-lock.json is required for npm ci")
+        package = json.loads(package_path.read_text(encoding="utf-8"))
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        playwright_version = package.get("devDependencies", {}).get("playwright")
+        self.assertRegex(playwright_version or "", r"^\d+\.\d+\.\d+$")
+        self.assertEqual(
+            playwright_version,
+            lock.get("packages", {}).get("", {}).get("devDependencies", {}).get("playwright"),
+        )
+        self.assertIn("package-lock.json", workflow)
+        self.assertIn("form-handler/package-lock.json", workflow)
+        self.assertRegex(workflow, r"(?m)^\s*run:\s*npm ci\s*$")
+        self.assertIn("npx playwright install --with-deps chromium", workflow)
+        self.assertIn("CI=true node --test --test-isolation=none tests/test_accessibility_runtime.cjs", workflow)
+
     def test_main_script_has_no_orphan_quiz_tracking(self):
         pages = "\n".join(text for _, text in production_pages())
         main_js = (HTML_ROOT / "js" / "main.js").read_text(encoding="utf-8")

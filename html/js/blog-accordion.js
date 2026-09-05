@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.blog-article table').forEach(function (table) {
+    if (!table.getAttribute('tabindex')) table.setAttribute('tabindex', '0');
+    if (!table.getAttribute('aria-label')) table.setAttribute('aria-label', 'Прокручиваемая таблица');
+  });
+
   const faqItems = document.querySelectorAll('.blog-faq__item');
 
   faqItems.forEach(function (item) {
