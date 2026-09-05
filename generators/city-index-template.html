@@ -2,6 +2,10 @@
 <html lang="ru">
 <head>
   <script src="/js/analytics-consent.js?v=1" defer></script>
+  <link rel="icon" type="image/x-icon" href="../../images/favicon/favicon.ico?v=2">
+  <link rel="icon" type="image/svg+xml" href="../../images/favicon/favicon.svg?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="../../images/favicon/favicon-32x32.png?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../../images/favicon/apple-touch-icon.png?v=2">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>КэпСтрой: услуги в ${city_prepositional} — септики, канализация, водоснабжение</title>
@@ -11,8 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../css/style.css?v=19">
-  <link rel="icon" type="image/svg+xml" href="../../images/favicon/favicon.svg?v=2">
-  
+${schema_spacing}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -31,6 +34,7 @@
   }
   </script>
 
+${schema_spacing}
 
   <script type="application/ld+json">
   {
@@ -45,15 +49,15 @@
       "telephone": "${phone}",
       "areaServed": {"@type": "AdministrativeArea", "name": "Республика Крым"}
     },
-    "knowsAbout": ["Земляные работы", "Установка септиков", "Монтаж канализации", "Водоснабжение"],
-    "description": "Главный инженер КэпСтрой. Лично контролирует земляные работы и монтаж инженерных коммуникаций в Крыму."
+    "knowsAbout": ["Установка септиков", "Монтаж канализации", "Водоснабжение", "Инженерные коммуникации"],
+    "description": "Главный инженер КэпСтрой. Лично контролирует земляные работы, установку септиков и монтаж инженерных коммуникаций в Крыму."
   }
   </script>
+
 </head>
 <body>
 
-
-  <div class="header__top">
+<div class="header__top">
     <div class="container" style="display: flex; justify-content: space-between;">
       <span>Работаем по всему Крыму: Симферополь, Севастополь, Ялта, Керчь, Евпатория</span>
       <span>Пн-Вс: 08:00 – 20:00</span>
@@ -164,6 +168,7 @@ ${neighbor_links}
         <div class="footer-col">
           <h4>КЭП<span style="color: var(--c-primary);">СТРОЙ</span></h4>
           <p style="color: #94a3b8;">Земляные работы, септики, канализация и водоснабжение под ключ в Крыму.</p>
+          <a href="tel:${phone}" style="color: #94a3b8; display: block; margin-top: 0.75rem; font-weight: 600; text-decoration: none;">${phone_formatted}</a>
         </div>
         <div class="footer-col">
           <h4>Услуги</h4>
