@@ -236,6 +236,56 @@ test('filled nested honeypot on contact form sends no POST', async () => {
   assert.equal(harness.fetchCalls, 0);
 });
 
+test('double submit on contact form while attribution is pending sends one POST', async () => {
+  let releaseTracking;
+  const trackingPending = new Promise(resolve => {
+    releaseTracking = resolve;
+  });
+  const harness = createHarness({
+    appendTracking: () => trackingPending,
+    formId: 'contact-form',
+  });
+
+  const firstSubmit = harness.form.submit();
+  const secondSubmit = harness.form.submit();
+  assert.equal(harness.form.dataset.submitting, 'true');
+  assert.equal(harness.button.disabled, true);
+  releaseTracking();
+  await Promise.all([firstSubmit, secondSubmit]);
+
+  assert.equal(harness.fetchCalls, 1);
+});
+
+test('contact form restores retry after attribution failure', async () => {
+  let appendAttempts = 0;
+  const harness = createHarness({
+    appendTracking: async () => {
+      appendAttempts += 1;
+      if (appendAttempts === 1) throw new Error('tracking unavailable');
+    },
+    formId: 'contact-form',
+  });
+
+  await harness.form.submit();
+  assert.equal(harness.fetchCalls, 0);
+  assertFormRestored(harness);
+  assert.equal(harness.alerts.length, 1);
+
+  await harness.form.submit();
+  assert.equal(harness.fetchCalls, 1);
+  assert.equal(appendAttempts, 2);
+});
+
+test('contact form success message makes no unsupported callback-time promise', async () => {
+  const harness = createHarness({ formId: 'contact-form' });
+
+  await harness.form.submit();
+
+  assert.equal(harness.fetchCalls, 1);
+  assert.match(harness.form.innerHTML, /Мы свяжемся с вами/);
+  assert.doesNotMatch(harness.form.innerHTML, /15 минут/);
+});
+
 test('successful delivery records one goal and redirects', async () => {
   const harness = createHarness();
 

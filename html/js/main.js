@@ -285,21 +285,25 @@ if (contactForm) {
   contactForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    if (contactForm.dataset.submitting === 'true') return;
+
     // Honeypot check
     if (hasFilledHoneypot(contactForm)) {
       return;
     }
 
-    const formData = new URLSearchParams(new FormData(contactForm));
-    formData.append('page', window.location.href);
-    await appendTrackingData(formData);
     const submitBtn = contactForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
+    const originalHtml = submitBtn.innerHTML;
 
+    contactForm.dataset.submitting = 'true';
     submitBtn.disabled = true;
     submitBtn.textContent = 'Отправка...';
 
     try {
+      const formData = new URLSearchParams(new FormData(contactForm));
+      formData.append('page', window.location.href);
+      await appendTrackingData(formData);
+
       const response = await fetch('/submit', {
         method: 'POST',
         body: formData
@@ -314,15 +318,16 @@ if (contactForm) {
           <div style="text-align: center; padding: 2rem;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">✓</div>
             <h3 style="margin-bottom: 0.5rem;">Заявка отправлена!</h3>
-            <p style="color: var(--color-text-light);">Мы перезвоним вам в течение 15 минут.</p>
+            <p style="color: var(--color-text-light);">Мы свяжемся с вами по указанному номеру.</p>
           </div>
         `;
       } else {
         throw new Error('Submit failed');
       }
     } catch (error) {
+      delete contactForm.dataset.submitting;
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.innerHTML = originalHtml;
       alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую.');
     }
   });
