@@ -236,6 +236,7 @@ async function main() {
     widths: widths.length,
     pageWidthRuns: 0,
     externalRequestsIntercepted: 0,
+    sameSiteAliasRequests: 0,
     blockedPosts: 0,
     blockedWebSockets: 0,
     consentChecks: 0,

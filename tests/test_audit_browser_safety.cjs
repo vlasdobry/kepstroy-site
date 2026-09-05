@@ -9,6 +9,7 @@ const test = require('node:test');
 const {
   containedExistingFile,
   createAuditedContext,
+  isProductionSiteUrl,
   offlineContextOptions,
   resolveSiteFile,
 } = require('../scripts/audit-browser-safety.cjs');
@@ -65,17 +66,22 @@ test('resolveSiteFile confines the images fallback to the dedicated images root'
   fs.mkdirSync(htmlRoot);
   fs.mkdirSync(path.join(htmlRoot, 'images'));
   fs.mkdirSync(imagesRoot);
+  fs.mkdirSync(path.join(imagesRoot, 'portfolio'));
   fs.writeFileSync(path.join(htmlRoot, 'index.html'), 'home');
   fs.writeFileSync(path.join(htmlRoot, 'images', 'logo.png'), 'site image');
-  fs.writeFileSync(path.join(imagesRoot, 'photo.webp'), 'image');
+  fs.writeFileSync(path.join(imagesRoot, 'photo.webp'), 'non-published image');
+  fs.writeFileSync(path.join(imagesRoot, 'portfolio', 'photo.webp'), 'portfolio image');
   fs.writeFileSync(outside, 'outside');
 
   assert.equal(resolveSiteFile(htmlRoot, imagesRoot, 'index.html'), fs.realpathSync(path.join(htmlRoot, 'index.html')));
   assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'logo.png')), fs.realpathSync(path.join(htmlRoot, 'images', 'logo.png')));
-  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'photo.webp')), fs.realpathSync(path.join(imagesRoot, 'photo.webp')));
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'photo.webp')), null);
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'portfolio', 'photo.webp')), fs.realpathSync(path.join(imagesRoot, 'portfolio', 'photo.webp')));
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, 'images/portfolio/../photo.webp'), null);
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, decodeURIComponent('images/portfolio/%2e%2e/photo.webp')), null);
   assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', '..', 'repo-secret.txt')), null);
 
-  const imageCandidate = path.join(imagesRoot, 'photo.webp');
+  const imageCandidate = path.join(imagesRoot, 'portfolio', 'photo.webp');
   const redirectedFs = {
     existsSync: fs.existsSync,
     statSync: fs.statSync,
@@ -85,15 +91,29 @@ test('resolveSiteFile confines the images fallback to the dedicated images root'
         : fs.realpathSync(value);
     },
   };
-  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'photo.webp'), redirectedFs), null);
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'portfolio', 'photo.webp'), redirectedFs), null);
 
   try {
-    fs.symlinkSync(parent, path.join(imagesRoot, 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
+    fs.symlinkSync(parent, path.join(imagesRoot, 'portfolio', 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
   } catch (error) {
     t.diagnostic(`real directory link unavailable: ${error.code || error.message}`);
     return;
   }
-  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'escape', 'repo-secret.txt')), null);
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'portfolio', 'escape', 'repo-secret.txt')), null);
+});
+
+test('production site aliases normalize hostname case and default ports', () => {
+  assert.equal(typeof isProductionSiteUrl, 'function');
+  for (const url of [
+    'https://kepstroy.ru/path',
+    'https://KEPSTROY.RU:443/path',
+    'https://www.kepstroy.ru/path',
+    'http://WWW.KEPSTROY.RU:80/path',
+  ]) {
+    assert.equal(isProductionSiteUrl(url), true, url);
+  }
+  assert.equal(isProductionSiteUrl('https://www.kepstroy.ru:444/path'), false);
+  assert.equal(isProductionSiteUrl('https://example.test/path'), false);
 });
 
 test('offline context blocks service workers and sends non-loopback egress to a dead proxy', () => {
@@ -111,6 +131,15 @@ test('createAuditedContext installs HTTP, WebSocket, and popup guards before pag
   const calls = [];
   const pageHandlers = new Map();
   const context = {
+    request: {
+      async fetch(url, options) {
+        calls.push(['aliasFetch', url, options]);
+        return {
+          aliasResponse: true,
+          status() { return url.includes('/missing') ? 404 : 200; },
+        };
+      },
+    },
     async route(pattern, handler) { calls.push(['route', pattern]); this.httpHandler = handler; },
     async routeWebSocket(pattern, handler) { calls.push(['websocket', pattern]); this.wsHandler = handler; },
     on(event, handler) { calls.push(['on', event]); this.pageHandler = handler; },
@@ -127,7 +156,12 @@ test('createAuditedContext installs HTTP, WebSocket, and popup guards before pag
   const browser = {
     async newContext(options) { calls.push(['newContext', options]); return context; },
   };
-  const counters = { externalRequestsIntercepted: 0, blockedPosts: 0, blockedWebSockets: 0 };
+  const counters = {
+    externalRequestsIntercepted: 0,
+    sameSiteAliasRequests: 0,
+    blockedPosts: 0,
+    blockedWebSockets: 0,
+  };
   const errors = [];
   const audited = await createAuditedContext(
     browser,
@@ -166,11 +200,28 @@ test('createAuditedContext installs HTTP, WebSocket, and popup guards before pag
     ['fulfill', { status: 204, contentType: 'text/plain', body: '' }],
   ]);
   assert.equal(counters.externalRequestsIntercepted, 1);
-  assert.deepEqual(await invokeHttp('http://127.0.0.1:4321/app.js', 'GET'), [['continue']]);
-  assert.deepEqual(await invokeHttp('http://127.0.0.1:4321/submit', 'POST'), [
+  assert.deepEqual(await invokeHttp('https://outside.example/submit', 'POST'), [
     ['fulfill', { status: 405, contentType: 'application/json', body: '{}' }],
   ]);
   assert.equal(counters.blockedPosts, 1);
+  assert.match(errors.at(-1), /unexpected POST \/submit/);
+  assert.deepEqual(await invokeHttp('http://127.0.0.1:4321/app.js', 'GET'), [['continue']]);
+  const aliasActions = await invokeHttp('https://WWW.KEPSTROY.RU:443/app.js?x=1', 'GET');
+  assert.equal(aliasActions[0][0], 'fulfill');
+  assert.equal(aliasActions[0][1].response.aliasResponse, true);
+  assert.deepEqual(calls.at(-1), [
+    'aliasFetch',
+    'http://127.0.0.1:4321/app.js?x=1',
+    { method: 'GET' },
+  ]);
+  assert.equal(counters.sameSiteAliasRequests, 1);
+  await invokeHttp('https://www.kepstroy.ru/missing', 'GET');
+  assert.match(errors.at(-1), /same-site alias response 404.*\/missing/);
+  assert.equal(counters.sameSiteAliasRequests, 2);
+  assert.deepEqual(await invokeHttp('http://127.0.0.1:4321/submit', 'POST'), [
+    ['fulfill', { status: 405, contentType: 'application/json', body: '{}' }],
+  ]);
+  assert.equal(counters.blockedPosts, 2);
   assert.match(errors.at(-1), /unexpected POST \/submit/);
 
   let closed;

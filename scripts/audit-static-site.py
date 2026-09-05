@@ -20,6 +20,21 @@ HTML_ROOT = REPO_ROOT / "html"
 SITE_ORIGIN = "https://kepstroy.ru"
 YANDEX_VERIFICATION = "yandex_42d19edda2426210.html"
 NON_RESOURCE_ENDPOINTS = {"/submit", "/webhook"}
+SITE_HOSTS = {"kepstroy.ru", "www.kepstroy.ru"}
+SOCIAL_IMAGE_META = {"og:image", "og:image:url", "twitter:image", "twitter:image:src"}
+
+
+def structured_urls(value: object):
+    if isinstance(value, str):
+        parsed = urlparse(value)
+        if value.startswith("/") or parsed.scheme.lower() in {"http", "https"}:
+            yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from structured_urls(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from structured_urls(child)
 
 
 class Document(HTMLParser):
@@ -43,6 +58,9 @@ class Document(HTMLParser):
             self.canonicals.append(values.get("href", ""))
         if tag == "meta" and values.get("name", "").lower() == "robots":
             self.robots.append(values.get("content", ""))
+        meta_kind = (values.get("property") or values.get("name") or "").lower()
+        if tag == "meta" and meta_kind in SOCIAL_IMAGE_META and values.get("content"):
+            self.references.append((tag, "content", values["content"]))
         if tag == "img":
             self.images += 1
 
@@ -78,18 +96,21 @@ def page_url(path: Path) -> str:
 
 
 def target_for_path(url_path: str) -> Path:
-    clean = unquote(url_path).lstrip("/")
+    decoded_path = unquote(url_path)
+    clean = decoded_path.lstrip("/")
     target = (HTML_ROOT / clean).resolve()
     if url_path.endswith("/") or target.is_dir():
         target = target / "index.html"
-    if not target.exists() and url_path.startswith("/images/"):
-        target = (REPO_ROOT / clean).resolve()
+    portfolio_prefix = "/images/portfolio/"
+    if not target.exists() and decoded_path.startswith(portfolio_prefix):
+        portfolio_tail = decoded_path[len(portfolio_prefix):]
+        target = (REPO_ROOT / "images" / "portfolio" / portfolio_tail).resolve()
     return target
 
 
 def is_same_site(url: str) -> bool:
     parsed = urlparse(url)
-    if (parsed.hostname or "").lower() != "kepstroy.ru":
+    if (parsed.hostname or "").lower() not in SITE_HOSTS:
         return False
     if parsed.scheme.lower() not in {"http", "https"}:
         return False
@@ -127,9 +148,14 @@ def main() -> int:
             errors.append(f"{url}: duplicate ids: {', '.join(duplicates)}")
         for index, payload in enumerate(doc.json_ld, 1):
             try:
-                json.loads(payload)
+                parsed_payload = json.loads(payload)
             except json.JSONDecodeError as exc:
                 errors.append(f"{url}: invalid JSON-LD #{index}: {exc}")
+            else:
+                doc.references.extend(
+                    ("script", "json-ld", value)
+                    for value in structured_urls(parsed_payload)
+                )
 
     counters = {
         "html_pages": len(pages),
@@ -142,6 +168,8 @@ def main() -> int:
         "fragment_references": 0,
         "images": 0,
         "json_ld_blocks": 0,
+        "json_ld_references": 0,
+        "social_image_references": 0,
         "canonicals": 0,
         "sitemap_urls": 0,
         "robots_user_agents": 0,
@@ -170,6 +198,10 @@ def main() -> int:
 
         for tag, attribute, raw in doc.references:
             counters["references"] += 1
+            if tag == "script" and attribute == "json-ld":
+                counters["json_ld_references"] += 1
+            elif tag == "meta" and attribute == "content":
+                counters["social_image_references"] += 1
             parsed_raw = urlparse(raw)
             if parsed_raw.scheme in {"mailto", "tel", "data", "javascript"}:
                 counters["external_references"] += 1
@@ -185,15 +217,23 @@ def main() -> int:
 
             counters["internal_references"] += 1
             target = target_for_path(absolute.path)
-            allowed_roots = (HTML_ROOT.resolve(), (REPO_ROOT / "images").resolve())
+            allowed_roots = (
+                HTML_ROOT.resolve(),
+                (REPO_ROOT / "images" / "portfolio").resolve(),
+            )
+            reference_label = (
+                f"{tag} {attribute}"
+                if attribute in {"content", "json-ld"}
+                else attribute
+            )
             if not any(target == root or root in target.parents for root in allowed_roots):
-                errors.append(f"{url}: {attribute} escapes site roots: {raw!r}")
+                errors.append(f"{url}: {reference_label} escapes site roots: {raw!r}")
                 continue
             if not target.exists():
-                errors.append(f"{url}: missing {attribute} target {raw!r}")
+                errors.append(f"{url}: missing {reference_label} target {raw!r}")
                 continue
 
-            if absolute.fragment:
+            if absolute.fragment and attribute != "json-ld":
                 counters["fragment_references"] += 1
                 target_url = page_url(target) if target.suffix.lower() == ".html" else ""
                 target_doc = documents.get(target_url)

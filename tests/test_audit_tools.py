@@ -25,7 +25,7 @@ class StaticAuditSafetyTests(unittest.TestCase):
         AUDIT.REPO_ROOT = self.original_repo_root
         AUDIT.HTML_ROOT = self.original_html_root
 
-    def run_fixture(self, markup):
+    def run_fixture(self, markup, repo_files=None):
         base = ROOT / "tests" / "audit-tools.tmp"
         base.mkdir(exist_ok=True)
         root = base / uuid.uuid4().hex
@@ -54,6 +54,10 @@ class StaticAuditSafetyTests(unittest.TestCase):
             "User-agent: *\nAllow: /\nSitemap: https://kepstroy.ru/sitemap.xml\n",
             encoding="utf-8",
         )
+        for relative, content in (repo_files or {}).items():
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
         AUDIT.REPO_ROOT = root
         AUDIT.HTML_ROOT = html
         stdout = io.StringIO()
@@ -66,8 +70,11 @@ class StaticAuditSafetyTests(unittest.TestCase):
         for url in (
             "https://KEPSTROY.RU/missing",
             "https://kepstroy.ru:443/missing",
+            "https://WWW.KEPSTROY.RU/missing",
+            "https://www.kepstroy.ru:443/missing",
             "http://kepstroy.ru/missing",
             "http://KEPSTROY.RU:80/missing",
+            "http://www.kepstroy.ru:80/missing",
         ):
             with self.subTest(url=url):
                 self.assertTrue(AUDIT.is_same_site(url))
@@ -79,6 +86,8 @@ class StaticAuditSafetyTests(unittest.TestCase):
         for url in (
             "https://KEPSTROY.RU/missing",
             "https://kepstroy.ru:443/missing",
+            "https://WWW.KEPSTROY.RU/missing",
+            "https://www.kepstroy.ru:443/missing",
         ):
             with self.subTest(url=url):
                 result, _, stderr = self.run_fixture(f'<a href="{url}">missing</a>')
@@ -101,6 +110,81 @@ class StaticAuditSafetyTests(unittest.TestCase):
         link_result, _, link_stderr = self.run_fixture('<a href="/submit">bad link</a>')
         self.assertEqual(1, link_result)
         self.assertIn("missing href target '/submit'", link_stderr)
+
+    def test_social_and_json_ld_local_urls_are_crawled_without_external_false_positives(self):
+        external_markup = (
+            '<meta property="og:image" content="https://cdn.example.test/og.jpg">'
+            '<meta name="twitter:image" content="data:image/png;base64,AAAA">'
+            '<script type="application/ld+json">'
+            '{"@context":"https://schema.org","image":"https://cdn.example.test/schema.jpg"}'
+            '</script>'
+        )
+        external_result, _, external_stderr = self.run_fixture(external_markup)
+        self.assertEqual(0, external_result, external_stderr)
+
+        for markup, expected in (
+            (
+                '<meta property="og:image" content="https://WWW.KEPSTROY.RU/missing-og.jpg">',
+                "missing meta content target",
+            ),
+            (
+                '<meta name="twitter:image" content="/missing-twitter.jpg">',
+                "missing meta content target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org","image":"https://kepstroy.ru/missing-schema.jpg"}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+        ):
+            with self.subTest(expected=expected):
+                result, _, stderr = self.run_fixture(markup)
+                self.assertEqual(1, result)
+                self.assertIn(expected, stderr)
+
+    def test_only_portfolio_uses_the_repository_images_fallback(self):
+        non_portfolio_result, _, non_portfolio_stderr = self.run_fixture(
+            '<img src="/images/photo.webp">',
+            {"images/photo.webp": b"not published by Dockerfile"},
+        )
+        self.assertEqual(1, non_portfolio_result)
+        self.assertIn("missing src target", non_portfolio_stderr)
+
+        traversal_result, _, traversal_stderr = self.run_fixture(
+            '<img src="/images/portfolio/%2e%2e/photo.webp">',
+            {"images/photo.webp": b"outside Docker portfolio COPY"},
+        )
+        self.assertEqual(1, traversal_result)
+        self.assertIn("escapes site roots", traversal_stderr)
+
+        portfolio_result, _, portfolio_stderr = self.run_fixture(
+            '<img src="/images/portfolio/photo.webp">',
+            {"images/portfolio/photo.webp": b"published portfolio"},
+        )
+        self.assertEqual(0, portfolio_result, portfolio_stderr)
+
+
+class AuditReportReproductionTests(unittest.TestCase):
+    def test_native_reproduction_commands_use_the_fail_fast_wrapper(self):
+        report = (ROOT / "docs" / "reports" / "kepstroy.ru" / "site-audit-fixes-2026-09-04.md").read_text(encoding="utf-8")
+        powershell = report.split("```powershell", 1)[1].split("```", 1)[0]
+        self.assertIn("function Invoke-Checked", powershell)
+        for command in (
+            "python -m unittest discover",
+            "npm ci",
+            "npm audit --omit=dev",
+            "node --test --test-isolation=none tests/test_audit_browser_safety.cjs",
+            "python scripts/validate.py",
+            "python scripts/audit-static-site.py",
+            "node scripts/audit-full-site-browser.cjs",
+            "git diff --check main...HEAD",
+            "git status --short",
+        ):
+            with self.subTest(command=command):
+                matching_lines = [line.strip() for line in powershell.splitlines() if command in line]
+                self.assertTrue(matching_lines, command)
+                self.assertTrue(all(line.startswith("Invoke-Checked") for line in matching_lines), matching_lines)
 
 
 if __name__ == "__main__":

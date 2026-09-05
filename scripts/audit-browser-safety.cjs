@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const PRODUCTION_HOSTS = new Set(['kepstroy.ru', 'www.kepstroy.ru']);
 
 function isWithin(root, target) {
   const relative = path.relative(root, target);
@@ -35,10 +36,24 @@ function resolveSiteFile(htmlRoot, imagesRoot, requestPath, fsApi = fs) {
   const htmlFile = containedExistingFile(htmlRoot, relative, fsApi);
   if (htmlFile) return htmlFile;
   const imagesPrefix = `images${path.sep}`;
-  if (relative.startsWith(imagesPrefix)) {
-    return containedExistingFile(imagesRoot, relative.slice(imagesPrefix.length), fsApi);
+  const portfolioPrefix = `${imagesPrefix}portfolio${path.sep}`;
+  if (relative.startsWith(portfolioPrefix)) {
+    const portfolioRoot = path.join(imagesRoot, 'portfolio');
+    return containedExistingFile(portfolioRoot, relative.slice(portfolioPrefix.length), fsApi);
   }
   return null;
+}
+
+function isProductionSiteUrl(value) {
+  try {
+    const target = new URL(value);
+    if (!PRODUCTION_HOSTS.has(target.hostname.toLowerCase())) return false;
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') return false;
+    const defaultPort = target.protocol === 'https:' ? '443' : '80';
+    return target.port === '' || target.port === defaultPort;
+  } catch {
+    return false;
+  }
 }
 
 function offlineContextOptions(viewport) {
@@ -78,14 +93,24 @@ async function createAuditedContext(browser, origin, counters, errors, viewport)
   await context.route('**/*', async (route) => {
     const request = route.request();
     const target = new URL(request.url());
+    if (request.method() === 'POST') {
+      counters.blockedPosts += 1;
+      errors.push(`network-guard: unexpected POST ${target.pathname} (${target.origin})`);
+      await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
+      return;
+    }
     if (target.origin === origin) {
-      if (request.method() === 'POST') {
-        counters.blockedPosts += 1;
-        errors.push(`network-guard: unexpected POST ${target.pathname}`);
-        await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
-      } else {
-        await route.continue();
+      await route.continue();
+      return;
+    }
+    if (isProductionSiteUrl(target.href)) {
+      counters.sameSiteAliasRequests += 1;
+      const localUrl = new URL(`${target.pathname}${target.search}`, origin).href;
+      const response = await context.request.fetch(localUrl, { method: request.method() });
+      if (response.status() >= 400) {
+        errors.push(`network-guard: same-site alias response ${response.status()} ${target.pathname}`);
       }
+      await route.fulfill({ response });
       return;
     }
     if (target.protocol === 'http:' || target.protocol === 'https:') {
@@ -120,6 +145,7 @@ async function createAuditedContext(browser, origin, counters, errors, viewport)
 module.exports = {
   containedExistingFile,
   createAuditedContext,
+  isProductionSiteUrl,
   offlineContextOptions,
   resolveSiteFile,
 };
