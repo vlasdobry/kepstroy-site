@@ -10,6 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 HTML_ROOT = REPO_ROOT / "html"
 ANALYTICS_SCRIPT = HTML_ROOT / "js" / "analytics-consent.js"
 MAIN_SCRIPT = HTML_ROOT / "js" / "main.js"
+TRACKING_SCRIPT = HTML_ROOT / "js" / "tracking.js"
 POLICY_PAGE = HTML_ROOT / "politika-konfidencialnosti" / "index.html"
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "deploy.yml"
 PACKAGE_JSON = REPO_ROOT / "package.json"
@@ -58,14 +59,13 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
                 self.assertNotRegex(source, r"\bym\s*\(\s*109754800\s*,\s*['\"]init['\"]")
                 self.assertEqual(
                     1,
-                    len(
-                        re.findall(
-                            r'<script\b[^>]*\bsrc=["\']/js/analytics-consent\.js\?v=1["\'][^>]*></script>',
-                            source,
-                            re.IGNORECASE,
-                        )
-                    ),
+                    len(consent_tags := re.findall(
+                        r'<script\b[^>]*\bsrc=["\']/js/analytics-consent\.js\?v=1["\'][^>]*></script>',
+                        source,
+                        re.IGNORECASE,
+                    )),
                 )
+                self.assertRegex(consent_tags[0], r"\sdefer(?:\s|>)")
                 self.assertNotRegex(source, r'\bid=["\']cookieBanner["\']')
 
     def test_shared_loader_runs_before_scripts_that_can_emit_goals(self):
@@ -86,6 +86,23 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
         self.assertNotIn("cookiesAccepted", source)
         self.assertNotIn("cookieBanner", source)
         self.assertNotIn("Cookie Consent Banner", source)
+
+    def test_goal_clients_never_access_the_global_ym_function_directly(self):
+        main = MAIN_SCRIPT.read_text(encoding="utf-8")
+        tracking = TRACKING_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertNotRegex(main, r"\bym\s*\(")
+        self.assertNotIn("typeof ym", main)
+        self.assertNotIn("root.ym", tracking)
+        self.assertIn("KepstroyAnalytics.trackGoal", main)
+        self.assertIn("analytics.trackGoal(goal)", tracking)
+        self.assertIn("analytics.getClientID()", tracking)
+
+    def test_old_banner_storage_key_is_intentionally_not_migrated(self):
+        source = ANALYTICS_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertNotRegex(source, r"(?:getItem|setItem)\(['\"]cookiesAccepted['\"]")
+        self.assertIn("Do not migrate the legacy", source)
 
     def test_policy_describes_deferred_analytics_and_the_consent_storage_key(self):
         policy = POLICY_PAGE.read_text(encoding="utf-8")

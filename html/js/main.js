@@ -261,7 +261,9 @@ function trackGoal(goal) {
       window.KepstroyTracking.trackGoal(goal);
       return;
     }
-    if (typeof ym !== 'undefined') ym(109754800, 'reachGoal', goal);
+    if (window.KepstroyAnalytics) {
+      window.KepstroyAnalytics.trackGoal(goal);
+    }
   } catch {
     // Analytics must never change the result of a user action.
   }

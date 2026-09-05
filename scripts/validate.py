@@ -169,7 +169,7 @@ def check_required_seo(errors):
 
 
 def check_metrica_consent(errors):
-    loader = '<script src="/js/analytics-consent.js?v=1"></script>'
+    loader = '<script src="/js/analytics-consent.js?v=1" defer></script>'
     for path, rel in iter_html():
         text = path.read_text(encoding="utf-8")
         if text.count(loader) != 1:

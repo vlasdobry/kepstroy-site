@@ -83,30 +83,18 @@
     }
   };
 
-  const getYandexClientId = () => new Promise((resolve) => {
-    if (typeof root.ym !== 'function') {
-      resolve(null);
-      return;
+  const getYandexClientId = () => {
+    const analytics = root.KepstroyAnalytics;
+    if (!analytics || typeof analytics.getClientID !== 'function') {
+      return Promise.resolve(null);
     }
-
-    let settled = false;
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      resolve(value || null);
-    };
-
-    try {
-      root.ym(109754800, 'getClientID', finish);
-    } catch {
-      finish(null);
-    }
-    root.setTimeout(() => finish(null), 700);
-  });
+    return analytics.getClientID();
+  };
 
   const trackGoal = (goal) => {
-    if (typeof root.ym === 'function') {
-      root.ym(109754800, 'reachGoal', goal);
+    const analytics = root.KepstroyAnalytics;
+    if (analytics && typeof analytics.trackGoal === 'function') {
+      analytics.trackGoal(goal);
     }
   };
 

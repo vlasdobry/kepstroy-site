@@ -7,8 +7,12 @@
   const STORAGE_KEY = 'kepstroy_analytics_consent';
   const TAG_URL = `https://mc.yandex.ru/metrika/tag.js?id=${COUNTER_ID}`;
   const document = root.document;
+  // Do not migrate the legacy `cookiesAccepted` key: it is outside this
+  // explicit analytics-consent contract, so it cannot enable the counter.
   let consentGranted = readConsent();
-  let metrikaStarted = false;
+  let loaderState = 'idle';
+  let ownedTag = null;
+  let ownedYmQueue = null;
 
   function readConsent() {
     try {
@@ -30,37 +34,133 @@
   }
 
   function installYmQueue() {
-    if (typeof root.ym === 'function') return;
+    if (typeof root.ym === 'function') return root.ym;
 
     const ym = function queueYandexMetrikaCall() {
       (ym.a = ym.a || []).push(arguments);
     };
     ym.l = Number(new Date());
+    ym.kepstroyConsentQueue = true;
+    ownedYmQueue = ym;
     root.ym = ym;
+    return ym;
   }
 
-  function loadMetrika() {
-    if (!consentGranted) return false;
-    if (metrikaStarted) return true;
-
-    metrikaStarted = true;
-    installYmQueue();
-
-    let tag = document.querySelector('script[data-kepstroy-metrika]');
-    if (!tag) {
-      tag = document.createElement('script');
-      tag.async = true;
-      tag.src = TAG_URL;
-      tag.setAttribute('data-kepstroy-metrika', '109754800');
-      document.head.appendChild(tag);
+  function normalizedTagUrl(value) {
+    try {
+      const url = new URL(value, document.baseURI || root.location?.href);
+      url.hash = '';
+      return url.href;
+    } catch {
+      return '';
     }
+  }
 
+  function findExistingTag() {
+    const expected = normalizedTagUrl(TAG_URL);
+    return Array.from(document.querySelectorAll('script[src]')).find((tag) => (
+      normalizedTagUrl(tag.src || tag.getAttribute('src')) === expected
+    )) || null;
+  }
+
+  function resetOwnedQueue() {
+    if (root.ym === ownedYmQueue) {
+      try {
+        delete root.ym;
+      } catch {
+        root.ym = undefined;
+      }
+    }
+    ownedYmQueue = null;
+  }
+
+  function observeOwnedTag(tag) {
+    tag.addEventListener('load', () => {
+      if (tag !== ownedTag) return;
+      loaderState = 'loaded';
+    }, { once: true });
+    tag.addEventListener('error', () => {
+      if (tag !== ownedTag) return;
+      tag.remove();
+      ownedTag = null;
+      resetOwnedQueue();
+      loaderState = 'failed';
+    }, { once: true });
+  }
+
+  function observeExternalTag(tag) {
+    if (tag.kepstroyConsentObserved) return;
+    tag.kepstroyConsentObserved = true;
+    tag.addEventListener('load', () => {
+      loaderState = 'loaded';
+    }, { once: true });
+    tag.addEventListener('error', () => {
+      loaderState = 'failed';
+    }, { once: true });
+  }
+
+  function initCounter() {
     root.ym(COUNTER_ID, 'init', {
       webvisor: true,
       clickmap: true,
       accurateTrackBounce: true,
       trackLinks: true,
     });
+  }
+
+  function loadMetrika() {
+    if (!consentGranted) return false;
+    if (loaderState === 'loading' || loaderState === 'loaded') return true;
+
+    const existingTag = findExistingTag();
+    if (existingTag) {
+      const isOwned = existingTag.getAttribute('data-kepstroy-metrika') === String(COUNTER_ID);
+      if (!isOwned) {
+        const ymIsReady = typeof root.ym === 'function' && !Array.isArray(root.ym.a);
+        loaderState = ymIsReady ? 'loaded' : 'loading';
+        observeExternalTag(existingTag);
+        return true;
+      }
+
+      ownedTag = existingTag;
+      loaderState = 'loading';
+      observeOwnedTag(existingTag);
+      installYmQueue();
+      if (existingTag.getAttribute('data-kepstroy-metrika-init') !== 'true') {
+        existingTag.setAttribute('data-kepstroy-metrika-init', 'true');
+        try {
+          initCounter();
+        } catch {
+          existingTag.remove();
+          ownedTag = null;
+          resetOwnedQueue();
+          loaderState = 'failed';
+          return false;
+        }
+      }
+      return true;
+    }
+
+    installYmQueue();
+    const tag = document.createElement('script');
+    tag.async = true;
+    tag.src = TAG_URL;
+    tag.setAttribute('data-kepstroy-metrika', String(COUNTER_ID));
+    tag.setAttribute('data-kepstroy-metrika-init', 'true');
+    ownedTag = tag;
+    loaderState = 'loading';
+    observeOwnedTag(tag);
+    document.head.appendChild(tag);
+
+    try {
+      initCounter();
+    } catch {
+      tag.remove();
+      ownedTag = null;
+      resetOwnedQueue();
+      loaderState = 'failed';
+      return false;
+    }
     return true;
   }
 
@@ -74,6 +174,31 @@
     } catch {
       return false;
     }
+  }
+
+  function getClientID() {
+    if (!consentGranted) return Promise.resolve(null);
+    if (!loadMetrika() || typeof root.ym !== 'function') return Promise.resolve(null);
+
+    return new Promise((resolve) => {
+      let settled = false;
+      let timer = null;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        if (timer !== null && typeof root.clearTimeout === 'function') {
+          root.clearTimeout(timer);
+        }
+        resolve(value || null);
+      };
+
+      timer = root.setTimeout(() => finish(null), 700);
+      try {
+        root.ym(COUNTER_ID, 'getClientID', finish);
+      } catch {
+        finish(null);
+      }
+    });
   }
 
   function installBannerStyles() {
@@ -180,9 +305,13 @@
   root.KepstroyAnalytics = Object.freeze({
     counterId: COUNTER_ID,
     storageKey: STORAGE_KEY,
+    get state() {
+      return loaderState;
+    },
     hasConsent: function hasConsent() {
       return consentGranted;
     },
+    getClientID,
     load: loadMetrika,
     trackGoal,
   });

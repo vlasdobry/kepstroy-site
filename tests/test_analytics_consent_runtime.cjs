@@ -4,7 +4,9 @@ const { test } = require('node:test');
 const vm = require('node:vm');
 
 const consentScript = readFileSync('html/js/analytics-consent.js', 'utf8');
+const trackingScript = readFileSync('html/js/tracking.js', 'utf8');
 const storageKey = 'kepstroy_analytics_consent';
+const tagUrl = 'https://mc.yandex.ru/metrika/tag.js?id=109754800';
 
 class FakeElement {
   constructor(tagName, ownerDocument) {
@@ -44,6 +46,19 @@ class FakeElement {
     }
   }
 
+  dispatch(type) {
+    for (const listener of this.listeners.get(type) || []) {
+      listener({ type, target: this });
+    }
+  }
+
+  remove() {
+    if (!this.parentNode) return;
+    this.parentNode.children = this.parentNode.children.filter(child => child !== this);
+    this.parentNode = null;
+    this.ownerDocument.unregister(this);
+  }
+
   setAttribute(name, value) {
     this.attributes.set(name, String(value));
     if (name === 'id') this.id = String(value);
@@ -81,6 +96,8 @@ class FakeElement {
 class FakeDocument {
   constructor(readyState = 'loading') {
     this.readyState = readyState;
+    this.baseURI = 'https://kepstroy.ru/';
+    this.referrer = '';
     this.listeners = new Map();
     this.elements = [];
     this.documentElement = new FakeElement('html', this);
@@ -95,6 +112,10 @@ class FakeDocument {
 
   register(element) {
     if (!this.elements.includes(element)) this.elements.push(element);
+  }
+
+  unregister(element) {
+    this.elements = this.elements.filter(candidate => candidate !== element);
   }
 
   addEventListener(type, listener) {
@@ -116,7 +137,16 @@ class FakeDocument {
     return this.findWithin(this.documentElement, selector);
   }
 
-  findWithin(root, selector) {
+  querySelectorAll(selector) {
+    const descendants = this.descendantsOf(this.documentElement);
+    if (selector === 'script[src]') {
+      return descendants.filter(element => element.tagName === 'SCRIPT' && element.src);
+    }
+    if (selector === 'a[href^="tel:"]') return [];
+    return [];
+  }
+
+  descendantsOf(root) {
     const descendants = [];
     const visit = element => {
       for (const child of element.children) {
@@ -125,6 +155,11 @@ class FakeDocument {
       }
     };
     visit(root);
+    return descendants;
+  }
+
+  findWithin(root, selector) {
+    const descendants = this.descendantsOf(root);
 
     if (selector === '.cookie-banner__btn') {
       return descendants.find(element => element.classList.contains('cookie-banner__btn')) || null;
@@ -138,13 +173,26 @@ class FakeDocument {
         && element.getAttribute('data-kepstroy-metrika') !== null
       )) || null;
     }
+    if (selector === 'style[data-kepstroy-consent-styles]') {
+      return descendants.find(element => (
+        element.tagName === 'STYLE'
+        && element.getAttribute('data-kepstroy-consent-styles') !== null
+      )) || null;
+    }
     return null;
   }
 }
 
-function createHarness({ storedConsent = null, storageThrows = false, readyState = 'loading' } = {}) {
+function createHarness({
+  storedConsent = null,
+  storageThrows = false,
+  readyState = 'loading',
+  preexistingYm,
+  preexistingTagSrc,
+} = {}) {
   const document = new FakeDocument(readyState);
   const storageWrites = [];
+  const timeoutDelays = [];
   let storedValue = storedConsent;
   const localStorage = {
     getItem(key) {
@@ -159,17 +207,54 @@ function createHarness({ storedConsent = null, storageThrows = false, readyState
       storageWrites.push([key, value]);
     },
   };
-  const window = { document, localStorage };
+  const sessionStorage = {
+    getItem() { return null; },
+    setItem() {},
+  };
+  const window = {
+    document,
+    innerHeight: 800,
+    localStorage,
+    location: { href: 'https://kepstroy.ru/?utm_source=test' },
+    scrollY: 0,
+    sessionStorage,
+    addEventListener() {},
+    setTimeout(callback, delay) {
+      timeoutDelays.push(delay);
+      if (delay <= 700) return setTimeout(callback, 0);
+      return null;
+    },
+    clearTimeout(timer) {
+      if (timer) clearTimeout(timer);
+    },
+  };
+  if (preexistingYm) window.ym = preexistingYm;
   window.window = window;
 
-  const context = vm.createContext({ console, document, localStorage, window });
+  if (preexistingTagSrc) {
+    const tag = document.createElement('script');
+    tag.src = preexistingTagSrc;
+    document.head.appendChild(tag);
+  }
+
+  const context = vm.createContext({
+    console,
+    document,
+    localStorage,
+    URL,
+    URLSearchParams,
+    window,
+  });
   const runScript = () => vm.runInContext(consentScript, context);
+  const runTrackingScript = () => vm.runInContext(trackingScript, context);
   runScript();
 
   return {
     document,
     runScript,
+    runTrackingScript,
     storageWrites,
+    timeoutDelays,
     window,
     accept() {
       const button = document.querySelector('.cookie-banner__btn');
@@ -185,6 +270,11 @@ function createHarness({ storedConsent = null, storageThrows = false, readyState
         && element.getAttribute('data-kepstroy-metrika') !== null
       ));
     },
+    matchingMetrikaScripts() {
+      return document.querySelectorAll('script[src]').filter(element => (
+        new URL(element.src, document.baseURI).href === tagUrl
+      ));
+    },
     ymCalls(command) {
       const queue = window.ym?.a || [];
       return queue.filter(args => args[1] === command);
@@ -195,6 +285,7 @@ function createHarness({ storedConsent = null, storageThrows = false, readyState
 test('before consent DOM readiness creates a clear banner without analytics activity', () => {
   const harness = createHarness();
 
+  assert.equal(harness.window.KepstroyAnalytics.state, 'idle');
   assert.equal(harness.document.getElementById('cookieBanner'), null);
   assert.equal(harness.metrikaScripts().length, 0);
   assert.equal(harness.window.ym, undefined);
@@ -219,8 +310,12 @@ test('accept stores consent, hides the banner, and initializes Metrika exactly o
   assert.deepEqual(harness.storageWrites, [[storageKey, 'true']]);
   assert.equal(banner.hidden, true);
   assert.equal(harness.metrikaScripts().length, 1);
-  assert.equal(harness.metrikaScripts()[0].src, 'https://mc.yandex.ru/metrika/tag.js?id=109754800');
+  assert.equal(harness.metrikaScripts()[0].src, tagUrl);
   assert.equal(harness.ymCalls('init').length, 1);
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loading');
+
+  harness.metrikaScripts()[0].dispatch('load');
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loaded');
 
   harness.accept();
   harness.runScript();
@@ -236,6 +331,7 @@ test('stored consent initializes once on the next page load without showing the 
   assert.equal(banner.hidden, true);
   assert.equal(harness.metrikaScripts().length, 1);
   assert.equal(harness.ymCalls('init').length, 1);
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loading');
 
   harness.runScript();
   assert.equal(harness.metrikaScripts().length, 1);
@@ -269,4 +365,90 @@ test('trackGoal is harmless before consent and delegates normally after loading'
   assert.equal(reachGoalCall[0], 109754800);
   assert.equal(reachGoalCall[1], 'reachGoal');
   assert.equal(reachGoalCall[2], 'phone_click');
+});
+
+test('failed owned tag resets state and a later explicit load retries once', () => {
+  const harness = createHarness();
+  harness.completeDom();
+  harness.accept();
+
+  const firstTag = harness.metrikaScripts()[0];
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loading');
+  firstTag.dispatch('error');
+  assert.equal(harness.window.KepstroyAnalytics.state, 'failed');
+  assert.equal(harness.metrikaScripts().length, 0);
+  assert.equal(harness.window.ym, undefined);
+
+  assert.equal(harness.window.KepstroyAnalytics.load(), true);
+  const secondTag = harness.metrikaScripts()[0];
+  assert.notEqual(secondTag, firstTag);
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loading');
+  assert.equal(harness.ymCalls('init').length, 1);
+
+  secondTag.dispatch('load');
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loaded');
+  assert.equal(harness.window.KepstroyAnalytics.load(), true);
+  assert.equal(harness.metrikaScripts().length, 1);
+  assert.equal(harness.ymCalls('init').length, 1);
+});
+
+test('existing normalized Yandex tag is reused without a second init', () => {
+  const ymCalls = [];
+  const harness = createHarness({
+    storedConsent: 'true',
+    readyState: 'complete',
+    preexistingTagSrc: 'https://mc.yandex.ru:443/metrika/tag.js?id=109754800',
+    preexistingYm(...args) { ymCalls.push(args); },
+  });
+
+  assert.equal(harness.matchingMetrikaScripts().length, 1);
+  assert.equal(harness.metrikaScripts().length, 0);
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loaded');
+  assert.deepEqual(ymCalls, []);
+});
+
+test('existing standard-loader queue stays loading until its tag reports success', () => {
+  const queuedYm = function queuedYm(...args) {
+    queuedYm.a.push(args);
+  };
+  queuedYm.a = [];
+  const harness = createHarness({
+    storedConsent: 'true',
+    readyState: 'complete',
+    preexistingTagSrc: tagUrl,
+    preexistingYm: queuedYm,
+  });
+
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loading');
+  assert.deepEqual(queuedYm.a, []);
+  harness.matchingMetrikaScripts()[0].dispatch('load');
+  assert.equal(harness.window.KepstroyAnalytics.state, 'loaded');
+  assert.deepEqual(queuedYm.a, []);
+});
+
+test('tracking client cannot call a pre-existing ym before consent and uses the API after consent', async () => {
+  const directYmCalls = [];
+  const harness = createHarness({
+    preexistingYm(...args) {
+      directYmCalls.push(args);
+      if (args[1] === 'getClientID') args[2]('test-client-id');
+    },
+  });
+  harness.completeDom();
+  harness.runTrackingScript();
+
+  harness.window.KepstroyTracking.trackGoal('phone_click');
+  const beforeConsent = new URLSearchParams();
+  await harness.window.KepstroyTracking.appendTo(beforeConsent);
+  assert.deepEqual(directYmCalls, []);
+  assert.equal(beforeConsent.has('client_id'), false);
+
+  harness.accept();
+  harness.window.KepstroyTracking.trackGoal('phone_click');
+  const afterConsent = new URLSearchParams();
+  await harness.window.KepstroyTracking.appendTo(afterConsent);
+
+  assert.equal(afterConsent.get('client_id'), 'test-client-id');
+  assert.deepEqual(directYmCalls.map(args => args[1]), ['init', 'reachGoal', 'getClientID']);
+  assert.ok(harness.timeoutDelays.includes(700));
 });
