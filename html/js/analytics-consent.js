@@ -4,31 +4,30 @@
   if (!root || !root.document || root.KepstroyAnalytics) return;
 
   const COUNTER_ID = 109754800;
-  const STORAGE_KEY = 'kepstroy_analytics_consent';
+  const STORAGE_KEY = 'kepstroy_metrika_notice_acknowledged';
+  const LEGACY_CONSENT_KEY = 'kepstroy_analytics_consent';
   const TAG_URL = `https://mc.yandex.ru/metrika/tag.js?id=${COUNTER_ID}`;
   const document = root.document;
-  // Do not migrate the legacy `cookiesAccepted` key: it is outside this
-  // explicit analytics-consent contract, so it cannot enable the counter.
-  let consentGranted = readConsent();
+  let noticeAcknowledged = readAcknowledgement();
   let loaderState = 'idle';
   let ownedTag = null;
   let ownedYmQueue = null;
 
-  function readConsent() {
+  function readAcknowledgement() {
     try {
-      return root.localStorage.getItem(STORAGE_KEY) === 'true';
+      return root.localStorage.getItem(STORAGE_KEY) === 'true'
+        || root.localStorage.getItem(LEGACY_CONSENT_KEY) === 'true';
     } catch {
       return false;
     }
   }
 
-  function storeConsent() {
+  function storeAcknowledgement() {
+    noticeAcknowledged = true;
     try {
       root.localStorage.setItem(STORAGE_KEY, 'true');
-      consentGranted = true;
       return true;
     } catch {
-      consentGranted = false;
       return false;
     }
   }
@@ -109,7 +108,6 @@
   }
 
   function loadMetrika() {
-    if (!consentGranted) return false;
     if (loaderState === 'loading' || loaderState === 'loaded') return true;
 
     const existingTag = findExistingTag();
@@ -176,7 +174,7 @@
   }
 
   function trackGoal(goal) {
-    if (!consentGranted || !goal) return false;
+    if (!goal) return false;
     if (!loadMetrika() || typeof root.ym !== 'function') return false;
 
     try {
@@ -188,7 +186,6 @@
   }
 
   function getClientID() {
-    if (!consentGranted) return Promise.resolve(null);
     if (!loadMetrika() || typeof root.ym !== 'function') return Promise.resolve(null);
 
     return new Promise((resolve) => {
@@ -213,10 +210,10 @@
   }
 
   function installBannerStyles() {
-    if (document.querySelector('style[data-kepstroy-consent-styles]')) return;
+    if (document.querySelector('style[data-kepstroy-notice-styles]')) return;
 
     const style = document.createElement('style');
-    style.setAttribute('data-kepstroy-consent-styles', '');
+    style.setAttribute('data-kepstroy-notice-styles', '');
     style.textContent = `
       #cookieBanner {
         position: fixed;
@@ -256,7 +253,6 @@
         outline: 3px solid #f59e0b;
         outline-offset: 2px;
       }
-      #cookieBanner [data-consent-status] { color: #991b1b; }
       @media (max-width: 640px) {
         #cookieBanner { align-items: stretch; flex-direction: column; text-align: center; }
         #cookieBanner .cookie-banner__btn { width: 100%; }
@@ -269,39 +265,27 @@
     const banner = document.createElement('section');
     banner.id = 'cookieBanner';
     banner.className = 'cookie-banner';
-    banner.setAttribute('aria-label', 'Настройки аналитических cookies');
+    banner.setAttribute('aria-label', 'Уведомление об аналитике');
 
     const message = document.createElement('p');
-    message.textContent = 'Мы используем аналитические cookies Яндекс.Метрики. Метрика загрузится только после вашего согласия. ';
+    message.textContent = 'Мы используем Яндекс.Метрику для анализа посещаемости и улучшения работы сайта. ';
 
     const policyLink = document.createElement('a');
     policyLink.href = '/politika-konfidencialnosti/';
     policyLink.textContent = 'Подробнее в политике конфиденциальности';
     message.appendChild(policyLink);
 
-    const acceptButton = document.createElement('button');
-    acceptButton.type = 'button';
-    acceptButton.className = 'cookie-banner__btn';
-    acceptButton.textContent = 'Принять аналитические cookies';
+    const acknowledgeButton = document.createElement('button');
+    acknowledgeButton.type = 'button';
+    acknowledgeButton.className = 'cookie-banner__btn';
+    acknowledgeButton.textContent = 'Понятно';
 
-    const status = document.createElement('span');
-    status.setAttribute('data-consent-status', '');
-    status.setAttribute('role', 'status');
-    status.hidden = true;
-
-    banner.append(message, acceptButton, status);
+    banner.append(message, acknowledgeButton);
     document.body.appendChild(banner);
 
-    acceptButton.addEventListener('click', function acceptAnalyticsCookies() {
-      if (!storeConsent()) {
-        status.textContent = 'Не удалось сохранить выбор. Аналитика не загружена; попробуйте ещё раз.';
-        status.hidden = false;
-        return;
-      }
-
-      status.hidden = true;
+    acknowledgeButton.addEventListener('click', function acknowledgeMetrikaNotice() {
+      storeAcknowledgement();
       banner.hidden = true;
-      loadMetrika();
     });
 
     return banner;
@@ -310,7 +294,7 @@
   function setupBanner() {
     installBannerStyles();
     const banner = document.getElementById('cookieBanner') || createBanner();
-    banner.hidden = consentGranted;
+    banner.hidden = noticeAcknowledged;
   }
 
   root.KepstroyAnalytics = Object.freeze({
@@ -319,15 +303,15 @@
     get state() {
       return loaderState;
     },
-    hasConsent: function hasConsent() {
-      return consentGranted;
+    isNoticeAcknowledged: function isNoticeAcknowledged() {
+      return noticeAcknowledged;
     },
     getClientID,
     load: loadMetrika,
     trackGoal,
   });
 
-  if (consentGranted) loadMetrika();
+  loadMetrika();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupBanner, { once: true });
