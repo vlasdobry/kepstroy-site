@@ -22,19 +22,38 @@ YANDEX_VERIFICATION = "yandex_42d19edda2426210.html"
 NON_RESOURCE_ENDPOINTS = {"/submit", "/webhook"}
 SITE_HOSTS = {"kepstroy.ru", "www.kepstroy.ru"}
 SOCIAL_IMAGE_META = {"og:image", "og:image:url", "twitter:image", "twitter:image:src"}
+SCHEMA_URL_KEYS = {
+    "@id",
+    "url",
+    "image",
+    "logo",
+    "contenturl",
+    "thumbnailurl",
+    "embedurl",
+    "sameas",
+}
 
 
 def structured_urls(value: object):
-    if isinstance(value, str):
-        parsed = urlparse(value)
-        if value.startswith("/") or parsed.scheme.lower() in {"http", "https"}:
-            yield value
-    elif isinstance(value, dict):
-        for child in value.values():
-            yield from structured_urls(child)
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key.lower() in SCHEMA_URL_KEYS:
+                yield from structured_url_values(child)
+            else:
+                yield from structured_urls(child)
     elif isinstance(value, list):
         for child in value:
             yield from structured_urls(child)
+
+
+def structured_url_values(value: object):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, list):
+        for child in value:
+            yield from structured_url_values(child)
+    elif isinstance(value, dict):
+        yield from structured_urls(value)
 
 
 class Document(HTMLParser):

@@ -116,7 +116,10 @@ class StaticAuditSafetyTests(unittest.TestCase):
             '<meta property="og:image" content="https://cdn.example.test/og.jpg">'
             '<meta name="twitter:image" content="data:image/png;base64,AAAA">'
             '<script type="application/ld+json">'
-            '{"@context":"https://schema.org","image":"https://cdn.example.test/schema.jpg"}'
+            '{"@context":"images/not-a-reference.json","name":"https://kepstroy.ru/missing-name",'
+            '"description":"images/missing-description.jpg",'
+            '"image":"https://cdn.example.test/schema.jpg",'
+            '"sameAs":["https://social.example.test/company","data:text/plain,ignored"]}'
             '</script>'
         )
         external_result, _, external_stderr = self.run_fixture(external_markup)
@@ -134,6 +137,18 @@ class StaticAuditSafetyTests(unittest.TestCase):
             (
                 '<script type="application/ld+json">'
                 '{"@context":"https://schema.org","image":"https://kepstroy.ru/missing-schema.jpg"}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org","image":"images/missing-direct.jpg"}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org","image":{"url":"images/missing-relative.jpg"}}'
                 '</script>',
                 "missing script json-ld target",
             ),
