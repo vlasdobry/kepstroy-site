@@ -235,6 +235,40 @@ class GeneratorSafetyTests(unittest.TestCase):
                             f"unchanged file was replaced: {relative_path.as_posix()}",
                         )
 
+    def test_invalid_utf8_owned_output_is_drift_and_write_replaces_it(self):
+        for name, config in GENERATORS.items():
+            with self.subTest(generator=name):
+                with temporary_repo() as temp_dir:
+                    output_root = temp_dir / "html"
+                    output_root.mkdir()
+                    paths = config["relative_paths"]
+                    self.make_published_copy(output_root, paths)
+                    drift_relative = paths[0]
+                    drift_path = output_root / drift_relative
+                    drift_path.write_bytes(b"\xff\xfeinvalid utf-8")
+                    before = snapshot(output_root, paths)
+
+                    check = self.run_generator(
+                        config["script"], output_root, "--check"
+                    )
+
+                    self.assertEqual(1, check.returncode, check.stdout + check.stderr)
+                    self.assertIn("drift", (check.stdout + check.stderr).lower())
+                    self.assertIn(
+                        drift_relative.as_posix(), check.stdout + check.stderr
+                    )
+                    self.assertEqual(before, snapshot(output_root, paths))
+
+                    write = self.run_generator(
+                        config["script"], output_root, "--write"
+                    )
+
+                    self.assertEqual(0, write.returncode, write.stdout + write.stderr)
+                    self.assertEqual(
+                        (HTML_ROOT / drift_relative).read_text(encoding="utf-8"),
+                        drift_path.read_text(encoding="utf-8"),
+                    )
+
     def test_check_and_write_report_unexpected_outputs_without_deleting_them(self):
         for name, config in GENERATORS.items():
             with self.subTest(generator=name):

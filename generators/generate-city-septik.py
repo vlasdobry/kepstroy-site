@@ -129,7 +129,15 @@ def compare_outputs(rendered, output_root):
     changed = []
     for relative_path, html in rendered.items():
         path = resolve_output_path(output_root, relative_path)
-        if not path.exists() or path.read_text(encoding="utf-8") != html:
+        if not path.exists():
+            changed.append(relative_path)
+            continue
+        try:
+            current = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            changed.append(relative_path)
+            continue
+        if current != html:
             changed.append(relative_path)
     return changed
 
@@ -147,7 +155,7 @@ def unexpected_outputs(rendered, output_root):
 
 
 def atomic_write(path, html):
-    """Атомарно заменяет один HTML-файл, не оставляя временный файл при ошибке."""
+    """Атомарно заменяет один файл; batch rollback для набора файлов не обещается."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     target_mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
