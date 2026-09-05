@@ -10,7 +10,7 @@ Checks:
 - Static assets referenced from HTML exist
 - sitemap.xml is valid XML and all URLs exist
 - nginx.conf has required root/location configuration
-- Each page has the consent-gated Metrika loader, Person schema, email, canonical,
+- Each page has the shared Metrika loader, Person schema, email, canonical,
   title, and description
 - No page embeds a direct Metrika tag or noscript tracking pixel
 """
@@ -168,16 +168,16 @@ def check_required_seo(errors):
             errors.append(f"{rel}: missing meta description")
 
 
-def check_metrica_consent(errors):
-    loader = '<script src="/js/analytics-consent.js?v=1" defer></script>'
+def check_metrica_loader(errors):
+    loader = '<script src="/js/analytics-consent.js?v=2" defer></script>'
     for path, rel in iter_html():
         text = path.read_text(encoding="utf-8")
         if text.count(loader) != 1:
-            errors.append(f"{rel}: expected one consent-gated Yandex.Metrika loader")
+            errors.append(f"{rel}: expected one shared Yandex.Metrika loader")
         if "mc.yandex.ru/metrika/tag.js" in text:
-            errors.append(f"{rel}: direct Yandex.Metrika tag bypasses consent")
+            errors.append(f"{rel}: direct Yandex.Metrika tag bypasses the shared loader")
         if "mc.yandex.ru/watch/109754800" in text:
-            errors.append(f"{rel}: noscript Yandex.Metrika pixel bypasses consent")
+            errors.append(f"{rel}: noscript Yandex.Metrika pixel bypasses the shared loader")
 
 
 def main():
@@ -188,7 +188,7 @@ def main():
     check_sitemap(errors)
     check_nginx_config(errors)
     check_required_seo(errors)
-    check_metrica_consent(errors)
+    check_metrica_loader(errors)
     check_traffic_readiness(REPO_ROOT, errors)
 
     if errors:

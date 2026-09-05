@@ -14,6 +14,7 @@ TRACKING_SCRIPT = HTML_ROOT / "js" / "tracking.js"
 POLICY_PAGE = HTML_ROOT / "politika-konfidencialnosti" / "index.html"
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "deploy.yml"
 PACKAGE_JSON = REPO_ROOT / "package.json"
+VALIDATOR = REPO_ROOT / "scripts" / "validate.py"
 
 
 def is_verification_page(source):
@@ -42,7 +43,7 @@ def generated_page_templates():
 
 
 class AnalyticsConsentContractsTests(unittest.TestCase):
-    def test_all_public_pages_and_generated_templates_use_only_shared_consent_loader(self):
+    def test_all_public_pages_and_generated_templates_use_only_shared_analytics_loader(self):
         sources = [*public_html_sources(), *generated_page_templates()]
 
         self.assertGreaterEqual(len(public_html_sources()), 55)
@@ -59,26 +60,26 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
                 self.assertNotRegex(source, r"\bym\s*\(\s*109754800\s*,\s*['\"]init['\"]")
                 self.assertEqual(
                     1,
-                    len(consent_tags := re.findall(
-                        r'<script\b[^>]*\bsrc=["\']/js/analytics-consent\.js\?v=1["\'][^>]*></script>',
+                    len(loader_tags := re.findall(
+                        r'<script\b[^>]*\bsrc=["\']/js/analytics-consent\.js\?v=2["\'][^>]*></script>',
                         source,
                         re.IGNORECASE,
                     )),
                 )
-                self.assertRegex(consent_tags[0], r"\sdefer(?:\s|>)")
+                self.assertRegex(loader_tags[0], r"\sdefer(?:\s|>)")
                 self.assertNotRegex(source, r'\bid=["\']cookieBanner["\']')
 
     def test_shared_loader_runs_before_scripts_that_can_emit_goals(self):
         for path, source in [*public_html_sources(), *generated_page_templates()]:
             with self.subTest(path=path.relative_to(REPO_ROOT).as_posix()):
-                consent_position = source.index("/js/analytics-consent.js?v=1")
+                loader_position = source.index("/js/analytics-consent.js?v=2")
                 goal_script_positions = [
                     source.find(marker)
                     for marker in ("/js/tracking.js", "/js/main.js", "js/main.js")
                     if source.find(marker) >= 0
                 ]
                 if goal_script_positions:
-                    self.assertLess(consent_position, min(goal_script_positions))
+                    self.assertLess(loader_position, min(goal_script_positions))
 
     def test_main_script_no_longer_owns_cookie_consent(self):
         source = MAIN_SCRIPT.read_text(encoding="utf-8")
@@ -98,20 +99,23 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
         self.assertIn("analytics.trackGoal(goal)", tracking)
         self.assertIn("analytics.getClientID()", tracking)
 
-    def test_old_banner_storage_key_is_intentionally_not_migrated(self):
+    def test_legacy_consent_only_suppresses_the_notice(self):
         source = ANALYTICS_SCRIPT.read_text(encoding="utf-8")
 
         self.assertNotRegex(source, r"(?:getItem|setItem)\(['\"]cookiesAccepted['\"]")
-        self.assertIn("Do not migrate the legacy", source)
+        self.assertIn("const LEGACY_CONSENT_KEY = 'kepstroy_analytics_consent'", source)
+        self.assertIn("root.localStorage.getItem(LEGACY_CONSENT_KEY)", source)
+        self.assertNotIn("setItem(LEGACY_CONSENT_KEY", source)
 
-    def test_policy_describes_deferred_analytics_and_the_consent_storage_key(self):
+    def test_policy_describes_immediate_analytics_and_the_notice_storage_key(self):
         policy = POLICY_PAGE.read_text(encoding="utf-8")
 
-        self.assertIn("kepstroy_analytics_consent", policy)
+        self.assertIn("kepstroy_metrika_notice_acknowledged", policy)
         self.assertRegex(
             policy,
-            r"Яндекс\.Метрика[^<]{0,200}(?:загружается|подключается)[^<]{0,120}(?:нажат|согласи)",
+            r"Яндекс\.Метрик[аи][^<]{0,200}(?:загружается|подключается)[^<]{0,120}(?:загрузк|открыт)",
         )
+        self.assertNotRegex(policy, r"только после[^<]{0,120}(?:согласи|нажат)")
 
     def test_node20_runtime_test_uses_supported_test_runner_flags_in_ci(self):
         package = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
@@ -127,7 +131,11 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
         )
         self.assertIn("npm run test:analytics-consent", workflow)
 
-    def test_predeploy_validator_accepts_only_the_consent_gated_analytics_contract(self):
+    def test_predeploy_validator_accepts_only_the_shared_immediate_analytics_contract(self):
+        validator = VALIDATOR.read_text(encoding="utf-8")
+        self.assertIn('/js/analytics-consent.js?v=2', validator)
+        self.assertNotIn("consent-gated Yandex.Metrika loader", validator)
+
         result = subprocess.run(
             [sys.executable, str(REPO_ROOT / "scripts" / "validate.py")],
             cwd=REPO_ROOT,
