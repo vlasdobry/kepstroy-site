@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+  <script src="/js/analytics-consent.js?v=1"></script>
   <link rel="icon" type="image/x-icon" href="../images/favicon/favicon.ico?v=2">
   <link rel="icon" type="image/svg+xml" href="../images/favicon/favicon.svg?v=2">
   <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon/favicon-32x32.png?v=2">
@@ -18,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css?v=19">
-  <script>(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");ym(109754800,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});</script>
+
 
   <!-- Schema.org -->
   <script type="application/ld+json">
@@ -147,13 +148,13 @@
         <div>
           <h3 style="color: var(--color-text); font-weight: 700; margin-bottom: 0.5rem;">6. Передача третьим лицам</h3>
           <p>Для обработки заявки контактные данные передаются в рабочую Telegram-группу оператора. Данные также могут обрабатываться поставщиком хостинга в объёме, необходимом для работы сайта.</p>
-          <p style="margin-top: 0.5rem;">Данные о посещении, cookies и поведенческие метрики передаются сервису <strong>Яндекс.Метрика</strong> (ООО «Яндекс», ИНН 7736207543) в целях аналитики посещаемости сайта.</p>
+          <p style="margin-top: 0.5rem;">После согласия пользователя данные о посещении, cookies и поведенческие метрики могут передаваться сервису <strong>Яндекс.Метрика</strong> (ООО «Яндекс», ИНН 7736207543) в целях аналитики посещаемости сайта.</p>
         </div>
         
         <div>
           <h3 style="color: var(--color-text); font-weight: 700; margin-bottom: 0.5rem;">7. Cookies и автоматический сбор данных</h3>
-          <p>Сайт использует файлы cookie для корректной работы и сбора статистики посещаемости через сервис Яндекс.Метрика. Cookie не содержат персональных данных в прямом виде.</p>
-          <p style="margin-top: 0.5rem;">Пользователь вправе отключить использование cookie в настройках браузера. При первом посещении сайта пользователю показывается уведомление об использовании cookie с возможностью принять условия.</p>
+          <p>Скрипт Яндекс.Метрика загружается только после нажатия пользователем кнопки принятия аналитических cookies. До этого сайт не загружает счётчик Яндекс.Метрики и не отправляет ему события.</p>
+          <p style="margin-top: 0.5rem;">Выбор сохраняется в локальном хранилище браузера под ключом <code>kepstroy_analytics_consent</code>. Если сохранить выбор не удалось, аналитика не загружается, а уведомление остаётся доступным. Пользователь также вправе управлять cookie и локальным хранилищем в настройках браузера.</p>
         </div>
         
         <div>
@@ -234,10 +235,7 @@
   </footer>
 
   <script src="../js/main.js?v=20"></script>
-<div class="cookie-banner" id="cookieBanner">
-  <p>Мы используем cookies для аналитики (Яндекс.Метрика). Продолжая использовать сайт, вы соглашаетесь с <a href="/politika-konfidencialnosti/">политикой конфиденциальности</a>.</p>
-  <button class="cookie-banner__btn" type="button">Принять</button>
-</div>
+
   <script src="/js/tracking.js?v=1"></script>
 </body>
 </html>
