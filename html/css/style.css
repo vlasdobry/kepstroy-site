@@ -781,6 +781,17 @@ h1, h2, h3, h4 {
 .footer__title { color: white; font-size: 1.125rem; margin-bottom: 2rem; border-bottom: 2px solid var(--c-primary); padding-bottom: 0.5rem; display: inline-block; }
 .footer__links a { color: #94a3b8; display: block; margin-bottom: 0.75rem; font-weight: 600; }
 .footer__links a:hover { color: white; }
+.footer-services {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.5rem;
+  max-width: 75rem;
+  margin: 2rem auto 0;
+  padding: 0 1.5rem;
+}
+.footer-services a { color: #94a3b8; font-size: 0.875rem; font-weight: 600; }
+.footer-services a:hover { color: white; }
 
 .footer__bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; display: flex; justify-content: space-between; font-size: 0.875rem; color: #64748b; }
 
