@@ -226,11 +226,12 @@ class AuditReportReproductionTests(unittest.TestCase):
         report = (ROOT / "docs" / "reports" / "kepstroy.ru" / "site-audit-fixes-2026-09-04.md").read_text(encoding="utf-8")
         powershell = report.split("```powershell", 1)[1].split("```", 1)[0]
         self.assertIn("function Invoke-Checked", powershell)
+        self.assertNotIn("--test-isolation", powershell)
         for command in (
             "python -m unittest discover",
             "npm ci",
             "npm audit --omit=dev",
-            "node --test --test-isolation=none tests/test_audit_browser_safety.cjs",
+            "node --test tests/test_audit_browser_safety.cjs",
             "python scripts/validate.py",
             "python scripts/audit-static-site.py",
             "node scripts/audit-full-site-browser.cjs",

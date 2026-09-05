@@ -113,13 +113,17 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
             r"Яндекс\.Метрика[^<]{0,200}(?:загружается|подключается)[^<]{0,120}(?:нажат|согласи)",
         )
 
-    def test_node20_runtime_test_is_available_locally_and_in_ci(self):
+    def test_node20_runtime_test_uses_supported_test_runner_flags_in_ci(self):
         package = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
         workflow = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertEqual(
-            "node --test --test-isolation=none tests/test_analytics_consent_runtime.cjs",
+            "node --test tests/test_analytics_consent_runtime.cjs",
             package.get("scripts", {}).get("test:analytics-consent"),
+        )
+        self.assertNotIn(
+            "--test-isolation",
+            package.get("scripts", {}).get("test:analytics-consent", ""),
         )
         self.assertIn("npm run test:analytics-consent", workflow)
 

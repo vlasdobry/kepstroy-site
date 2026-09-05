@@ -5,7 +5,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test:analytics-consent": "node --test --test-isolation=none tests/test_analytics_consent_runtime.cjs"
+    "test:analytics-consent": "node --test tests/test_analytics_consent_runtime.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

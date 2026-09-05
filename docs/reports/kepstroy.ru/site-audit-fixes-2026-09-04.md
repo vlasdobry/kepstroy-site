@@ -89,11 +89,11 @@ Invoke-Checked { python -m unittest discover -s tests -p "test_*.py" -v } 'Pytho
 Invoke-Checked { npm ci } 'Root npm ci'
 Invoke-Checked { npm audit --omit=dev } 'Root production audit'
 Invoke-Checked { npm audit } 'Root full audit'
-Invoke-Checked { node --test --test-isolation=none tests/test_audit_browser_safety.cjs } 'Browser safety tests'
+Invoke-Checked { node --test tests/test_audit_browser_safety.cjs } 'Browser safety tests'
 $env:CI = 'true'
-Invoke-Checked { node --test --test-isolation=none tests/test_form_runtime.cjs } 'Form runtime tests'
-Invoke-Checked { node --test --test-isolation=none tests/test_analytics_consent_runtime.cjs } 'Consent runtime tests'
-Invoke-Checked { node --test --test-isolation=none tests/test_accessibility_runtime.cjs } 'Accessibility runtime tests'
+Invoke-Checked { node --test tests/test_form_runtime.cjs } 'Form runtime tests'
+Invoke-Checked { node --test tests/test_analytics_consent_runtime.cjs } 'Consent runtime tests'
+Invoke-Checked { node --test tests/test_accessibility_runtime.cjs } 'Accessibility runtime tests'
 Push-Location form-handler
 try {
     Invoke-Checked { npm ci } 'Form-handler npm ci'
