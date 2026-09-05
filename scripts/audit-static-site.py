@@ -229,7 +229,7 @@ def main() -> int:
             elif tag == "meta" and attribute == "content":
                 counters["social_image_references"] += 1
             parsed_raw = urlparse(raw)
-            if parsed_raw.scheme in {"mailto", "tel", "data", "javascript"}:
+            if parsed_raw.scheme and parsed_raw.scheme.lower() not in {"http", "https"}:
                 counters["external_references"] += 1
                 continue
 
