@@ -26,7 +26,7 @@ class Document(HTMLParser):
     def __init__(self, source: str) -> None:
         super().__init__(convert_charrefs=True)
         self.ids: list[str] = []
-        self.references: list[tuple[str, str]] = []
+        self.references: list[tuple[str, str, str]] = []
         self.canonicals: list[str] = []
         self.robots: list[str] = []
         self.images = 0
@@ -48,12 +48,12 @@ class Document(HTMLParser):
 
         for attribute in ("href", "src", "action"):
             if values.get(attribute):
-                self.references.append((attribute, values[attribute]))
+                self.references.append((tag, attribute, values[attribute]))
         if values.get("srcset"):
             for candidate in values["srcset"].split(","):
                 url = candidate.strip().split()[0] if candidate.strip() else ""
                 if url:
-                    self.references.append(("srcset", url))
+                    self.references.append((tag, "srcset", url))
 
         if tag == "script" and values.get("type", "").lower() == "application/ld+json":
             self._json_ld_chunks = []
@@ -85,6 +85,28 @@ def target_for_path(url_path: str) -> Path:
     if not target.exists() and url_path.startswith("/images/"):
         target = (REPO_ROOT / clean).resolve()
     return target
+
+
+def is_same_site(url: str) -> bool:
+    parsed = urlparse(url)
+    if (parsed.hostname or "").lower() != "kepstroy.ru":
+        return False
+    if parsed.scheme.lower() not in {"http", "https"}:
+        return False
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    default_port = 443 if parsed.scheme.lower() == "https" else 80
+    return port in {None, default_port}
+
+
+def should_skip_non_resource(tag: str, attribute: str, url_path: str) -> bool:
+    return (
+        tag.lower() == "form"
+        and attribute.lower() == "action"
+        and url_path in NON_RESOURCE_ENDPOINTS
+    )
 
 
 def main() -> int:
@@ -146,7 +168,7 @@ def main() -> int:
                 indexable_canonicals.add(expected)
                 counters["canonicals"] += 1
 
-        for attribute, raw in doc.references:
+        for tag, attribute, raw in doc.references:
             counters["references"] += 1
             parsed_raw = urlparse(raw)
             if parsed_raw.scheme in {"mailto", "tel", "data", "javascript"}:
@@ -154,10 +176,10 @@ def main() -> int:
                 continue
 
             absolute = urlparse(urljoin(SITE_ORIGIN + url, raw))
-            if absolute.netloc and absolute.netloc != "kepstroy.ru":
+            if absolute.scheme in {"http", "https"} and not is_same_site(absolute.geturl()):
                 counters["external_references"] += 1
                 continue
-            if absolute.path in NON_RESOURCE_ENDPOINTS:
+            if should_skip_non_resource(tag, attribute, absolute.path):
                 counters["internal_references"] += 1
                 continue
 

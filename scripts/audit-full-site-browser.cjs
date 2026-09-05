@@ -5,6 +5,10 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { chromium } = require('playwright');
+const {
+  containedExistingFile,
+  createAuditedContext,
+} = require('./audit-browser-safety.cjs');
 
 const repoRoot = path.resolve(__dirname, '..');
 const htmlRoot = path.join(repoRoot, 'html');
@@ -39,11 +43,6 @@ function urlForFile(file) {
   return `/${relative}`;
 }
 
-function safeFile(root, relative) {
-  const target = path.resolve(root, relative);
-  return target === root || target.startsWith(`${root}${path.sep}`) ? target : null;
-}
-
 function createServer() {
   let postAttempts = 0;
   const server = http.createServer((request, response) => {
@@ -58,12 +57,11 @@ function createServer() {
     let relative = decodeURIComponent(requestUrl.pathname).replace(/^\/+/, '');
     relative = relative.split('/').join(path.sep);
     if (!relative || requestUrl.pathname.endsWith('/')) relative = path.join(relative, 'index.html');
-    let file = safeFile(htmlRoot, relative);
-    if (file && fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
-    if ((!file || !fs.existsSync(file)) && relative.startsWith(`images${path.sep}`)) {
-      file = safeFile(repoRoot, relative);
+    let file = containedExistingFile(htmlRoot, relative);
+    if (!file && relative.startsWith(`images${path.sep}`)) {
+      file = containedExistingFile(repoRoot, relative);
     }
-    if (!file || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+    if (!file) {
       response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       response.end('Not found');
       return;
@@ -79,56 +77,32 @@ function createServer() {
   return { server, postAttempts: () => postAttempts };
 }
 
-async function installOfflineRouting(page, origin, counters, errors, label) {
-  page.on('pageerror', (error) => errors.push(`${label}: pageerror: ${error.message}`));
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`${label}: console error: ${message.text()}`);
-  });
-  page.on('requestfailed', (request) => {
-    if (request.url().startsWith(origin)) {
-      errors.push(`${label}: local request failed: ${request.method()} ${request.url()}`);
-    }
-  });
-  page.on('response', (response) => {
-    if (response.url().startsWith(origin) && response.status() >= 400) {
-      errors.push(`${label}: local response ${response.status()}: ${response.url()}`);
-    }
-  });
-  await page.route('**/*', async (route) => {
-    const request = route.request();
-    const target = new URL(request.url());
-    if (target.origin === origin) {
-      if (request.method() === 'POST') {
-        counters.blockedPosts += 1;
-        errors.push(`${label}: unexpected POST ${target.pathname}`);
-        await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
-      } else {
-        await route.continue();
-      }
-      return;
-    }
-    if (target.protocol === 'http:' || target.protocol === 'https:') {
-      counters.externalRequestsIntercepted += 1;
-      await route.fulfill({ status: 204, contentType: 'text/plain', body: '' });
-      return;
-    }
-    await route.continue();
-  });
-}
-
 async function auditAllPages(browser, origin, pages, counters, errors) {
   for (const width of widths) {
-    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const audited = await createAuditedContext(
+      browser,
+      origin,
+      counters,
+      errors,
+      { width, height: 900 },
+    );
     for (const pageUrl of pages) {
       const label = `${pageUrl}@${width}`;
-      const page = await context.newPage();
-      await installOfflineRouting(page, origin, counters, errors, label);
+      const page = await audited.newPage(label);
       try {
         const response = await page.goto(`${origin}${pageUrl}`, { waitUntil: 'load', timeout: 15_000 });
         if (!response || response.status() !== 200) {
           errors.push(`${label}: navigation status ${response ? response.status() : 'none'}`);
         }
-        await page.waitForTimeout(25);
+        await page.evaluate(async () => {
+          const step = Math.max(Math.floor(window.innerHeight * 0.8), 400);
+          for (let position = step; position < document.documentElement.scrollHeight; position += step) {
+            window.scrollTo(0, position);
+            await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+          }
+          window.scrollTo(0, document.documentElement.scrollHeight);
+        });
+        await page.waitForTimeout(150);
         const overflow = await page.evaluate(() => ({
           clientWidth: document.documentElement.clientWidth,
           scrollWidth: document.documentElement.scrollWidth,
@@ -136,6 +110,7 @@ async function auditAllPages(browser, origin, pages, counters, errors) {
         if (overflow.scrollWidth > overflow.clientWidth + 1) {
           errors.push(`${label}: horizontal overflow ${overflow.scrollWidth}>${overflow.clientWidth}`);
         }
+        await page.evaluate(() => window.scrollTo(0, 0));
       } catch (error) {
         errors.push(`${label}: navigation failed: ${error.message}`);
       } finally {
@@ -143,20 +118,23 @@ async function auditAllPages(browser, origin, pages, counters, errors) {
         await page.close();
       }
     }
-    await context.close();
+    await audited.context.close();
   }
 }
 
 async function auditConsent(browser, origin, counters, errors) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  const page = await context.newPage();
+  const audited = await createAuditedContext(
+    browser,
+    origin,
+    counters,
+    errors,
+    { width: 1280, height: 900 },
+  );
   let metrikaRequests = 0;
-  await page.route('**/*', async (route) => {
-    const target = new URL(route.request().url());
-    if (target.hostname === 'mc.yandex.ru') metrikaRequests += 1;
-    if (target.origin === origin) await route.continue();
-    else await route.fulfill({ status: 204, contentType: 'text/plain', body: '' });
+  audited.context.on('request', (request) => {
+    if (new URL(request.url()).hostname === 'mc.yandex.ru') metrikaRequests += 1;
   });
+  const page = await audited.newPage('consent-before-accept');
   await page.goto(`${origin}/`, { waitUntil: 'load' });
   const state = await page.evaluate(() => ({
     consent: localStorage.getItem('kepstroy_analytics_consent'),
@@ -168,17 +146,18 @@ async function auditConsent(browser, origin, counters, errors) {
     errors.push(`consent-before-accept: ${JSON.stringify({ ...state, metrikaRequests })}`);
   }
   counters.consentChecks += 1;
-  await context.close();
+  await audited.context.close();
 }
 
 async function auditJourneys(browser, origin, counters, errors) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  const page = await context.newPage();
-  await page.route('**/*', async (route) => {
-    const target = new URL(route.request().url());
-    if (target.origin === origin) await route.continue();
-    else await route.fulfill({ status: 204, contentType: 'text/plain', body: '' });
-  });
+  const audited = await createAuditedContext(
+    browser,
+    origin,
+    counters,
+    errors,
+    { width: 1280, height: 900 },
+  );
+  const page = await audited.newPage('journey-main-callback');
 
   await page.goto(`${origin}/`, { waitUntil: 'load' });
   await page.evaluate(() => { const banner = document.getElementById('cookieBanner'); if (banner) banner.hidden = true; });
@@ -190,6 +169,7 @@ async function auditJourneys(browser, origin, counters, errors) {
   if (!modalOpen) errors.push('journey-main-callback: modal did not open');
   counters.ctaJourneys += 1;
 
+  audited.setPageLabel(page, 'journey-city-ctas');
   await page.goto(`${origin}/krym/simferopol/septik-pod-kluch/`, { waitUntil: 'load' });
   await page.evaluate(() => { const banner = document.getElementById('cookieBanner'); if (banner) banner.hidden = true; });
   const costCta = page.getByRole('link', { name: 'Рассчитать стоимость' }).first();
@@ -207,6 +187,7 @@ async function auditJourneys(browser, origin, counters, errors) {
   }
   counters.ctaJourneys += 2;
 
+  audited.setPageLabel(page, 'journey-calculator');
   await page.goto(`${origin}/uslugi/septiki/`, { waitUntil: 'load' });
   await page.evaluate(() => { const banner = document.getElementById('cookieBanner'); if (banner) banner.hidden = true; });
   const submissions = [];
@@ -234,7 +215,7 @@ async function auditJourneys(browser, origin, counters, errors) {
   }
   counters.interceptedJourneyPosts += submissions.length;
   counters.formJourneys += 1;
-  await context.close();
+  await audited.context.close();
 }
 
 async function main() {
@@ -258,6 +239,7 @@ async function main() {
     pageWidthRuns: 0,
     externalRequestsIntercepted: 0,
     blockedPosts: 0,
+    blockedWebSockets: 0,
     consentChecks: 0,
     ctaJourneys: 0,
     formJourneys: 0,

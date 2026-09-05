@@ -10,13 +10,14 @@
 
 Проверен активный источник Docker-сборки `html/`, обработчик форм `form-handler/`, оба генератора городских страниц, deploy workflow, Docker Compose и тестовые контракты. Legacy-копии `site/` и `site-ot-ai-google/` не менялись. Production не открывался, деплой не запускался, реальные POST-заявки и внешние сообщения не отправлялись.
 
-Chromium обслуживал сайт из локального HTTP-сервера. Внешние HTTP(S)-запросы перехватывались и завершались локальной пустой заглушкой. Обычный обход блокировал POST; единственная отправка калькулятора была отдельно перехвачена внутри браузера и не достигла локального сервера или production.
+Chromium обслуживал сайт из локального HTTP-сервера. Для каждого BrowserContext до создания страниц устанавливались HTTP- и WebSocket-guards, service workers блокировались, а внешний egress дополнительно направлялся в недоступный loopback proxy с bypass только для `127.0.0.1`. Внешние HTTP(S)-запросы перехватывались и завершались локальной пустой заглушкой. Обычный обход блокировал POST; единственная отправка калькулятора была отдельно перехвачена внутри браузера и не достигла локального сервера или production.
 
 ## Итог свежей верификации
 
 | Слой | Результат 2026-09-05 |
 |---|---|
-| Python | `python -m unittest discover -s tests -p "test_*.py" -v`: 106 tests run, 103 passed, 3 skipped, 0 failures. Skips: реальный POSIX mode и 2 symlink-варианта недоступны на Windows; эквивалентные проверки через monkeypatch/валидацию пройдены. |
+| Python | `python -m unittest discover -s tests -p "test_*.py" -v`: 110 tests run, 107 passed, 3 skipped, 0 failures. Skips: реальный POSIX mode и 2 generator symlink-варианта недоступны на Windows; эквивалентные проверки через monkeypatch/валидацию пройдены. |
+| Audit tool safety | 4/4 Python static-crawler safety tests и 4/4 Node browser-safety tests; реальные fixture-crawls проверяют same-site host/ports и scope endpoint, а реальный junction/symlink escape browser-root выполнен на этой Windows-среде. |
 | Frontend form runtime | 8/8 passed, `CI=true`, без сети. |
 | Analytics consent runtime | 11/11 passed, `CI=true`, без сети. |
 | Accessibility runtime | 11/11 passed, `CI=true`; Chromium запускался локально. Дополнительно перебраны 2 880 комбинаций калькулятора. |
@@ -25,9 +26,9 @@ Chromium обслуживал сайт из локального HTTP-серве
 | Pre-deploy validator | `python scripts/validate.py`: `All pre-deploy checks passed.` |
 | Генераторы | 12/12 city index и 12/12 city septic страниц актуальны в `--check`; запись не выполнялась. |
 | Static crawler | PASS: 55 HTML без Yandex verification; 52 indexable, 2 noindex, 1 error page; 2 619 references, 49 fragments, 123 images, 124 JSON-LD; 52 canonical точно совпадают с 52 sitemap URLs; robots.txt содержит 10 групп User-agent. |
-| Chromium all-pages | PASS: 54 обычные страницы + 404 = 55 страниц × 4 ширины (360/768/900/1280) = 220 page-width runs; navigation/load, pageerror, console errors, локальные resource failures и document overflow — 0 итоговых ошибок. |
+| Chromium all-pages | PASS: 54 обычные страницы + 404 = 55 страниц × 4 ширины (360/768/900/1280) = 220 page-width runs. После load каждая страница прокручена до конца для lazy-контента, выдержан settle 150 мс, затем проверены navigation, pageerror, console errors, локальные resource failures и document overflow; итоговых ошибок нет. 225 внешних HTTP(S)-попыток перехвачены, WebSocket-попыток — 0. |
 | Chromium journeys | PASS: consent до разрешения не создаёт `ym`/тег/запрос Метрики; модалка главной открывается; городская CTA достигает `#callback`; телефонная CTA имеет корректный `tel:`; калькулятор отправляет ровно 1 перехваченный POST с `septic_type`, `region`, `distance`, `people`, `price`. |
-| JS/YAML/Compose | `node --check` — 7 site/backend runtime JS и browser runner; YAML parse — workflow и compose; `KEPSTROY_IMAGE_TAG=test-sha docker compose config --quiet` — exit 0. |
+| JS/YAML/Compose | `node --check` — 7 site/backend runtime JS и 2 browser-audit scripts; YAML parse — workflow и compose; `KEPSTROY_IMAGE_TAG=test-sha docker compose config --quiet` — exit 0. |
 | Git hygiene | `git diff --check` — без ошибок; секретоподобные файлы в diff не найдены; diff legacy-каталогов пуст. |
 
 Предупреждения среды: локальный Compose ожидаемо сообщил об отсутствующих `BOT_TOKEN`/`CHAT_ID`; значения не нужны для `config --quiet` и не подставлялись. Первая sandbox-попытка browser-тестов и одна параллельная sandbox-попытка `npm test` form-handler получили `spawn EPERM`; отдельные разрешённые локальные перезапуски прошли соответственно 11/11 и 12/12. `npm ci` form-handler при установке один раз напечатал 3 moderate, однако немедленные production и полные `npm audit` после установки показали 0; незакрытых advisory в установленном дереве нет. `git status` предупреждает о недоступном служебном каталоге `pytest-cache-files-uchxfixv/`, который не входит в diff и не изменялся этой задачей.
@@ -57,7 +58,7 @@ Chromium обслуживал сайт из локального HTTP-серве
 
 ## Факты, ожидающие Андрея
 
-Единый реестр: [andrey-confirmations-required.md](andrey-confirmations-required.md).
+Единый реестр, включая отдельные вопросы по генераторам и солнечным электростанциям: [andrey-confirmations-required.md](andrey-confirmations-required.md).
 
 До документального подтверждения нельзя возвращать в публичный контент:
 
@@ -71,20 +72,29 @@ Chromium обслуживал сайт из локального HTTP-серве
 
 ```powershell
 python -m unittest discover -s tests -p "test_*.py" -v
+node --test --test-isolation=none tests/test_audit_browser_safety.cjs
 $env:CI='true'; node --test --test-isolation=none tests/test_form_runtime.cjs
 $env:CI='true'; node --test --test-isolation=none tests/test_analytics_consent_runtime.cjs
 $env:CI='true'; node --test --test-isolation=none tests/test_accessibility_runtime.cjs
 npm ci
 npm audit --omit=dev
-Push-Location form-handler; npm ci; npm test; npm audit --omit=dev; Pop-Location
+npm audit
+Push-Location form-handler; npm ci; npm test; npm audit --omit=dev; npm audit; Pop-Location
 python scripts/validate.py
 python scripts/audit-static-site.py
 python generators/generate-city-indexes.py --check
 python generators/generate-city-septik.py --check
 $env:KEPSTROY_IMAGE_TAG='test-sha'; docker compose config --quiet
+$runtimeJs = @('html/js/analytics-consent.js', 'html/js/blog-accordion.js', 'html/js/generatory.js', 'html/js/main.js', 'html/js/tracking.js', 'form-handler/index.js', 'form-handler/lead-message.js')
+$runtimeJs | ForEach-Object { node --check $_; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+node --check scripts/audit-browser-safety.cjs
+node --check scripts/audit-full-site-browser.cjs
+python -c "from pathlib import Path; import yaml; yaml.safe_load(Path('.github/workflows/deploy.yml').read_text(encoding='utf-8')); yaml.safe_load(Path('docker-compose.yml').read_text(encoding='utf-8')); print('YAML OK')"
 node scripts/audit-full-site-browser.cjs
-git diff --check
+git diff --check main...HEAD
+git diff --exit-code main...HEAD -- site site-ot-ai-google
+$secretLike = git diff --name-only main...HEAD | Select-String -Pattern '(^|/)(\.env|.*secret|id_rsa|credentials)(\.|$)'; if ($secretLike) { $secretLike; exit 1 } else { 'No secret-like filenames in branch diff.' }
 git status --short
 ```
 
-Следующий gate: независимый code review этой ветки, затем отдельное решение пользователя о merge и production-deploy.
+Следующий gate: повторный независимый code review после исправлений, затем отдельное решение пользователя о merge и production-deploy.
