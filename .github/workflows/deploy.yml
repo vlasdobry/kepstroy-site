@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: kepstroy-production-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -81,7 +85,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=${{ github.sha }}
 
       - name: Build and push site image
         uses: docker/build-push-action@v5
@@ -115,7 +119,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-forms
           tags: |
-            type=raw,value=latest
+            type=raw,value=${{ github.sha }}
 
       - name: Build and push forms image
         uses: docker/build-push-action@v5
@@ -131,38 +135,56 @@ jobs:
     environment: production
 
     steps:
+      - name: Checkout release revision
+        uses: actions/checkout@v4
+
+      - name: Upload release files from this revision
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "docker-compose.yml,nginx.conf"
+          target: "/tmp/kepstroy-release-${{ github.sha }}"
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_PROXY_URL: ${{ secrets.TELEGRAM_PROXY_URL }}
+          RELEASE_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 10m
-          envs: BOT_TOKEN,CHAT_ID,TELEGRAM_PROXY_URL
+          envs: BOT_TOKEN,CHAT_ID,TELEGRAM_PROXY_URL,RELEASE_SHA
           script: |
             set -euo pipefail
-            cd /opt/kepstroy-site || mkdir -p /opt/kepstroy-site
-            cd /opt/kepstroy-site
+            if [ "${#RELEASE_SHA}" -ne 40 ] || printf '%s' "$RELEASE_SHA" | grep -q '[^0-9a-f]'; then
+              echo "Invalid release SHA"
+              exit 1
+            fi
 
-            # Pull latest compose file from repo (raw.githubusercontent.com is unreliable from server)
-            rm -rf /tmp/kepstroy-repo
-            git clone --depth 1 --branch main --single-branch https://github.com/vlasdobry/kepstroy-site.git /tmp/kepstroy-repo
-            cp /tmp/kepstroy-repo/docker-compose.yml /opt/kepstroy-site/docker-compose.yml
-            rm -rf /tmp/kepstroy-repo
+            RELEASE_DIR="/tmp/kepstroy-release-${RELEASE_SHA}"
+            test -f "$RELEASE_DIR/docker-compose.yml"
+            test -f "$RELEASE_DIR/nginx.conf"
+            sudo mkdir -p /opt/kepstroy-site
+            sudo install -m 0644 "$RELEASE_DIR/docker-compose.yml" /opt/kepstroy-site/docker-compose.yml
+            sudo install -m 0644 "$RELEASE_DIR/nginx.conf" /opt/kepstroy-site/nginx.conf
+            cd /opt/kepstroy-site
 
             # Write environment variables for docker compose
             cat > .env <<EOF
             BOT_TOKEN=${BOT_TOKEN}
             CHAT_ID=${CHAT_ID}
             TELEGRAM_PROXY_URL=${TELEGRAM_PROXY_URL}
+            KEPSTROY_IMAGE_TAG=${RELEASE_SHA}
             EOF
 
-            sudo docker compose pull
-            sudo -E docker compose --env-file .env up -d --force-recreate
+            sudo docker compose --env-file .env pull
+            sudo docker compose --env-file .env up -d --force-recreate
             sleep 5
             echo "Removing Telegram webhook (using polling instead)..."
             curl -s --max-time 15 -x "$TELEGRAM_PROXY_URL" "https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook" || echo "deleteWebhook failed"
@@ -175,22 +197,13 @@ jobs:
               exit 1
             fi
 
-            echo "Testing form validation path..."
-            FORM_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" \
-              -X POST "http://localhost:3000/submit" \
-              -H "Origin: https://kepstroy.ru" \
-              --data-urlencode "form_source=kepstroy" \
-              --data-urlencode "name=CI Test" \
-              --data-urlencode "phone=79999999999" \
-              --data-urlencode "message=CI test")
-            echo "Form smoke test HTTP code: $FORM_CODE"
-            if [ "$FORM_CODE" != "302" ]; then
-              sudo docker compose logs --tail=50
-              exit 1
-            fi
+            echo "Testing public pages with read-only requests..."
+            curl -fsS --max-time 20 -o /dev/null "https://kepstroy.ru/"
+            curl -fsS --max-time 20 -o /dev/null "https://kepstroy.ru/uslugi/generatory/"
 
             echo "Testing Telegram API connectivity..."
             curl -fsS --max-time 20 -x "$TELEGRAM_PROXY_URL" \
               "https://api.telegram.org/bot${BOT_TOKEN}/getMe" > /dev/null
 
+            rm -rf "$RELEASE_DIR"
             sudo docker image prune -f

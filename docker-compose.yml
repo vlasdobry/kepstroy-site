@@ -1,6 +1,6 @@
 services:
   kepstroy-site:
-    image: ghcr.io/vlasdobry/kepstroy-site:latest
+    image: ghcr.io/vlasdobry/kepstroy-site:${KEPSTROY_IMAGE_TAG:?KEPSTROY_IMAGE_TAG is required}
     container_name: kepstroy-site
     restart: unless-stopped
     read_only: true
@@ -37,7 +37,7 @@ services:
         max-file: "3"
 
   kepstroy-forms:
-    image: ghcr.io/vlasdobry/kepstroy-site-forms:latest
+    image: ghcr.io/vlasdobry/kepstroy-site-forms:${KEPSTROY_IMAGE_TAG:?KEPSTROY_IMAGE_TAG is required}
     container_name: kepstroy-forms
     restart: unless-stopped
     read_only: true

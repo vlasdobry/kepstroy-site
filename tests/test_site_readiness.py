@@ -102,7 +102,8 @@ class SiteReadinessTests(unittest.TestCase):
         package = (REPO_ROOT / "form-handler" / "package.json").read_text(encoding="utf-8")
         self.assertIn("npm test", workflow)
         self.assertIn("getMe", workflow)
-        self.assertIn("CI Test", workflow)
+        self.assertNotIn("CI Test", workflow)
+        self.assertNotIn("/submit", workflow)
         self.assertIn('"test"', package)
     def test_deploy_validation_runs_frontend_form_runtime_tests(self):
         workflow = (REPO_ROOT / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8")
