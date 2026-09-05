@@ -164,12 +164,17 @@ Expected: PASS профильных тестов; старый браузерн�
 Run:
 
 ```bash
-npm test
+python -m unittest discover -s tests -p "test_*.py" -v
+CI=true node --test tests/test_form_runtime.cjs
+node --test tests/test_analytics_consent_runtime.cjs
+CI=true node --test tests/test_accessibility_runtime.cjs
 python scripts/validate.py
-npm run build
+python scripts/audit-static-site.py
+python generators/generate-city-indexes.py --check
+python generators/generate-city-septik.py --check
 ```
 
-Затем запустить локальный сайт и `npm run audit:browser` согласно существующему проектному сценарию.
+Затем запустить `node scripts/audit-full-site-browser.cjs`: существующий сценарий сам поднимает локальный HTTP-сервер.
 
 Expected: все тесты, валидатор, сборка и браузерный аудит PASS; в консоли нет ошибок сайта, все ссылки услуг отвечают без 404.
 
@@ -197,7 +202,7 @@ Expected: чистое дерево, нет whitespace errors, изменени�
 
 **Step 3: Re-run final evidence commands**
 
-Run: `npm test`, `python scripts/validate.py`, `npm run build`.
+Run: повторить набор CI-команд из Task 4, затем `docker compose config --quiet` с тестовым `KEPSTROY_IMAGE_TAG`.
 
 Expected: exit code 0 for every command.
 
