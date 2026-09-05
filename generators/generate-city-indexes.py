@@ -4,6 +4,9 @@
 import argparse
 import json
 import os
+import re
+import stat
+import sys
 import tempfile
 from pathlib import Path
 from string import Template
@@ -16,6 +19,23 @@ TEMPLATE_PATH = TEMPLATE_DIR / "city-index-template.html"
 
 PHONE = "+79784615962"
 PHONE_FORMATTED = "+7 (978) 461-59-62"
+SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+class GeneratorError(ValueError):
+    """Понятная пользователю ошибка входных данных или безопасного пути."""
+
+
+def validate_cities(cities):
+    """Проверяет slug до построения любых выходных путей."""
+    seen = set()
+    for city in cities:
+        slug = city.get("slug")
+        if not isinstance(slug, str) or not SLUG_PATTERN.fullmatch(slug):
+            raise GeneratorError(f"Invalid city slug: {slug!r}")
+        if slug in seen:
+            raise GeneratorError(f"Duplicate city slug: {slug}")
+        seen.add(slug)
 
 
 def build_neighbor_links(cities, current_slug, limit=8):
@@ -33,6 +53,7 @@ def build_neighbor_links(cities, current_slug, limit=8):
 def load_inputs(data_path=DATA_PATH, template_path=TEMPLATE_PATH):
     """Загружает данные и шаблон независимо от текущего рабочего каталога."""
     data = json.loads(Path(data_path).read_text(encoding="utf-8"))
+    validate_cities(data["cities"])
     template = Template(Path(template_path).read_text(encoding="utf-8"))
     return data["cities"], template
 
@@ -54,9 +75,28 @@ def render_pages(data_path=DATA_PATH, template_path=TEMPLATE_PATH):
             "neighbor_links": build_neighbor_links(cities, slug),
             "schema_spacing": "  ",
         }
-        html = template.safe_substitute(context).replace("\n", os.linesep)
+        try:
+            html = template.substitute(context)
+        except KeyError as error:
+            raise GeneratorError(
+                f"Unknown template placeholder: {error.args[0]}"
+            ) from error
         rendered[Path("krym") / slug / "index.html"] = html
     return rendered
+
+
+def resolve_output_path(output_root, relative_path):
+    """Разрешает target и отклоняет traversal и выход через symlink."""
+    output_root = Path(output_root).resolve()
+    relative_path = Path(relative_path)
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        raise GeneratorError(f"Target escapes output root: {relative_path}")
+    target = (output_root / relative_path).resolve(strict=False)
+    try:
+        target.relative_to(output_root)
+    except ValueError as error:
+        raise GeneratorError(f"Target escapes output root: {relative_path}") from error
+    return target
 
 
 def compare_outputs(rendered, output_root):
@@ -64,16 +104,29 @@ def compare_outputs(rendered, output_root):
     output_root = Path(output_root)
     changed = []
     for relative_path, html in rendered.items():
-        path = output_root / relative_path
-        if not path.exists() or path.read_bytes() != html.encode("utf-8"):
+        path = resolve_output_path(output_root, relative_path)
+        if not path.exists() or path.read_text(encoding="utf-8") != html:
             changed.append(relative_path)
     return changed
+
+
+def unexpected_outputs(rendered, output_root):
+    """Находит только лишние файлы, принадлежащие этому генератору."""
+    output_root = Path(output_root).resolve()
+    expected = set(rendered)
+    existing = {
+        path.relative_to(output_root)
+        for path in output_root.glob("krym/*/index.html")
+        if path.is_file()
+    }
+    return sorted(existing - expected, key=lambda path: path.as_posix())
 
 
 def atomic_write(path, html):
     """Атомарно заменяет один HTML-файл, не оставляя временный файл при ошибке."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    target_mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
     temp_path = None
     try:
         descriptor, temp_name = tempfile.mkstemp(
@@ -84,6 +137,7 @@ def atomic_write(path, html):
             temp_file.write(html.encode("utf-8"))
             temp_file.flush()
             os.fsync(temp_file.fileno())
+        os.chmod(temp_path, target_mode)
         os.replace(temp_path, path)
     except Exception:
         if temp_path is not None:
@@ -113,25 +167,46 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
-def main(argv=None):
-    args = parse_args(argv)
+def execute(args):
     rendered = render_pages()
     changed = compare_outputs(rendered, args.output_root)
+    unexpected = unexpected_outputs(rendered, args.output_root)
 
     if args.mode == "check":
-        if changed:
-            print(f"Generator drift detected in {len(changed)} path(s):")
+        if changed or unexpected:
+            print(
+                "Generator drift detected: "
+                f"{len(changed)} changed or missing, {len(unexpected)} unexpected."
+            )
             for path in changed:
                 print(path.as_posix())
+            for path in unexpected:
+                print(f"Unexpected: {path.as_posix()}")
             return 1
         print(f"All {len(rendered)} city index pages are up to date.")
         return 0
 
+    if unexpected:
+        print("Write refused; remove unexpected owned outputs manually:")
+        for path in unexpected:
+            print(f"Unexpected: {path.as_posix()}")
+        return 1
+
     for relative_path in changed:
-        atomic_write(args.output_root / relative_path, rendered[relative_path])
+        target = resolve_output_path(args.output_root, relative_path)
+        atomic_write(target, rendered[relative_path])
         print(f"Updated: {relative_path.as_posix()}")
     print(f"Write complete: {len(changed)} changed, {len(rendered)} expected.")
     return 0
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    try:
+        return execute(args)
+    except GeneratorError as error:
+        print(f"Generator error: {error}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

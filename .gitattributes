@@ -1,0 +1,4 @@
+generators/city-index-template.html text eol=lf
+generators/city-septik-template.html text eol=lf
+html/krym/*/index.html text eol=lf
+html/krym/*/septik-pod-kluch/index.html text eol=lf
