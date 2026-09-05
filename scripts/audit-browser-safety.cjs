@@ -27,6 +27,20 @@ function containedExistingFile(root, relative, fsApi = fs) {
   }
 }
 
+function resolveSiteFile(htmlRoot, imagesRoot, requestPath, fsApi = fs) {
+  const relative = String(requestPath)
+    .replace(/^[\\/]+/, '')
+    .split(/[\\/]+/)
+    .join(path.sep);
+  const htmlFile = containedExistingFile(htmlRoot, relative, fsApi);
+  if (htmlFile) return htmlFile;
+  const imagesPrefix = `images${path.sep}`;
+  if (relative.startsWith(imagesPrefix)) {
+    return containedExistingFile(imagesRoot, relative.slice(imagesPrefix.length), fsApi);
+  }
+  return null;
+}
+
 function offlineContextOptions(viewport) {
   return {
     viewport,
@@ -107,4 +121,5 @@ module.exports = {
   containedExistingFile,
   createAuditedContext,
   offlineContextOptions,
+  resolveSiteFile,
 };

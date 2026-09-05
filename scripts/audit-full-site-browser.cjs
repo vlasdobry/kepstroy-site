@@ -6,12 +6,13 @@ const http = require('node:http');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const {
-  containedExistingFile,
   createAuditedContext,
+  resolveSiteFile,
 } = require('./audit-browser-safety.cjs');
 
 const repoRoot = path.resolve(__dirname, '..');
 const htmlRoot = path.join(repoRoot, 'html');
+const imagesRoot = path.join(repoRoot, 'images');
 const widths = [360, 768, 900, 1280];
 const mimeTypes = {
   '.avif': 'image/avif',
@@ -57,10 +58,7 @@ function createServer() {
     let relative = decodeURIComponent(requestUrl.pathname).replace(/^\/+/, '');
     relative = relative.split('/').join(path.sep);
     if (!relative || requestUrl.pathname.endsWith('/')) relative = path.join(relative, 'index.html');
-    let file = containedExistingFile(htmlRoot, relative);
-    if (!file && relative.startsWith(`images${path.sep}`)) {
-      file = containedExistingFile(repoRoot, relative);
-    }
+    const file = resolveSiteFile(htmlRoot, imagesRoot, relative);
     if (!file) {
       response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       response.end('Not found');

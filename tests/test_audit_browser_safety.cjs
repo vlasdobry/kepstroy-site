@@ -10,6 +10,7 @@ const {
   containedExistingFile,
   createAuditedContext,
   offlineContextOptions,
+  resolveSiteFile,
 } = require('../scripts/audit-browser-safety.cjs');
 
 test('containedExistingFile rejects traversal and resolved paths outside the root', (t) => {
@@ -52,6 +53,47 @@ test('containedExistingFile rejects a real symlink or junction that escapes when
     return;
   }
   assert.equal(containedExistingFile(root, path.join('escape', 'secret.txt')), null);
+});
+
+test('resolveSiteFile confines the images fallback to the dedicated images root', (t) => {
+  assert.equal(typeof resolveSiteFile, 'function');
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'kepstroy-audit-site-'));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const htmlRoot = path.join(parent, 'html');
+  const imagesRoot = path.join(parent, 'images');
+  const outside = path.join(parent, 'repo-secret.txt');
+  fs.mkdirSync(htmlRoot);
+  fs.mkdirSync(path.join(htmlRoot, 'images'));
+  fs.mkdirSync(imagesRoot);
+  fs.writeFileSync(path.join(htmlRoot, 'index.html'), 'home');
+  fs.writeFileSync(path.join(htmlRoot, 'images', 'logo.png'), 'site image');
+  fs.writeFileSync(path.join(imagesRoot, 'photo.webp'), 'image');
+  fs.writeFileSync(outside, 'outside');
+
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, 'index.html'), fs.realpathSync(path.join(htmlRoot, 'index.html')));
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'logo.png')), fs.realpathSync(path.join(htmlRoot, 'images', 'logo.png')));
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'photo.webp')), fs.realpathSync(path.join(imagesRoot, 'photo.webp')));
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', '..', 'repo-secret.txt')), null);
+
+  const imageCandidate = path.join(imagesRoot, 'photo.webp');
+  const redirectedFs = {
+    existsSync: fs.existsSync,
+    statSync: fs.statSync,
+    realpathSync(value) {
+      return path.resolve(value) === path.resolve(imageCandidate)
+        ? fs.realpathSync(outside)
+        : fs.realpathSync(value);
+    },
+  };
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'photo.webp'), redirectedFs), null);
+
+  try {
+    fs.symlinkSync(parent, path.join(imagesRoot, 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (error) {
+    t.diagnostic(`real directory link unavailable: ${error.code || error.message}`);
+    return;
+  }
+  assert.equal(resolveSiteFile(htmlRoot, imagesRoot, path.join('images', 'escape', 'repo-secret.txt')), null);
 });
 
 test('offline context blocks service workers and sends non-loopback egress to a dead proxy', () => {
@@ -107,6 +149,29 @@ test('createAuditedContext installs HTTP, WebSocket, and popup guards before pag
     [...pageHandlers.keys()].sort(),
     ['console', 'pageerror', 'requestfailed', 'response'],
   );
+
+  async function invokeHttp(url, method) {
+    const actions = [];
+    await context.httpHandler({
+      request() {
+        return { url: () => url, method: () => method };
+      },
+      async fulfill(options) { actions.push(['fulfill', options]); },
+      async continue() { actions.push(['continue']); },
+    });
+    return actions;
+  }
+
+  assert.deepEqual(await invokeHttp('https://external.example/asset.js', 'GET'), [
+    ['fulfill', { status: 204, contentType: 'text/plain', body: '' }],
+  ]);
+  assert.equal(counters.externalRequestsIntercepted, 1);
+  assert.deepEqual(await invokeHttp('http://127.0.0.1:4321/app.js', 'GET'), [['continue']]);
+  assert.deepEqual(await invokeHttp('http://127.0.0.1:4321/submit', 'POST'), [
+    ['fulfill', { status: 405, contentType: 'application/json', body: '{}' }],
+  ]);
+  assert.equal(counters.blockedPosts, 1);
+  assert.match(errors.at(-1), /unexpected POST \/submit/);
 
   let closed;
   await context.wsHandler({
