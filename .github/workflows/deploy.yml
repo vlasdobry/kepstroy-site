@@ -4,10 +4,6 @@ on:
   push:
     branches: [main]
 
-concurrency:
-  group: kepstroy-production-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -15,6 +11,9 @@ env:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    concurrency:
+      group: kepstroy-validate-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,6 +63,9 @@ jobs:
   build-site:
     needs: validate
     runs-on: ubuntu-latest
+    concurrency:
+      group: kepstroy-build-site-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
       packages: write
@@ -98,6 +100,9 @@ jobs:
   build-forms:
     needs: validate
     runs-on: ubuntu-latest
+    concurrency:
+      group: kepstroy-build-forms-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
       packages: write
@@ -132,14 +137,37 @@ jobs:
   deploy:
     needs: [build-site, build-forms]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: kepstroy-production
+      cancel-in-progress: false
     environment: production
 
     steps:
+      - name: Check release is still current
+        id: freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          LATEST_SHA=$(gh api "repos/${REPOSITORY}/commits/main" --jq .sha)
+          if [ "$LATEST_SHA" = "$RELEASE_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale release ${RELEASE_SHA}; main is ${LATEST_SHA}."
+          fi
+
       - name: Checkout release revision
+        if: steps.freshness.outputs.current == 'true'
         uses: actions/checkout@v4
 
       - name: Upload release files from this revision
-        uses: appleboy/scp-action@v0.1.7
+        if: steps.freshness.outputs.current == 'true'
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
@@ -148,7 +176,8 @@ jobs:
           target: "/tmp/kepstroy-release-${{ github.sha }}"
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.3
+        if: steps.freshness.outputs.current == 'true'
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -193,6 +222,23 @@ jobs:
             HTTP_CODE=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" "http://localhost:3000/health")
             echo "Form handler health HTTP code: $HTTP_CODE"
             if [ "$HTTP_CODE" != "200" ]; then
+              sudo docker compose logs --tail=50
+              exit 1
+            fi
+
+            EXPECTED_SITE_IMAGE=ghcr.io/vlasdobry/kepstroy-site:${RELEASE_SHA}
+            EXPECTED_FORMS_IMAGE=ghcr.io/vlasdobry/kepstroy-site-forms:${RELEASE_SHA}
+            if ! ACTUAL_SITE_IMAGE=$(sudo docker inspect --format '{{.Config.Image}}' kepstroy-site); then
+              sudo docker compose logs --tail=50
+              exit 1
+            fi
+            if ! ACTUAL_FORMS_IMAGE=$(sudo docker inspect --format '{{.Config.Image}}' kepstroy-forms); then
+              sudo docker compose logs --tail=50
+              exit 1
+            fi
+            if [ "$ACTUAL_SITE_IMAGE" != "$EXPECTED_SITE_IMAGE" ] || \
+               [ "$ACTUAL_FORMS_IMAGE" != "$EXPECTED_FORMS_IMAGE" ]; then
+              echo "Deployed image revision mismatch"
               sudo docker compose logs --tail=50
               exit 1
             fi
