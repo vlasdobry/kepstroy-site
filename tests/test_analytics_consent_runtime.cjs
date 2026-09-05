@@ -272,7 +272,8 @@ function createHarness({
     },
     matchingMetrikaScripts() {
       return document.querySelectorAll('script[src]').filter(element => (
-        new URL(element.src, document.baseURI).href === tagUrl
+        new URL(element.src, document.baseURI).origin === 'https://mc.yandex.ru'
+        && new URL(element.src, document.baseURI).pathname === '/metrika/tag.js'
       ));
     },
     ymCalls(command) {
@@ -392,7 +393,7 @@ test('failed owned tag resets state and a later explicit load retries once', () 
   assert.equal(harness.ymCalls('init').length, 1);
 });
 
-test('existing normalized Yandex tag is reused without a second init', () => {
+test('existing ready Yandex loader without init evidence is initialized once', () => {
   const ymCalls = [];
   const harness = createHarness({
     storedConsent: 'true',
@@ -404,26 +405,72 @@ test('existing normalized Yandex tag is reused without a second init', () => {
   assert.equal(harness.matchingMetrikaScripts().length, 1);
   assert.equal(harness.metrikaScripts().length, 0);
   assert.equal(harness.window.KepstroyAnalytics.state, 'loaded');
-  assert.deepEqual(ymCalls, []);
+  assert.deepEqual(ymCalls.map(args => args.slice(0, 2)), [[109754800, 'init']]);
+
+  harness.runScript();
+  assert.equal(harness.matchingMetrikaScripts().length, 1);
+  assert.equal(ymCalls.length, 1);
 });
 
-test('existing standard-loader queue stays loading until its tag reports success', () => {
+test('existing Yandex loader URL variants are reused and receive one missing init', () => {
+  for (const src of [
+    'https://mc.yandex.ru/metrika/tag.js',
+    'https://mc.yandex.ru/metrika/tag.js?id=109754800',
+    'https://mc.yandex.ru/metrika/tag.js?historical=1#fragment',
+  ]) {
+    const queuedYm = function queuedYm(...args) {
+      queuedYm.a.push(args);
+    };
+    queuedYm.a = [];
+    const harness = createHarness({
+      storedConsent: 'true',
+      readyState: 'complete',
+      preexistingTagSrc: src,
+      preexistingYm: queuedYm,
+    });
+
+    assert.equal(harness.document.querySelectorAll('script[src]').length, 1, src);
+    assert.equal(harness.matchingMetrikaScripts().length, 1, src);
+    assert.equal(harness.ymCalls('init').length, 1, src);
+    harness.runScript();
+    assert.equal(harness.document.querySelectorAll('script[src]').length, 1, src);
+    assert.equal(harness.ymCalls('init').length, 1, src);
+  }
+});
+
+test('existing queued init is evidence that prevents duplicate initialization', () => {
   const queuedYm = function queuedYm(...args) {
     queuedYm.a.push(args);
   };
-  queuedYm.a = [];
+  queuedYm.a = [[109754800, 'init', { clickmap: true }]];
   const harness = createHarness({
     storedConsent: 'true',
     readyState: 'complete',
-    preexistingTagSrc: tagUrl,
+    preexistingTagSrc: 'https://mc.yandex.ru/metrika/tag.js',
     preexistingYm: queuedYm,
   });
 
-  assert.equal(harness.window.KepstroyAnalytics.state, 'loading');
-  assert.deepEqual(queuedYm.a, []);
-  harness.matchingMetrikaScripts()[0].dispatch('load');
-  assert.equal(harness.window.KepstroyAnalytics.state, 'loaded');
-  assert.deepEqual(queuedYm.a, []);
+  assert.equal(harness.document.querySelectorAll('script[src]').length, 1);
+  assert.equal(harness.ymCalls('init').length, 1);
+});
+
+test('similar but untrusted script URLs are not treated as the Yandex loader', () => {
+  for (const src of [
+    'https://mc.yandex.ru.evil.test/metrika/tag.js',
+    'http://mc.yandex.ru/metrika/tag.js',
+    'https://mc.yandex.ru/metrika/other.js',
+  ]) {
+    const harness = createHarness({
+      storedConsent: 'true',
+      readyState: 'complete',
+      preexistingTagSrc: src,
+    });
+
+    assert.equal(harness.document.querySelectorAll('script[src]').length, 2, src);
+    assert.equal(harness.matchingMetrikaScripts().length, 1, src);
+    assert.equal(harness.metrikaScripts().length, 1, src);
+    assert.equal(harness.ymCalls('init').length, 1, src);
+  }
 });
 
 test('tracking client cannot call a pre-existing ym before consent and uses the API after consent', async () => {

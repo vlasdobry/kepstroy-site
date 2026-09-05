@@ -46,21 +46,21 @@
     return ym;
   }
 
-  function normalizedTagUrl(value) {
-    try {
-      const url = new URL(value, document.baseURI || root.location?.href);
-      url.hash = '';
-      return url.href;
-    } catch {
-      return '';
-    }
+  function findExistingTag() {
+    return Array.from(document.querySelectorAll('script[src]')).find((tag) => {
+      try {
+        const url = new URL(tag.src || tag.getAttribute('src'), document.baseURI || root.location?.href);
+        return url.origin === 'https://mc.yandex.ru' && url.pathname === '/metrika/tag.js';
+      } catch {
+        return false;
+      }
+    }) || null;
   }
 
-  function findExistingTag() {
-    const expected = normalizedTagUrl(TAG_URL);
-    return Array.from(document.querySelectorAll('script[src]')).find((tag) => (
-      normalizedTagUrl(tag.src || tag.getAttribute('src')) === expected
-    )) || null;
+  function hasCounterInit(tag) {
+    if (tag.getAttribute('data-kepstroy-metrika-init') === 'true') return true;
+    const queue = typeof root.ym === 'function' && Array.isArray(root.ym.a) ? root.ym.a : [];
+    return queue.some((args) => Number(args[0]) === COUNTER_ID && args[1] === 'init');
   }
 
   function resetOwnedQueue() {
@@ -119,6 +119,17 @@
         const ymIsReady = typeof root.ym === 'function' && !Array.isArray(root.ym.a);
         loaderState = ymIsReady ? 'loaded' : 'loading';
         observeExternalTag(existingTag);
+        if (!hasCounterInit(existingTag)) {
+          installYmQueue();
+          existingTag.setAttribute('data-kepstroy-metrika-init', 'true');
+          try {
+            initCounter();
+          } catch {
+            existingTag.removeAttribute('data-kepstroy-metrika-init');
+            loaderState = 'failed';
+            return false;
+          }
+        }
         return true;
       }
 

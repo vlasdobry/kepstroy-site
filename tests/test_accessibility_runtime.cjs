@@ -5,6 +5,7 @@ const vm = require('node:vm');
 
 const mainScript = readFileSync('html/js/main.js', 'utf8');
 const blogAccordionScript = readFileSync('html/js/blog-accordion.js', 'utf8');
+const analyticsConsentScript = readFileSync('html/js/analytics-consent.js', 'utf8');
 
 class FakeClassList {
   constructor(names = []) {
@@ -486,6 +487,48 @@ try {
 if (!chromium && process.env.CI && process.env.CI !== 'false') {
   throw new Error(`Playwright is mandatory in CI: ${playwrightLoadError && playwrightLoadError.message}`);
 }
+
+test('consent loader reuses no-query and id-query Yandex tags with one init', { skip: !chromium }, async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const tagUrl of [
+      'https://mc.yandex.ru/metrika/tag.js',
+      'https://mc.yandex.ru/metrika/tag.js?id=109754800',
+    ]) {
+      const page = await browser.newPage();
+      await page.route('https://kepstroy.ru/consent-fixture', route => route.fulfill({
+        contentType: 'text/html',
+        body: `<!doctype html><html><head>
+          <script>
+            localStorage.setItem('kepstroy_analytics_consent', 'true');
+            window.ym = function () { (window.ym.a = window.ym.a || []).push(arguments); };
+            window.ym.a = [];
+          </script>
+          <script src="${tagUrl}"></script>
+          <script>${analyticsConsentScript}</script>
+        </head><body></body></html>`,
+      }));
+      await page.route('https://mc.yandex.ru/**', route => route.fulfill({
+        contentType: 'application/javascript',
+        body: '',
+      }));
+
+      await page.goto('https://kepstroy.ru/consent-fixture');
+      const state = await page.evaluate(() => ({
+        initCount: window.ym.a.filter(args => args[0] === 109754800 && args[1] === 'init').length,
+        scriptCount: [...document.querySelectorAll('script[src]')].filter((script) => {
+          const url = new URL(script.src);
+          return url.origin === 'https://mc.yandex.ru' && url.pathname === '/metrika/tag.js';
+        }).length,
+      }));
+
+      assert.deepEqual(state, { initCount: 1, scriptCount: 1 }, tagUrl);
+      await page.close();
+    }
+  } finally {
+    await browser.close();
+  }
+});
 
 test('wide article tables stay inside a 360px document viewport', { skip: !chromium }, async () => {
   const css = readFileSync('html/css/blog.css', 'utf8');
