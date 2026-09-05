@@ -135,7 +135,8 @@ class SiteReadinessTests(unittest.TestCase):
         self.assertIn("form-handler/package-lock.json", workflow)
         self.assertRegex(workflow, r"(?m)^\s*run:\s*npm ci\s*$")
         self.assertIn("npx playwright install --with-deps chromium", workflow)
-        self.assertIn("CI=true node --test --test-isolation=none tests/test_accessibility_runtime.cjs", workflow)
+        self.assertIn("CI=true node tests/test_accessibility_runtime.cjs", workflow)
+        self.assertNotIn("--test-isolation", workflow)
 
     def test_main_script_has_no_orphan_quiz_tracking(self):
         pages = "\n".join(text for _, text in production_pages())
