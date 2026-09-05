@@ -31,13 +31,20 @@ SCHEMA_URL_KEYS = {
     "thumbnailurl",
     "embedurl",
     "sameas",
+    "item",
+    "target",
+    "mainentityofpage",
+    "urltemplate",
 }
 
 
 def structured_urls(value: object):
     if isinstance(value, dict):
         for key, child in value.items():
-            if key.lower() in SCHEMA_URL_KEYS:
+            normalized_key = key.lower()
+            if normalized_key == "@context":
+                continue
+            if normalized_key in SCHEMA_URL_KEYS:
                 yield from structured_url_values(child)
             else:
                 yield from structured_urls(child)

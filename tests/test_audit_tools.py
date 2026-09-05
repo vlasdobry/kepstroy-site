@@ -121,6 +121,13 @@ class StaticAuditSafetyTests(unittest.TestCase):
             '"image":"https://cdn.example.test/schema.jpg",'
             '"sameAs":["https://social.example.test/company","data:text/plain,ignored"]}'
             '</script>'
+            '<script type="application/ld+json">'
+            '{"@context":{"term":{"@id":"images/context-object-only.json"}},"name":"ok"}'
+            '</script>'
+            '<script type="application/ld+json">'
+            '{"@context":["https://schema.org",'
+            '{"term":{"@id":"images/context-list-only.json"}}],"name":"ok"}'
+            '</script>'
         )
         external_result, _, external_stderr = self.run_fixture(external_markup)
         self.assertEqual(0, external_result, external_stderr)
@@ -149,6 +156,38 @@ class StaticAuditSafetyTests(unittest.TestCase):
             (
                 '<script type="application/ld+json">'
                 '{"@context":"https://schema.org","image":{"url":"images/missing-relative.jpg"}}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org","sameAs":["images/missing-list.jpg"]}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org","item":"images/missing-item.jpg"}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org","target":"images/missing-target.jpg"}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org",'
+                '"mainEntityOfPage":"images/missing-main-entity.html"}'
+                '</script>',
+                "missing script json-ld target",
+            ),
+            (
+                '<script type="application/ld+json">'
+                '{"@context":"https://schema.org","target":{"@type":"EntryPoint",'
+                '"urlTemplate":"search/missing?q={search_term_string}"}}'
                 '</script>',
                 "missing script json-ld target",
             ),
