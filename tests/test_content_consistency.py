@@ -577,9 +577,7 @@ class ContentConsistencyTests(unittest.TestCase):
         source = (
             HTML_ROOT / "blog" / "ustanovka-septika-krym" / "index.html"
         ).read_text(encoding="utf-8")
-        section = slice_between(
-            source, "<h3>Сколько это занимает по времени</h3>", "</table>"
-        )
+        section = re.search(r"<table\b[^>]*>.*?</table>", source, re.DOTALL).group(0)
         rows = re.findall(r"<tr\b[^>]*>(.*?)</tr>", section, re.DOTALL)
         cells = [
             [
@@ -588,9 +586,11 @@ class ContentConsistencyTests(unittest.TestCase):
             ]
             for row in rows
         ]
-        self.assertEqual(["Сложность объекта", "Что входит"], cells[0])
+        self.assertEqual(["Этап", "Что сверить владельцу"], cells[0])
+        self.assertEqual(6, len(cells))
         self.assertTrue(all(len(row) == 2 for row in cells), cells)
         self.assertNotIn("После осмотра участка", section)
+        self.assertNotRegex(section, r"\d+\s*(?:час|день|дня|дней|недел)")
 
     def test_calculator_static_recommendation_matches_neutral_js_copy(self):
         source = SEPTIKI_PAGE.read_text(encoding="utf-8")

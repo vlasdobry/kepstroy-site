@@ -98,6 +98,7 @@ function openModal(overlay = defaultModalOverlay) {
   );
   const focusTarget = firstMeaningfulField || modalFocusables(overlay)[0];
   if (focusTarget) focusTarget.focus();
+  trackGoal('callback_open');
 }
 
 function canRestoreModalFocus(element) {
@@ -201,7 +202,6 @@ document.querySelectorAll('.js-smart-call').forEach(btn => {
     }
 
     openModal();
-    trackGoal('callback_open');
   });
 });
 

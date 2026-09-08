@@ -194,6 +194,26 @@ async function auditJourneys(browser, origin, counters, errors) {
     && element.querySelector('[role="dialog"]')?.getAttribute('aria-modal') === 'true'
   ));
   if (!modalOpen) errors.push('journey-main-callback: modal did not open');
+  const modalGoals = await page.evaluate(() => (window.ym?.a || []).filter(
+    (event) => event[1] === 'reachGoal' && event[2] === 'callback_open',
+  ).length);
+  if (modalGoals !== 1) errors.push(`journey-main-callback: expected one goal, got ${modalGoals}`);
+  counters.ctaJourneys += 1;
+
+  audited.setPageLabel(page, 'journey-generator-request');
+  await page.goto(`${origin}/uslugi/generatory/`, { waitUntil: 'load' });
+  await page.evaluate(() => { const banner = document.getElementById('cookieBanner'); if (banner) banner.hidden = true; });
+  await page.locator('a[href="#main"]').focus();
+  await page.keyboard.press('Enter');
+  const skipGoals = await page.evaluate(() => (window.ym?.a || []).filter(
+    (event) => event[1] === 'reachGoal' && event[2] === 'callback_open',
+  ).length);
+  if (skipGoals !== 0) errors.push(`journey-generator-skip-link: expected no goal, got ${skipGoals}`);
+  await page.locator('a[href="#request"]').first().click();
+  const requestGoals = await page.evaluate(() => (window.ym?.a || []).filter(
+    (event) => event[1] === 'reachGoal' && event[2] === 'callback_open',
+  ).length);
+  if (requestGoals !== 1) errors.push(`journey-generator-request: expected one goal, got ${requestGoals}`);
   counters.ctaJourneys += 1;
 
   audited.setPageLabel(page, 'journey-city-ctas');

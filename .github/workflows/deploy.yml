@@ -51,6 +51,9 @@ jobs:
       - name: Test frontend form runtime
         run: node --test tests/test_form_runtime.cjs
 
+      - name: Test callback tracking runtime
+        run: node --test tests/test_callback_tracking.cjs
+
       - name: Test analytics consent runtime
         run: npm run test:analytics-consent
 

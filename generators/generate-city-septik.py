@@ -8,6 +8,7 @@ import re
 import stat
 import sys
 import tempfile
+from html import escape
 from pathlib import Path
 from string import Template
 
@@ -94,6 +95,7 @@ def render_pages(data_path=DATA_PATH, template_path=TEMPLATE_PATH):
             "soil_type": city["soil_type"],
             "frost_depth": city["frost_depth"],
             "districts": city["districts"],
+            "planning_note": escape(city.get("planning_note", "До выезда подготовьте план участка, число постоянных и сезонных жильцов, сведения о существующей канализации и фотографии подъезда. Эти данные помогут обсудить варианты, но не заменяют осмотр.")),
             "phone": PHONE,
             "phone_formatted": PHONE_FORMATTED,
             "neighbor_links": build_neighbor_links(cities, slug),

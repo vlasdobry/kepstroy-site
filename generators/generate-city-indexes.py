@@ -74,6 +74,8 @@ def render_pages(data_path=DATA_PATH, template_path=TEMPLATE_PATH):
             "phone_formatted": PHONE_FORMATTED,
             "neighbor_links": build_neighbor_links(cities, slug),
             "schema_spacing": "  ",
+            # Reviewed repository content, like the page template; not user input.
+            "overview_section": city.get("overview_html", ""),
         }
         try:
             html = template.substitute(context)

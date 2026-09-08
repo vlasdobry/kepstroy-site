@@ -126,6 +126,20 @@
       link.addEventListener('click', () => api.trackGoal('phone_click'));
     });
 
+    // Landing-page CTAs reveal an inline form instead of opening a modal.
+    root.document.addEventListener('click', (event) => {
+      const link = event.target?.closest?.('a[href^="#"]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      // Only explicit request CTAs; a skip-link to #main also contains the form.
+      if (!['#request', '#callback'].includes(href)) return;
+      const section = root.document.getElementById(href.slice(1));
+      if (section && (section.matches('form[action="/submit"]') ||
+          section.querySelector('form[action="/submit"]'))) {
+        api.trackGoal('callback_open');
+      }
+    }, { capture: true });
+
     let scrollTracked = false;
     root.addEventListener('scroll', () => {
       if (scrollTracked) return;

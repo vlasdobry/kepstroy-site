@@ -218,6 +218,18 @@ function createMainHarness() {
   };
 }
 
+test('every shared modal opening records callback intent exactly once', () => {
+  const harness = createMainHarness();
+  const goals = [];
+  harness.sandbox.window.KepstroyTracking = { trackGoal: goal => goals.push(goal) };
+  harness.sandbox.openModal();
+  harness.sandbox.openModal();
+  assert.deepEqual(goals, ['callback_open']);
+  harness.sandbox.closeModal();
+  harness.sandbox.window.KepstroyModal.open(harness.overlay);
+  assert.deepEqual(goals, ['callback_open', 'callback_open']);
+});
+
 test('mobile menu synchronizes aria state and Escape restores toggle focus', () => {
   const harness = createMainHarness();
 
