@@ -488,7 +488,7 @@ if (!chromium && process.env.CI && process.env.CI !== 'false') {
   throw new Error(`Playwright is mandatory in CI: ${playwrightLoadError && playwrightLoadError.message}`);
 }
 
-test('consent loader reuses no-query and id-query Yandex tags with one init', { skip: !chromium }, async () => {
+test('analytics loader reuses no-query and id-query Yandex tags with one init', { skip: !chromium }, async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     for (const tagUrl of [
@@ -496,11 +496,11 @@ test('consent loader reuses no-query and id-query Yandex tags with one init', { 
       'https://mc.yandex.ru/metrika/tag.js?id=109754800',
     ]) {
       const page = await browser.newPage();
-      await page.route('https://kepstroy.ru/consent-fixture', route => route.fulfill({
+      await page.route('https://kepstroy.ru/analytics-fixture', route => route.fulfill({
         contentType: 'text/html',
         body: `<!doctype html><html><head>
           <script>
-            localStorage.setItem('kepstroy_analytics_consent', 'true');
+            localStorage.setItem('kepstroy_metrika_notice_acknowledged', 'true');
             window.ym = function () { (window.ym.a = window.ym.a || []).push(arguments); };
             window.ym.a = [];
           </script>
@@ -513,7 +513,7 @@ test('consent loader reuses no-query and id-query Yandex tags with one init', { 
         body: '',
       }));
 
-      await page.goto('https://kepstroy.ru/consent-fixture');
+      await page.goto('https://kepstroy.ru/analytics-fixture');
       const state = await page.evaluate(() => ({
         initCount: window.ym.a.filter(args => args[0] === 109754800 && args[1] === 'init').length,
         scriptCount: [...document.querySelectorAll('script[src]')].filter((script) => {

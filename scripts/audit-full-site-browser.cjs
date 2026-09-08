@@ -120,7 +120,7 @@ async function auditAllPages(browser, origin, pages, counters, errors) {
   }
 }
 
-async function auditConsent(browser, origin, counters, errors) {
+async function auditAnalyticsNotice(browser, origin, counters, errors) {
   const audited = await createAuditedContext(
     browser,
     origin,
@@ -132,18 +132,45 @@ async function auditConsent(browser, origin, counters, errors) {
   audited.context.on('request', (request) => {
     if (new URL(request.url()).hostname === 'mc.yandex.ru') metrikaRequests += 1;
   });
-  const page = await audited.newPage('consent-before-accept');
+  const page = await audited.newPage('analytics-notice');
   await page.goto(`${origin}/`, { waitUntil: 'load' });
   const state = await page.evaluate(() => ({
-    consent: localStorage.getItem('kepstroy_analytics_consent'),
+    acknowledged: localStorage.getItem('kepstroy_metrika_notice_acknowledged'),
     hasYm: typeof window.ym === 'function',
     metrikaTags: document.querySelectorAll('script[src*="mc.yandex.ru/metrika/tag.js"]').length,
     bannerVisible: Boolean(document.querySelector('#cookieBanner:not([hidden])')),
+    bannerText: document.querySelector('#cookieBanner')?.textContent.replace(/\s+/g, ' ').trim() || '',
+    buttonText: document.querySelector('#cookieBanner button')?.textContent.trim() || '',
   }));
-  if (state.consent !== null || state.hasYm || state.metrikaTags !== 0 || !state.bannerVisible || metrikaRequests !== 0) {
-    errors.push(`consent-before-accept: ${JSON.stringify({ ...state, metrikaRequests })}`);
+  const expectedCopy = 'Мы используем Яндекс.Метрику для сбора статистики о посещениях и улучшения работы сайта.';
+  const invalidBeforeAcknowledgement = (
+    state.acknowledged !== null
+    || !state.hasYm
+    || state.metrikaTags !== 1
+    || !state.bannerVisible
+    || !state.bannerText.includes(expectedCopy)
+    || /согласи|принять аналитические cookies/i.test(state.bannerText)
+    || state.buttonText !== 'Понятно'
+    || metrikaRequests < 1
+  );
+  if (invalidBeforeAcknowledgement) {
+    errors.push(`analytics-notice-before-acknowledgement: ${JSON.stringify({ ...state, metrikaRequests })}`);
   }
-  counters.consentChecks += 1;
+
+  await page.locator('#cookieBanner button').click();
+  const acknowledgedState = await page.evaluate(() => ({
+    acknowledged: localStorage.getItem('kepstroy_metrika_notice_acknowledged'),
+    metrikaTags: document.querySelectorAll('script[src*="mc.yandex.ru/metrika/tag.js"]').length,
+    bannerHidden: Boolean(document.querySelector('#cookieBanner[hidden]')),
+  }));
+  if (
+    acknowledgedState.acknowledged !== 'true'
+    || acknowledgedState.metrikaTags !== 1
+    || !acknowledgedState.bannerHidden
+  ) {
+    errors.push(`analytics-notice-after-acknowledgement: ${JSON.stringify(acknowledgedState)}`);
+  }
+  counters.analyticsNoticeChecks += 1;
   await audited.context.close();
 }
 
@@ -239,7 +266,7 @@ async function main() {
     sameSiteAliasRequests: 0,
     blockedPosts: 0,
     blockedWebSockets: 0,
-    consentChecks: 0,
+    analyticsNoticeChecks: 0,
     ctaJourneys: 0,
     formJourneys: 0,
     interceptedJourneyPosts: 0,
@@ -250,7 +277,7 @@ async function main() {
     browser = await chromium.launch({ headless: true });
     await auditAllPages(browser, origin, publicPages, counters, errors);
     console.log(`PAGE-WIDTH AUDIT COMPLETE: ${counters.pageWidthRuns} runs`);
-    await auditConsent(browser, origin, counters, errors);
+    await auditAnalyticsNotice(browser, origin, counters, errors);
     await auditJourneys(browser, origin, counters, errors);
   } finally {
     if (browser) await browser.close();
