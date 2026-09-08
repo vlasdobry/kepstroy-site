@@ -122,6 +122,11 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
         policy = POLICY_PAGE.read_text(encoding="utf-8")
 
         self.assertIn("kepstroy_metrika_notice_acknowledged", policy)
+        self.assertIn("Через формы на сайте пользователь добровольно предоставляет", policy)
+        self.assertIn("При посещении сайта автоматически могут обрабатываться", policy)
+        self.assertIn("Подключение Яндекс.Метрики не зависит от этой галочки", policy)
+        self.assertNotIn("Яндекс.Метрика, обезличенные данные", policy)
+        self.assertIn("Дата последнего обновления: 8 сентября 2026 г.", policy)
         self.assertRegex(
             policy,
             r"Яндекс\.Метрик[аи][^<]{0,200}(?:загружается|подключается)[^<]{0,120}(?:загрузк|открыт)",

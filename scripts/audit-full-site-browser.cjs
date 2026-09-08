@@ -141,6 +141,7 @@ async function auditAnalyticsNotice(browser, origin, counters, errors) {
     bannerVisible: Boolean(document.querySelector('#cookieBanner:not([hidden])')),
     bannerText: document.querySelector('#cookieBanner')?.textContent.replace(/\s+/g, ' ').trim() || '',
     buttonText: document.querySelector('#cookieBanner button')?.textContent.trim() || '',
+    policyHref: document.querySelector('#cookieBanner a')?.getAttribute('href') || '',
   }));
   const expectedCopy = 'Мы используем Яндекс.Метрику для сбора статистики о посещениях и улучшения работы сайта.';
   const invalidBeforeAcknowledgement = (
@@ -151,6 +152,7 @@ async function auditAnalyticsNotice(browser, origin, counters, errors) {
     || !state.bannerText.includes(expectedCopy)
     || /согласи|принять аналитические cookies/i.test(state.bannerText)
     || state.buttonText !== 'Понятно'
+    || state.policyHref !== '/politika-konfidencialnosti/'
     || metrikaRequests < 1
   );
   if (invalidBeforeAcknowledgement) {

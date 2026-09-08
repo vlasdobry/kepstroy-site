@@ -165,6 +165,9 @@ class FakeDocument {
     if (selector === '.cookie-banner__btn') {
       return descendants.find(element => element.classList.contains('cookie-banner__btn')) || null;
     }
+    if (selector === '#cookieBanner a') {
+      return descendants.find(element => element.tagName === 'A') || null;
+    }
     if (selector === '[data-consent-status]') {
       return descendants.find(element => element.getAttribute('data-consent-status') !== null) || null;
     }
@@ -300,10 +303,13 @@ test('Metrika initializes immediately and DOM readiness creates an informational
 
   const banner = harness.document.getElementById('cookieBanner');
   const button = harness.document.querySelector('.cookie-banner__btn');
+  const policyLink = harness.document.querySelector('#cookieBanner a');
   assert.ok(banner);
   assert.equal(banner.hidden, false);
   assert.match(banner.textContent, /Яндекс\.Метрику.*сбора статистики о посещениях.*улучшения работы сайта/i);
   assert.equal(button.textContent, 'Понятно');
+  assert.equal(policyLink.href, '/politika-konfidencialnosti/');
+  assert.equal(policyLink.textContent, 'Подробнее в политике конфиденциальности');
   assert.doesNotMatch(banner.textContent, /соглас|принять/i);
 });
 
