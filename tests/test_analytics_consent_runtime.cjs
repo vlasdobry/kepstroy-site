@@ -302,7 +302,7 @@ test('Metrika initializes immediately and DOM readiness creates an informational
   const button = harness.document.querySelector('.cookie-banner__btn');
   assert.ok(banner);
   assert.equal(banner.hidden, false);
-  assert.match(banner.textContent, /Яндекс\.Метрику.*анализа посещаемости.*улучшения работы сайта/i);
+  assert.match(banner.textContent, /Яндекс\.Метрику.*сбора статистики о посещениях.*улучшения работы сайта/i);
   assert.equal(button.textContent, 'Понятно');
   assert.doesNotMatch(banner.textContent, /соглас|принять/i);
 });

@@ -107,6 +107,17 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
         self.assertIn("root.localStorage.getItem(LEGACY_CONSENT_KEY)", source)
         self.assertNotIn("setItem(LEGACY_CONSENT_KEY", source)
 
+    def test_notice_copy_is_informational_and_has_neutral_acknowledgement(self):
+        source = ANALYTICS_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "Мы используем Яндекс.Метрику для сбора статистики о посещениях и улучшения работы сайта.",
+            source,
+        )
+        self.assertIn("acknowledgeButton.textContent = 'Понятно'", source)
+        self.assertNotIn("Принять аналитические cookies", source)
+        self.assertNotIn("только после вашего согласия", source)
+
     def test_policy_describes_immediate_analytics_and_the_notice_storage_key(self):
         policy = POLICY_PAGE.read_text(encoding="utf-8")
 

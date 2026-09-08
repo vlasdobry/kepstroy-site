@@ -268,7 +268,7 @@
     banner.setAttribute('aria-label', 'Уведомление об аналитике');
 
     const message = document.createElement('p');
-    message.textContent = 'Мы используем Яндекс.Метрику для анализа посещаемости и улучшения работы сайта. ';
+    message.textContent = 'Мы используем Яндекс.Метрику для сбора статистики о посещениях и улучшения работы сайта. ';
 
     const policyLink = document.createElement('a');
     policyLink.href = '/politika-konfidencialnosti/';
