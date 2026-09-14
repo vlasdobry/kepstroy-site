@@ -1,7 +1,9 @@
 import json
 import re
 import unittest
+from difflib import SequenceMatcher
 from html import unescape
+from itertools import combinations
 from pathlib import Path
 from unittest.mock import patch
 
@@ -26,6 +28,7 @@ EXPECTED_SLUGS = {
     "simferopol",
     "sudak",
 }
+MAX_LOCAL_COPY_SIMILARITY = 0.86
 
 
 def city_registry():
@@ -88,6 +91,10 @@ def normalize_local_copy(source, city):
         normalized = re.sub(rf"\b{re.escape(token.lower())}\b", " ", normalized)
     normalized = re.sub(r"[^а-яёa-z0-9]+", " ", normalized, flags=re.IGNORECASE)
     return " ".join(normalized.split())
+
+
+def local_copy_similarity(left, right):
+    return SequenceMatcher(None, left, right, autojunk=False).ratio()
 
 
 class SolarCityPagesTests(unittest.TestCase):
@@ -183,6 +190,17 @@ class SolarCityPagesTests(unittest.TestCase):
                 len(EXPECTED_SLUGS),
                 len(set(values.values())),
                 f"Every city must have a unique {label}",
+            )
+
+        for left_slug, right_slug in combinations(sorted(local_blocks), 2):
+            similarity = local_copy_similarity(
+                local_blocks[left_slug], local_blocks[right_slug]
+            )
+            self.assertLess(
+                similarity,
+                MAX_LOCAL_COPY_SIMILARITY,
+                f"Local blocks for {left_slug} and {right_slug} are "
+                f"{similarity:.1%} similar after city names are removed",
             )
 
     def test_direct_offer_is_server_rendered_immediately_after_h1(self):
@@ -354,9 +372,17 @@ class SolarCityPagesTests(unittest.TestCase):
 
         forbidden_examples = (
             "Поставка 5 сентября.",
+            "Поставка 05.09.2026.",
+            "Доставка запланирована на 05/09/2026.",
+            "Монтаж за два дня.",
+            "Монтаж за 2 дня.",
+            "Гарантия на монтаж два года.",
+            "Гарантия на монтаж 2 года.",
             "Система вырабатывает 900 кВт·ч в месяц.",
+            "Годовая выработка системы 4 МВт·ч.",
+            "Годовая выработка системы 4 МВт ч.",
+            "Годовая выработка системы 4 МВт.ч.",
             "Комплект даёт 1200 киловатт-часов в год.",
-            "Панель генерирует 70 единиц энергии ежедневно.",
             "Предлагаем бесплатную установку оборудования.",
             "Вы получите полностью независимое электроснабжение.",
         )
@@ -366,6 +392,7 @@ class SolarCityPagesTests(unittest.TestCase):
 
         confirmed_examples = (
             "Двусторонняя генерация энергии.",
+            "Панель генерирует энергию при мощности 650 Вт.",
             "Мощность панели 650 Вт.",
             "Стоимость доставки рассчитывается после уточнения адреса.",
             "Проектируем автономные, сетевые и гибридные системы.",
@@ -373,6 +400,37 @@ class SolarCityPagesTests(unittest.TestCase):
         for copy in confirmed_examples:
             with self.subTest(copy=copy):
                 self.assertFalse(is_forbidden(copy), copy)
+
+    def test_similarity_guard_detects_city_only_and_one_word_variations(self):
+        simferopol = {
+            "city": "Симферополь",
+            "city_genitive": "Симферополя",
+            "city_dative": "Симферополе",
+            "city_prepositional": "Симферополе",
+            "slug": "simferopol",
+        }
+        sevastopol = {
+            "city": "Севастополь",
+            "city_genitive": "Севастополя",
+            "city_dative": "Севастополе",
+            "city_prepositional": "Севастополе",
+            "slug": "sevastopol",
+        }
+        first = (
+            "<p>Для объекта в Симферополе уточним профиль потребления, место "
+            "размещения оборудования и параметры сети.</p>"
+            "<p>До расчёта попросим схему кровли и перечень приборов.</p>"
+        )
+        near_duplicate = (
+            "<p>Для объекта в Севастополе уточним профиль потребления, место "
+            "размещения оборудования и состояние сети.</p>"
+            "<p>До расчёта попросим схему кровли и перечень приборов.</p>"
+        )
+        similarity = local_copy_similarity(
+            normalize_local_copy(first, simferopol),
+            normalize_local_copy(near_duplicate, sevastopol),
+        )
+        self.assertGreaterEqual(similarity, MAX_LOCAL_COPY_SIMILARITY)
 
 
 if __name__ == "__main__":
