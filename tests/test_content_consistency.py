@@ -28,6 +28,7 @@ SERVICE_SLUGS = {
     "generatory",
     "kanalizaciya",
     "septiki",
+    "solnechnye-paneli",
     "vodosnabzhenie",
     "yuridicheskoe-soprovozhdenie-podklyuchenij",
     "zabory",

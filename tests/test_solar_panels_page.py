@@ -200,6 +200,31 @@ class SolarPanelsPageTests(unittest.TestCase):
         for filename in ("llms.txt", "llms-full.txt"):
             self.assertIn(URL, (HTML / filename).read_text(encoding="utf-8"), filename)
 
+        short = (HTML / "llms.txt").read_text(encoding="utf-8")
+        self.assertIn(
+            "LONGi Hi-MO X10 Scientist 650 Вт по 20 000 ₽/шт., в наличии и под заказ.",
+            short,
+        )
+        full = (HTML / "llms-full.txt").read_text(encoding="utf-8")
+        section = full[full.index("### Солнечные панели и электростанции") :]
+        next_heading = section.find("\n### ", 5)
+        if next_heading != -1:
+            section = section[:next_heading]
+        for confirmed in (
+            "650 Вт",
+            "20 000 ₽",
+            "в наличии и под заказ",
+            "автономные, сетевые и гибридные системы",
+            "по всему Крыму",
+        ):
+            self.assertIn(confirmed, section)
+        for forbidden in ("24,6", "15-лет", "30-лет", "окупаем", "бесплатн"):
+            self.assertNotIn(forbidden, section.lower())
+
+        robots = (HTML / "robots.txt").read_text(encoding="utf-8")
+        self.assertIn("User-agent: YandexBot\nAllow: /", robots)
+        self.assertIn("User-agent: GPTBot\nAllow: /", robots)
+
 
 if __name__ == "__main__":
     unittest.main()
