@@ -68,7 +68,7 @@ const buildLeadMessage = ({
   return lines.join('\n').slice(0, 1000);
 };
 
-const trackGoal = (goal) => {
+const trackSolarGoal = (goal) => {
   try {
     if (window.KepstroyTracking) window.KepstroyTracking.trackGoal(goal);
   } catch {
@@ -114,6 +114,26 @@ if (typeof document !== 'undefined') {
       window.matchMedia('(min-width: 1024px)').addEventListener('change', (event) => {
         if (event.matches && menu.classList.contains('active')) toggle.click();
       });
+
+      // Run in capture phase so focus and reduced-motion behaviour take precedence
+      // over the shared smooth-scroll listener from main.js.
+      document.addEventListener('click', (event) => {
+        const anchor = event.target.closest('a[href^="#"]');
+        if (!anchor) return;
+        const target = document.getElementById(anchor.hash.slice(1));
+        if (!target) return;
+
+        if (anchor.classList.contains('solar-skip') || menu.contains(anchor)) {
+          if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+          target.focus({ preventScroll: true });
+        }
+
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (menu.classList.contains('active')) toggle.click();
+        target.scrollIntoView({ behavior: 'instant', block: 'start' });
+      }, true);
     }
 
     const calculator = document.getElementById('solar-calculator');
@@ -169,19 +189,19 @@ if (typeof document !== 'undefined') {
     calculator.addEventListener('input', () => {
       if (!calculatorStarted) {
         calculatorStarted = true;
-        trackGoal('solar_calculator_start');
+        trackSolarGoal('solar_calculator_start');
       }
       renderCalculation();
     });
     calculator.addEventListener('change', renderCalculation);
     calculateButton.addEventListener('click', () => {
-      if (renderCalculation()) trackGoal('solar_calculator_result');
+      if (renderCalculation()) trackSolarGoal('solar_calculator_result');
     });
 
     requestForm.addEventListener('focusin', () => {
       if (formStarted) return;
       formStarted = true;
-      trackGoal('solar_form_start');
+      trackSolarGoal('solar_form_start');
     });
     requestForm.addEventListener('submit', syncMessage, true);
     commentInput.addEventListener('input', syncMessage);

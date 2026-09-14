@@ -249,6 +249,8 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalHtml;
       }
+      const errorGoal = form.dataset.errorGoal;
+      if (errorGoal) trackGoal(errorGoal);
       alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62');
     }
   });
