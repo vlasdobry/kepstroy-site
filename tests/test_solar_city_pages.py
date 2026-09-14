@@ -90,6 +90,21 @@ def robots_groups(source):
     return groups
 
 
+def robots_allows(source, user_agent, path):
+    groups = robots_groups(source)
+    agent = user_agent.lower()
+    rules = groups[agent] if agent in groups else groups.get("*", [])
+    matching_rules = [
+        (len(pattern), directive == "allow")
+        for directive, pattern in rules
+        if pattern and path.startswith(pattern)
+    ]
+    if not matching_rules:
+        return True
+    _specificity, is_allowed = max(matching_rules)
+    return is_allowed
+
+
 def city_registry():
     return json.loads(CITY_DATA.read_text(encoding="utf-8"))["cities"]
 
@@ -607,17 +622,76 @@ class SolarCityPagesTests(unittest.TestCase):
                     )
                 )
 
-        groups = robots_groups((HTML / "robots.txt").read_text(encoding="utf-8"))
+        robots = (HTML / "robots.txt").read_text(encoding="utf-8")
         for agent in (
             "YandexBot",
             "YandexImages",
             "ChatGPT-User",
-            "Claude-User",
+            "Claude-SearchBot",
             "PerplexityBot",
         ):
-            with self.subTest(agent=agent):
-                self.assertIn(("allow", "/"), groups.get(agent.lower(), []))
-                self.assertNotIn(("disallow", "/"), groups.get(agent.lower(), []))
+            for city in city_registry():
+                path = f"/krym/{city['slug']}/solnechnye-paneli/"
+                with self.subTest(agent=agent, path=path):
+                    self.assertTrue(robots_allows(robots, agent, path))
+
+    def test_robots_falls_back_to_wildcard_group(self):
+        source = "User-agent: *\nAllow: /\n"
+        self.assertTrue(
+            robots_allows(
+                source,
+                "Claude-SearchBot",
+                "/krym/jalta/solnechnye-paneli/",
+            )
+        )
+
+    def test_robots_detects_path_level_block(self):
+        source = "User-agent: *\nAllow: /\nDisallow: /krym/\n"
+        self.assertFalse(
+            robots_allows(
+                source,
+                "Claude-SearchBot",
+                "/krym/jalta/solnechnye-paneli/",
+            )
+        )
+
+    def test_robots_more_specific_allow_overrides_broader_disallow(self):
+        source = (
+            "User-agent: *\n"
+            "Disallow: /krym/\n"
+            "Allow: /krym/jalta/solnechnye-paneli/\n"
+        )
+        self.assertTrue(
+            robots_allows(
+                source,
+                "Claude-SearchBot",
+                "/krym/jalta/solnechnye-paneli/",
+            )
+        )
+
+    def test_robots_allow_wins_at_equal_specificity(self):
+        path = "/krym/jalta/solnechnye-paneli/"
+        source = (
+            "User-agent: *\n"
+            f"Disallow: {path}\n"
+            f"Allow: {path}\n"
+        )
+        self.assertTrue(robots_allows(source, "Claude-SearchBot", path))
+
+    def test_robots_separate_bot_group_takes_precedence_over_wildcard(self):
+        source = (
+            "User-agent: *\n"
+            "Disallow: /krym/\n\n"
+            "User-agent: Claude-SearchBot\n"
+            "Allow: /\n"
+        )
+        self.assertTrue(
+            robots_allows(
+                source,
+                "Claude-SearchBot",
+                "/krym/jalta/solnechnye-paneli/",
+            )
+        )
 
     def test_ai_discovery_files_list_main_and_city_solar_pages_once(self):
         expected_urls = city_solar_urls() | {
