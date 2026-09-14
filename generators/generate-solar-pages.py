@@ -209,6 +209,11 @@ def validate_neighbor_map(cities, neighbor_map):
             raise GeneratorError(f"Neighbor map {slug} must contain links")
         if len(neighbors) > 4:
             raise GeneratorError(f"Neighbor map {slug} must contain no more than four links")
+        if not all(
+            isinstance(neighbor, str) and SLUG_PATTERN.fullmatch(neighbor)
+            for neighbor in neighbors
+        ):
+            raise GeneratorError(f"Neighbor map {slug} must contain valid slugs")
         if len(neighbors) != len(set(neighbors)):
             raise GeneratorError(f"Neighbor map {slug} must not contain duplicates")
         if slug in neighbors:

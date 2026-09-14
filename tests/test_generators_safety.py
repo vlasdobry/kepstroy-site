@@ -629,6 +629,11 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(module.GeneratorError, "links"):
             module.validate_neighbor_map(cities, invalid_list)
 
+        unhashable_neighbor = dict(module.NEIGHBOR_SLUGS)
+        unhashable_neighbor[cities[0]["slug"]] = (["nested-slug"],)
+        with self.assertRaisesRegex(module.GeneratorError, "valid slug"):
+            module.validate_neighbor_map(cities, unhashable_neighbor)
+
     def test_json_ld_dynamic_strings_are_safe_inside_script_elements(self):
         module, (cities, city_content, offer, main_template, city_template) = self.inputs()
         marker = "</script><script>alert(1)</script><tag>&\u2028\u2029"
