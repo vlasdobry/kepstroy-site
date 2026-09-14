@@ -413,9 +413,15 @@ class SolarCityPagesTests(unittest.TestCase):
                 self.assertIn(f'href="/krym/{city["slug"]}/"', source)
 
                 hub = HTML / "krym" / city["slug"] / "index.html"
+                hub_source = hub.read_text(encoding="utf-8")
                 self.assertIn(
-                    f'href="/krym/{city["slug"]}/solnechnye-paneli/"',
-                    hub.read_text(encoding="utf-8"),
+                    f'<a href="/krym/{city["slug"]}/solnechnye-paneli/" '
+                    'class="service-tile">',
+                    hub_source,
+                )
+                self.assertIn(
+                    '<a href="/uslugi/solnechnye-paneli/">Солнечные панели</a>',
+                    hub_source,
                 )
 
     def test_readiness_reports_missing_city_outputs_instead_of_crashing(self):
