@@ -90,6 +90,20 @@ test('includes escaped calculator qualification before attribution and message',
   assert.ok(messagePosition > attributionPosition);
 });
 
+test('includes the generated city qualification in the Telegram lead', () => {
+  const text = buildLeadMessage({
+    service: 'Солнечные панели и электростанции',
+    city: '<b>Ялта</b>',
+    locality: 'посёлок рядом',
+    message: '10 панелей, 6,5 кВт, 200 000 ₽'
+  });
+
+  assert.match(text, /Город страницы: &lt;b&gt;Ялта&lt;\/b&gt;/);
+  assert.match(text, /Населённый пункт: посёлок рядом/);
+  assert.doesNotMatch(text, /<b>Ялта<\/b>/);
+  assert.ok(text.indexOf('Город страницы:') < text.indexOf('Сообщение:'));
+});
+
 test('omits blank qualification values but preserves numeric zero', () => {
   const text = buildLeadMessage({
     septic_type: undefined,

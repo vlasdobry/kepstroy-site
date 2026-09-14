@@ -546,10 +546,15 @@ class SolarCityPagesTests(unittest.TestCase):
                 )
                 self.assertTrue(
                     any(
-                        control.get("name") in {"city", "locality"}
+                        control.get("name") == "city"
                         and control.get("value") == city["city"]
                         for control in controls
                     )
+                )
+                self.assertEqual(
+                    1,
+                    sum(control.get("name") == "city" for control in controls),
+                    "City solar forms need one explicit generated city field",
                 )
                 self.assertIn('href="/uslugi/solnechnye-paneli/"', source)
                 self.assertIn(f'href="/krym/{city["slug"]}/"', source)

@@ -168,6 +168,7 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
   assert.match(payload.get('message') || '', /Населённый пункт: Алушта/);
   assert.match(payload.get('landing_page') || '', /\/uslugi\/solnechnye-paneli\//);
   assert.match(payload.get('current_page') || '', /\/uslugi\/solnechnye-paneli\//);
+  assert.equal(payload.get('city'), null, 'Main solar page must not invent a city');
   assert.equal(payload.get('website'), '');
   assert.equal(payload.get('company'), '');
 
@@ -197,6 +198,32 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
     await page.goto(origin + route);
     assert.ok(await page.locator('a[href="/uslugi/solnechnye-paneli/"]').count(), `Missing solar entry point on ${route}`);
   }
+
+  submissions.length = 0;
+  await page.goto(`${origin}/krym/jalta/solnechnye-paneli/?utm_source=city-test&utm_medium=cpc&utm_campaign=solar-jalta&yclid=jalta-123`);
+  const cityForm = page.locator('#solar-request-form');
+  await cityForm.locator('#solar-phone').fill('+7 (978) 123-45-67');
+  await cityForm.locator('[name="consent"]').check();
+  await cityForm.locator('[name="city"]').evaluate((input) => { input.value = 'Москва'; });
+  await cityForm.locator('button[type="submit"]').dblclick();
+  await page.waitForURL('**/spasibo/');
+  assert.equal(submissions.length, 1, 'City solar double click must create exactly one POST');
+  const cityPayload = submissions[0];
+  for (const [key, value] of Object.entries({
+    service: 'Солнечные панели и электростанции',
+    form_source: 'kepstroy',
+    city: 'Ялта',
+    utm_source: 'city-test',
+    utm_medium: 'cpc',
+    utm_campaign: 'solar-jalta',
+    yclid: 'jalta-123',
+    client_id: 'solar-test-client',
+  })) assert.equal(cityPayload.get(key), value, `city payload ${key}`);
+  assert.match(cityPayload.get('message') || '', /Город страницы: Ялта/);
+  assert.match(cityPayload.get('message') || '', /0,65 × 10 = 6,5 кВт/);
+  assert.match(cityPayload.get('message') || '', /Стоимость панелей: 200 000 ₽/);
+  assert.match(cityPayload.get('landing_page') || '', /\/krym\/jalta\/solnechnye-paneli\//);
+  assert.match(cityPayload.get('current_page') || '', /\/krym\/jalta\/solnechnye-paneli\//);
 
   await browser.close();
   assert.deepEqual(errors, []);

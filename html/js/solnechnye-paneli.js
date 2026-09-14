@@ -20,6 +20,21 @@ const PLACEMENT_LABELS = {
   ground: 'Наземная конструкция',
 };
 
+const SOLAR_CITY_BY_SLUG = Object.freeze({
+  simferopol: 'Симферополь',
+  sevastopol: 'Севастополь',
+  jalta: 'Ялта',
+  evpatorija: 'Евпатория',
+  kerch: 'Керчь',
+  feodosija: 'Феодосия',
+  alushta: 'Алушта',
+  sudak: 'Судак',
+  dzhankoj: 'Джанкой',
+  saki: 'Саки',
+  bahchisaraj: 'Бахчисарай',
+  armjansk: 'Армянск',
+});
+
 const formatNumber = (value, maximumFractionDigits = 0) => (
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits })
     .format(value)
@@ -43,12 +58,20 @@ const cleanText = (value, maxLength) => String(value || '')
   .trim()
   .slice(0, maxLength);
 
+const resolveSolarCity = (pathname) => {
+  const match = String(pathname || '').match(
+    /^\/krym\/([a-z0-9-]+)\/solnechnye-paneli\/(?:index\.html)?$/,
+  );
+  return match ? (SOLAR_CITY_BY_SLUG[match[1]] || '') : '';
+};
+
 const buildLeadMessage = ({
   calculation,
   scenario,
   systemType,
   placement,
   locality,
+  city,
   comment,
 }) => {
   const lines = [
@@ -60,9 +83,13 @@ const buildLeadMessage = ({
     `Тип системы: ${SYSTEM_LABELS[systemType] || SYSTEM_LABELS.unknown}`,
     `Размещение: ${PLACEMENT_LABELS[placement] || PLACEMENT_LABELS.consult}`,
   ];
+  const safeCity = cleanText(city, 100);
   const safeLocality = cleanText(locality, 100);
   const safeComment = cleanText(comment, 500);
-  if (safeLocality) lines.push(`Населённый пункт: ${safeLocality}`);
+  if (safeCity) lines.push(`Город страницы: ${safeCity}`);
+  if (safeLocality && safeLocality !== safeCity) {
+    lines.push(`Населённый пункт: ${safeLocality}`);
+  }
   if (safeComment) lines.push(`Комментарий: ${safeComment}`);
   lines.push('Монтаж, доставка и комплектующие рассчитываются отдельно.');
   return lines.join('\n').slice(0, 1000);
@@ -145,6 +172,7 @@ if (typeof document !== 'undefined') {
     const systemInput = document.getElementById('system-type');
     const placementInput = document.getElementById('placement');
     const localityInput = document.getElementById('solar-locality');
+    const cityInput = requestForm.elements.namedItem('city');
     const commentInput = document.getElementById('solar-comment');
     const messageInput = document.getElementById('solar-message');
     const resultQuantity = document.getElementById('solar-result-quantity');
@@ -155,6 +183,7 @@ if (typeof document !== 'undefined') {
     let calculatorStarted = false;
     let formStarted = false;
     let currentCalculation = calculatePanels(quantityInput.value);
+    const pageCity = resolveSolarCity(window.location.pathname);
 
     const qualification = () => ({
       calculation: currentCalculation,
@@ -162,10 +191,12 @@ if (typeof document !== 'undefined') {
       systemType: systemInput.value,
       placement: placementInput.value,
       locality: localityInput.value,
+      city: pageCity,
       comment: commentInput.value,
     });
 
     const syncMessage = () => {
+      if (cityInput && 'value' in cityInput) cityInput.value = pageCity;
       messageInput.value = buildLeadMessage(qualification());
     };
 
@@ -215,5 +246,6 @@ if (typeof module !== 'undefined' && module.exports) {
     SOLAR_PANEL_PRICE,
     calculatePanels,
     buildLeadMessage,
+    resolveSolarCity,
   };
 }
