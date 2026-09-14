@@ -37,6 +37,12 @@ GENERATORS = {
     },
 }
 
+SOLAR_SCRIPT = REPO_ROOT / "generators" / "generate-solar-pages.py"
+SOLAR_CITY_DATA = REPO_ROOT / "generators" / "solar-city-content.json"
+SOLAR_OFFER_DATA = REPO_ROOT / "generators" / "solar-page-data.json"
+SOLAR_MAIN_TEMPLATE = REPO_ROOT / "generators" / "solar-main-template.html"
+SOLAR_CITY_TEMPLATE = REPO_ROOT / "generators" / "solar-city-template.html"
+
 
 def load_generator(name, script):
     spec = importlib.util.spec_from_file_location(name, script)
@@ -526,6 +532,206 @@ class GeneratorSafetyTests(unittest.TestCase):
                     self.assertNotEqual(0, result.returncode)
                     self.assertIn("escapes output root", (result.stdout + result.stderr).lower())
                     self.assertEqual([], list(outside.iterdir()))
+
+
+class SolarGeneratorSafetyTests(unittest.TestCase):
+    def module(self):
+        self.assertTrue(SOLAR_SCRIPT.exists(), "solar generator API is missing")
+        return load_generator("solar_page_generator", SOLAR_SCRIPT)
+
+    def registry(self):
+        return json.loads(
+            (REPO_ROOT / "generators" / "city-septik-data.json").read_text(
+                encoding="utf-8"
+            )
+        )["cities"]
+
+    def inputs(self):
+        module = self.module()
+        return module, module.load_inputs()
+
+    def run_generator(self, output_root, *mode):
+        self.assertTrue(SOLAR_SCRIPT.exists(), "solar generator CLI is missing")
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SOLAR_SCRIPT),
+                *mode,
+                "--output-root",
+                str(output_root),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            check=False,
+        )
+
+    def test_render_pages_owns_main_and_exactly_twelve_registry_cities(self):
+        module = self.module()
+        rendered = module.render_pages()
+        registry_slugs = {city["slug"] for city in self.registry()}
+        city_paths = {
+            Path("krym") / slug / "solnechnye-paneli" / "index.html"
+            for slug in registry_slugs
+        }
+
+        self.assertEqual(13, len(rendered))
+        self.assertIn(Path("uslugi/solnechnye-paneli/index.html"), rendered)
+        self.assertEqual(
+            city_paths,
+            set(rendered) - {Path("uslugi/solnechnye-paneli/index.html")},
+        )
+        self.assertTrue(all("\r" not in source for source in rendered.values()))
+
+    def test_city_content_slugs_exactly_match_city_registry(self):
+        self.assertTrue(SOLAR_CITY_DATA.exists(), "solar city content is missing")
+        registry_slugs = {city["slug"] for city in self.registry()}
+        content = json.loads(SOLAR_CITY_DATA.read_text(encoding="utf-8"))
+        self.assertEqual(registry_slugs, set(content))
+
+    def test_validate_inputs_rejects_unknown_duplicate_and_unsafe_slugs(self):
+        module, (cities, city_content, offer, _main, _city) = self.inputs()
+
+        unknown_content = dict(city_content)
+        unknown_content["unknown-city"] = {}
+        with self.assertRaisesRegex(module.GeneratorError, "(?i)unknown|match"):
+            module.validate_inputs(cities, unknown_content, offer)
+
+        duplicate_cities = json.loads(json.dumps(cities, ensure_ascii=False))
+        duplicate_cities[1]["slug"] = duplicate_cities[0]["slug"]
+        with self.assertRaisesRegex(module.GeneratorError, "(?i)duplicate city slug"):
+            module.validate_inputs(duplicate_cities, city_content, offer)
+
+        for unsafe_slug in ("../escape", "/absolute", r"C:\\absolute"):
+            with self.subTest(slug=unsafe_slug):
+                unsafe_cities = json.loads(json.dumps(cities, ensure_ascii=False))
+                unsafe_cities[0]["slug"] = unsafe_slug
+                with self.assertRaisesRegex(
+                    module.GeneratorError, "(?i)invalid city slug"
+                ):
+                    module.validate_inputs(unsafe_cities, city_content, offer)
+
+    def test_offer_data_contains_only_confirmed_public_facts(self):
+        self.assertTrue(SOLAR_OFFER_DATA.exists(), "solar offer data is missing")
+        offer = json.loads(SOLAR_OFFER_DATA.read_text(encoding="utf-8"))
+        self.assertEqual(
+            {
+                "product_name": "LONGi Hi-MO X10 Scientist",
+                "panel_power_w": 650,
+                "panel_power_kw": 0.65,
+                "panel_price_rub": 20000,
+                "availability": ["В наличии", "Под заказ"],
+                "system_types": ["Автономная", "Сетевая", "Гибридная"],
+            },
+            offer,
+        )
+
+    def test_check_reports_drift_without_writing(self):
+        with temporary_repo() as temp_dir:
+            output_root = temp_dir / "html"
+            output_root.mkdir()
+            marker = output_root / "keep.txt"
+            marker.write_bytes(b"unchanged")
+            before = marker.stat().st_mtime_ns
+
+            for mode in ((), ("--check",)):
+                with self.subTest(mode=mode or ("default",)):
+                    result = self.run_generator(output_root, *mode)
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn("drift", (result.stdout + result.stderr).lower())
+                    self.assertEqual([marker], list(output_root.iterdir()))
+                    self.assertEqual(b"unchanged", marker.read_bytes())
+                    self.assertEqual(before, marker.stat().st_mtime_ns)
+
+    def test_write_is_atomic_preserves_mode_and_refuses_unexpected_owned_output(self):
+        module, loaded = self.inputs()
+        with temporary_repo() as temp_dir:
+            existing = temp_dir / "existing.html"
+            existing.write_bytes(b"approved")
+            expected_mode = stat.S_IMODE(existing.stat().st_mode)
+            with mock.patch.object(module.os, "chmod", wraps=module.os.chmod) as chmod:
+                module.atomic_write(existing, "replacement\r\n")
+            temp_path, applied_mode = chmod.call_args.args
+            self.assertEqual(expected_mode, applied_mode)
+            self.assertEqual(existing.parent, Path(temp_path).parent)
+            self.assertEqual("replacement\n", existing.read_text(encoding="utf-8"))
+
+            output_root = temp_dir / "html"
+            output_root.mkdir()
+            unexpected = (
+                output_root
+                / "krym"
+                / "obsolete"
+                / "solnechnye-paneli"
+                / "index.html"
+            )
+            unexpected.parent.mkdir(parents=True)
+            unexpected.write_bytes(b"do not delete")
+            rendered = module.render_pages(*loaded)
+            self.assertEqual(
+                [Path("krym/obsolete/solnechnye-paneli/index.html")],
+                module.unexpected_outputs(rendered, output_root),
+            )
+
+            result = self.run_generator(output_root, "--write")
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("unexpected", (result.stdout + result.stderr).lower())
+            self.assertEqual(b"do not delete", unexpected.read_bytes())
+            self.assertEqual([unexpected], list(output_root.rglob("*.html")))
+
+    def test_crlf_checkout_does_not_create_false_drift(self):
+        module, loaded = self.inputs()
+        rendered = module.render_pages(*loaded)
+        with temporary_repo() as temp_dir:
+            output_root = temp_dir / "html"
+            output_root.mkdir()
+            for relative_path, source in rendered.items():
+                target = output_root / relative_path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(
+                    source, encoding="utf-8", newline="\r\n"
+                )
+            before = snapshot(output_root, tuple(rendered))
+
+            self.assertEqual([], module.compare_outputs(rendered, output_root))
+            result = self.run_generator(output_root, "--check")
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(before, snapshot(output_root, tuple(rendered)))
+
+    def test_unknown_template_placeholder_is_a_clear_generator_error(self):
+        module, (cities, city_content, offer, main_template, city_template) = self.inputs()
+        with temporary_repo() as temp_dir:
+            invalid_template = temp_dir / "city-template.html"
+            invalid_template.write_text(
+                city_template.template + "\n${unknown_placeholder}\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                module.GeneratorError, "unknown_placeholder"
+            ):
+                module.render_pages(
+                    cities,
+                    city_content,
+                    offer,
+                    main_template,
+                    module.Template(invalid_template.read_text(encoding="utf-8")),
+                )
+
+    def test_symlink_output_root_is_rejected(self):
+        with temporary_repo() as temp_dir:
+            real_root = temp_dir / "real-html"
+            real_root.mkdir()
+            symlink_root = temp_dir / "linked-html"
+            try:
+                symlink_root.symlink_to(real_root, target_is_directory=True)
+            except OSError as error:
+                self.skipTest(f"directory symlinks are unavailable: {error}")
+
+            result = self.run_generator(symlink_root, "--check")
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("symlink", (result.stdout + result.stderr).lower())
 
 
 if __name__ == "__main__":

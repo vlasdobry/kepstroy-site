@@ -1,0 +1,15 @@
+{
+  "product_name": "LONGi Hi-MO X10 Scientist",
+  "panel_power_w": 650,
+  "panel_power_kw": 0.65,
+  "panel_price_rub": 20000,
+  "availability": [
+    "В наличии",
+    "Под заказ"
+  ],
+  "system_types": [
+    "Автономная",
+    "Сетевая",
+    "Гибридная"
+  ]
+}

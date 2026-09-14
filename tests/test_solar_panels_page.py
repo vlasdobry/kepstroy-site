@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import re
 import unittest
 import xml.etree.ElementTree as ET
@@ -224,6 +225,31 @@ class SolarPanelsPageTests(unittest.TestCase):
         robots = (HTML / "robots.txt").read_text(encoding="utf-8")
         self.assertIn("User-agent: YandexBot\nAllow: /", robots)
         self.assertIn("User-agent: GPTBot\nAllow: /", robots)
+
+    def test_generator_keeps_published_main_page_in_sync_without_city_outputs(self):
+        script = ROOT / "generators" / "generate-solar-pages.py"
+        self.assertTrue(script.exists(), "solar generator API is missing")
+        spec = importlib.util.spec_from_file_location("solar_page_generator", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        rendered = module.render_pages(*module.load_inputs())
+        main_path = Path("uslugi/solnechnye-paneli/index.html")
+        self.assertEqual(PAGE.read_text(encoding="utf-8"), rendered[main_path])
+
+        expected_city_drift = {
+            Path("krym") / city["slug"] / "solnechnye-paneli" / "index.html"
+            for city in json.loads(
+                (ROOT / "generators" / "city-septik-data.json").read_text(
+                    encoding="utf-8"
+                )
+            )["cities"]
+        }
+        self.assertEqual(
+            expected_city_drift,
+            set(module.compare_outputs(rendered, HTML)),
+            "Before city-page publication only the 12 city outputs may drift",
+        )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <script src="/js/analytics-consent.js?v=2" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Солнечные панели и электростанции в ${city_prepositional} | КэпСтрой</title>
+  <meta name="description" content="Солнечные панели ${product_name} ${panel_power_w} Вт по ${panel_price_formatted} ₽ в ${city_prepositional}. ${availability_sentence}. Доставка, проектирование и монтаж солнечных электростанций.">
+  <link rel="canonical" href="https://kepstroy.ru/krym/${slug}/solnechnye-paneli/">
+  <link rel="stylesheet" href="/css/style.css?v=19">
+  <link rel="stylesheet" href="/css/solnechnye-paneli.css?v=2">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Service",
+        "name": "Солнечные панели и электростанции в ${city_schema}",
+        "url": "https://kepstroy.ru/krym/${slug}/solnechnye-paneli/",
+        "areaServed": {"@type": "City", "name": "${city_schema}"},
+        "provider": {"@type": "Organization", "name": "КэпСтрой", "url": "https://kepstroy.ru/"}
+      },
+      {
+        "@type": "Product",
+        "name": "Солнечная панель ${product_name_schema} ${panel_power_w} Вт",
+        "offers": {
+          "@type": "Offer",
+          "price": ${panel_price_rub},
+          "priceCurrency": "RUB",
+          "availability": "https://schema.org/InStock"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "Главная", "item": "https://kepstroy.ru/"},
+          {"@type": "ListItem", "position": 2, "name": "Крым", "item": "https://kepstroy.ru/krym/"},
+          {"@type": "ListItem", "position": 3, "name": "${city_schema}", "item": "https://kepstroy.ru/krym/${slug}/"},
+          {"@type": "ListItem", "position": 4, "name": "Солнечные панели"}
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="solar-skip" href="#main">Перейти к содержанию</a>
+  <div class="header__top"><div class="container">Работаем по всему Крыму. Ежедневно 08:00-20:00</div></div>
+  <header class="header">
+    <div class="container header__inner">
+      <a href="/" class="logo" aria-label="КэпСтрой, главная"><span>КЭП</span>СТРОЙ</a>
+      <a href="tel:+79784615962" class="header__phone">+7 (978) 461-59-62</a>
+    </div>
+  </header>
+  <main id="main" class="solar-page" tabindex="-1">
+    <section class="solar-hero">
+      <div class="container">
+        <nav class="solar-breadcrumbs" aria-label="Хлебные крошки"><a href="/">Главная</a><span aria-hidden="true">/</span><a href="/krym/">Крым</a><span aria-hidden="true">/</span><a href="/krym/${slug}/">${city}</a><span aria-hidden="true">/</span><span aria-current="page">Солнечные панели</span></nav>
+        <div class="solar-hero__copy">
+          <p class="solar-eyebrow">Солнечная энергетика в ${city_prepositional}</p>
+          <h1>Солнечные панели и электростанции в ${city_prepositional}</h1>
+          <p class="solar-lead">КэпСтрой поставляет панели ${product_name} ${panel_power_w} Вт и собирает ${system_types_plural} системы для объектов в ${city_prepositional}.</p>
+          <a href="#request" class="btn btn--primary">Получить расчёт</a>
+        </div>
+        <dl class="solar-facts" aria-label="Основные условия">
+          <div><dt>Мощность панели</dt><dd>${panel_power_w} Вт</dd></div>
+          <div><dt>Цена панели</dt><dd>${panel_price_formatted} ₽</dd></div>
+          <div><dt>Доступность</dt><dd>${availability_sentence}</dd></div>
+          <div><dt>Работы</dt><dd>Доставка и монтаж</dd></div>
+        </dl>
+      </div>
+    </section>
+    <section class="solar-section">
+      <div class="container">
+        <h2>${product_name} ${panel_power_w} Вт</h2>
+        <p>${intro}</p>
+        <p>${local_note}</p>
+        <h2>Типы солнечных систем</h2>
+        <ul><li>${system_type_1}</li><li>${system_type_2}</li><li>${system_type_3}</li></ul>
+        <p>Доставка, монтаж, инвертор, аккумуляторы и крепления рассчитываются отдельно для конкретного объекта.</p>
+      </div>
+    </section>
+    <section id="request" class="solar-section solar-section--tint">
+      <div class="container solar-request">
+        <div class="solar-heading"><h2>Получите расчёт для объекта в ${city_prepositional}</h2><p>Оставьте номер телефона. Инженер уточнит задачу и состав оборудования.</p></div>
+        <form class="solar-form" action="/submit" method="POST">
+          <input type="hidden" name="form_source" value="kepstroy">
+          <input type="hidden" name="service" value="Солнечные панели и электростанции, ${city}">
+          <input type="hidden" name="message" value="Расчёт солнечной системы для объекта в ${city_prepositional}">
+          <div class="form-honeypot" aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"><input type="text" name="company" tabindex="-1" autocomplete="off"></div>
+          <label class="solar-field">Телефон<input type="tel" name="phone" autocomplete="tel" inputmode="tel" required></label>
+          <div class="form-consent"><label><input type="checkbox" name="consent" required><span>Согласен на обработку <a href="/politika-konfidencialnosti/">персональных данных</a></span></label></div>
+          <button type="submit" class="btn btn--primary">Получить расчёт</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><div class="container solar-footer"><a href="/" class="logo"><span>КЭП</span>СТРОЙ</a><a href="tel:+79784615962">+7 (978) 461-59-62</a></div></footer>
+  <script src="/js/tracking.js?v=2"></script>
+  <script src="/js/main.js?v=22"></script>
+  <script src="/js/solnechnye-paneli.js?v=2"></script>
+</body>
+</html>
