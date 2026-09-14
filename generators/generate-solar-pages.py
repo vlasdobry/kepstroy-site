@@ -164,10 +164,13 @@ def _plural_system_types(system_types):
 def _common_context(offer):
     availability_lower = " и ".join(value.lower() for value in offer["availability"])
     availability_sentence = availability_lower[:1].upper() + availability_lower[1:]
+    product_brand = offer["product_name"].split(maxsplit=1)[0]
     default_quantity = 10
     return {
         "product_name": escape(offer["product_name"]),
         "product_name_schema": json.dumps(offer["product_name"], ensure_ascii=False)[1:-1],
+        "product_brand": escape(product_brand),
+        "product_brand_schema": json.dumps(product_brand, ensure_ascii=False)[1:-1],
         "panel_power_w": str(offer["panel_power_w"]),
         "panel_price_rub": str(offer["panel_price_rub"]),
         "panel_price_formatted": _format_number(offer["panel_price_rub"]),
@@ -236,10 +239,33 @@ def render_pages(
     return rendered
 
 
+def _is_symlink_or_junction(path):
+    path = Path(path)
+    return path.is_symlink() or (
+        hasattr(path, "is_junction") and path.is_junction()
+    )
+
+
+def _lexical_absolute(path):
+    path = Path(path)
+    if ".." in path.parts:
+        raise GeneratorError(f"Target escapes output root: {path}")
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def _reject_symlink_components(path):
+    """Не разрешает ссылку ни в target, ни в существующих родителях."""
+    absolute = _lexical_absolute(path)
+    current = Path(absolute.anchor)
+    for part in absolute.parts[1:]:
+        current /= part
+        if _is_symlink_or_junction(current):
+            raise GeneratorError(f"Output path contains a symlink: {current}")
+    return absolute
+
+
 def _safe_output_root(output_root):
-    raw = Path(output_root)
-    if raw.is_symlink():
-        raise GeneratorError("Output root must not be a symlink")
+    raw = _reject_symlink_components(output_root)
     if not raw.is_dir():
         raise GeneratorError("Output root must be an existing directory")
     return raw.resolve()
@@ -250,9 +276,10 @@ def _resolve_output_path(output_root, relative_path):
     relative_path = Path(relative_path)
     if relative_path.is_absolute() or ".." in relative_path.parts:
         raise GeneratorError(f"Target escapes output root: {relative_path}")
-    target = (root / relative_path).resolve(strict=False)
+    target = _reject_symlink_components(root / relative_path)
+    resolved_target = target.resolve(strict=False)
     try:
-        target.relative_to(root)
+        resolved_target.relative_to(root)
     except ValueError as error:
         raise GeneratorError(f"Target escapes output root: {relative_path}") from error
     return target
@@ -296,8 +323,9 @@ def unexpected_outputs(rendered, output_root):
 
 def atomic_write(path, html):
     """Атомарно пишет LF UTF-8, сохраняя mode существующего файла."""
-    path = Path(path)
+    path = _reject_symlink_components(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    _reject_symlink_components(path)
     target_mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
     temp_path = None
     try:
@@ -318,12 +346,10 @@ def atomic_write(path, html):
 
 
 def existing_directory(value):
-    path = Path(value)
-    if path.is_symlink():
-        raise argparse.ArgumentTypeError("output root must not be a symlink")
-    if not path.is_dir():
-        raise argparse.ArgumentTypeError("output root must be an existing directory")
-    return path.resolve()
+    try:
+        return _safe_output_root(value)
+    except GeneratorError as error:
+        raise argparse.ArgumentTypeError(str(error).lower()) from error
 
 
 def parse_args(argv=None):

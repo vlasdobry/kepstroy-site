@@ -628,6 +628,34 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
             offer,
         )
 
+    def test_rendered_offer_has_no_stale_brand_or_system_type_copy(self):
+        module, (cities, city_content, offer, main_template, city_template) = self.inputs()
+        mutated_offer = dict(offer)
+        mutated_offer["product_name"] = "SunPeak Atlas Prime"
+        mutated_offer["system_types"] = [
+            "Островная",
+            "Параллельная",
+            "Комбинированная",
+        ]
+
+        rendered = module.render_pages(
+            cities,
+            city_content,
+            mutated_offer,
+            main_template,
+            city_template,
+        )
+
+        for relative_path, source in rendered.items():
+            with self.subTest(path=relative_path.as_posix()):
+                self.assertNotIn("LONGi", source)
+                self.assertNotRegex(
+                    source.lower(), r"автономн|сетев(?:ая|ые|ых)|гибридн"
+                )
+                self.assertIn("SunPeak", source)
+                for system_type in mutated_offer["system_types"]:
+                    self.assertIn(system_type, source)
+
     def test_check_reports_drift_without_writing(self):
         with temporary_repo() as temp_dir:
             output_root = temp_dir / "html"
@@ -732,6 +760,71 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
             result = self.run_generator(symlink_root, "--check")
             self.assertNotEqual(0, result.returncode)
             self.assertIn("symlink", (result.stdout + result.stderr).lower())
+
+    def test_target_file_symlink_is_rejected_before_atomic_write(self):
+        module = self.module()
+        with temporary_repo() as temp_dir:
+            output_root = temp_dir / "html"
+            target = output_root / "uslugi" / "solnechnye-paneli" / "index.html"
+            target.parent.mkdir(parents=True)
+            real_target = output_root / "owned-real.html"
+            real_target.write_bytes(b"approved")
+            try:
+                target.symlink_to(real_target)
+            except OSError as error:
+                self.skipTest(f"file symlinks are unavailable: {error}")
+
+            with self.assertRaisesRegex(module.GeneratorError, "(?i)symlink"):
+                module._resolve_output_path(
+                    output_root, Path("uslugi/solnechnye-paneli/index.html")
+                )
+            with self.assertRaisesRegex(module.GeneratorError, "(?i)symlink"):
+                module.atomic_write(target, "replacement")
+            self.assertEqual(b"approved", real_target.read_bytes())
+            self.assertTrue(target.is_symlink())
+
+    def test_intermediate_symlink_inside_output_root_is_rejected(self):
+        module = self.module()
+        with temporary_repo() as temp_dir:
+            output_root = temp_dir / "html"
+            output_root.mkdir()
+            real_directory = output_root / "real-city"
+            real_directory.mkdir()
+            alias = output_root / "alias-city"
+            try:
+                alias.symlink_to(real_directory, target_is_directory=True)
+            except OSError as error:
+                self.skipTest(f"directory symlinks are unavailable: {error}")
+
+            relative_path = Path("alias-city/solnechnye-paneli/index.html")
+            with self.assertRaisesRegex(module.GeneratorError, "(?i)symlink"):
+                module._resolve_output_path(output_root, relative_path)
+            with self.assertRaisesRegex(module.GeneratorError, "(?i)symlink"):
+                module.atomic_write(output_root / relative_path, "replacement")
+            self.assertEqual([], list(real_directory.rglob("*.html")))
+
+    def test_symlink_component_detection_is_not_platform_dependent(self):
+        module = self.module()
+        with temporary_repo() as temp_dir:
+            output_root = temp_dir / "html"
+            blocked_directory = output_root / "krym" / "alias-city"
+            blocked_directory.mkdir(parents=True)
+            relative_path = Path("krym/alias-city/solnechnye-paneli/index.html")
+            real_is_symlink = Path.is_symlink
+
+            def report_blocked_component(path):
+                if path == blocked_directory:
+                    return True
+                return real_is_symlink(path)
+
+            with mock.patch.object(
+                Path, "is_symlink", autospec=True, side_effect=report_blocked_component
+            ):
+                with self.assertRaisesRegex(module.GeneratorError, "(?i)symlink"):
+                    module._resolve_output_path(output_root, relative_path)
+                with self.assertRaisesRegex(module.GeneratorError, "(?i)symlink"):
+                    module.atomic_write(output_root / relative_path, "replacement")
+            self.assertEqual([], list(blocked_directory.rglob("*.html")))
 
 
 if __name__ == "__main__":

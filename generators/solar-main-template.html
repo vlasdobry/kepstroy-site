@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="light only">
   <meta name="theme-color" content="#15803d">
   <title>Солнечные панели и электростанции в Крыму | КэпСтрой</title>
-  <meta name="description" content="Солнечные панели LONGi ${panel_power_w} Вт по ${panel_price_formatted} ₽. ${availability_sentence}. Доставка по Крыму, подбор инверторов и АКБ, проектирование и монтаж.">
+  <meta name="description" content="Солнечные панели ${product_brand} ${panel_power_w} Вт по ${panel_price_formatted} ₽. ${availability_sentence}. Доставка по Крыму, подбор инверторов и АКБ, проектирование и монтаж.">
   <link rel="canonical" href="https://kepstroy.ru/uslugi/solnechnye-paneli/">
   <link rel="icon" type="image/svg+xml" href="/images/favicon/favicon.svg?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,7 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ru_RU">
   <meta property="og:title" content="Солнечные панели и электростанции в Крыму | КэпСтрой">
-  <meta property="og:description" content="Панели LONGi ${panel_power_w} Вт по ${panel_price_formatted} ₽ и солнечные системы под ключ по всему Крыму.">
+  <meta property="og:description" content="Панели ${product_brand} ${panel_power_w} Вт по ${panel_price_formatted} ₽ и солнечные системы под ключ по всему Крыму.">
   <meta property="og:url" content="https://kepstroy.ru/uslugi/solnechnye-paneli/">
   <meta property="og:image" content="https://kepstroy.ru/images/solnechnye-paneli/solar-hero-960.webp">
   <meta property="og:image:alt" content="Визуализация дома с солнечными панелями на крыше в Крыму">
@@ -41,7 +41,7 @@
         "@id": "https://kepstroy.ru/uslugi/solnechnye-paneli/#product",
         "name": "Солнечная панель ${product_name} ${panel_power_w} Вт",
         "description": "Солнечная панель мощностью ${panel_power_w} Вт. Доступна ${availability_lower} с доставкой по Крыму.",
-        "brand": {"@type": "Brand", "name": "LONGi"},
+        "brand": {"@type": "Brand", "name": "${product_brand_schema}"},
         "image": "https://kepstroy.ru/images/solnechnye-paneli/solar-panel-visualization.webp",
         "offers": {
           "@type": "Offer",
@@ -66,7 +66,7 @@
           {
             "@type": "Question",
             "name": "Можно купить только солнечные панели?",
-            "acceptedAnswer": {"@type": "Answer", "text": "Да. Можно заказать отдельные панели LONGi ${panel_power_w} Вт, панели с монтажом или полноценную солнечную электростанцию."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Да. Можно заказать отдельные панели ${product_brand_schema} ${panel_power_w} Вт, панели с монтажом или полноценную солнечную электростанцию."}
           },
           {
             "@type": "Question",
@@ -76,7 +76,7 @@
           {
             "@type": "Question",
             "name": "Какие солнечные системы вы устанавливаете?",
-            "acceptedAnswer": {"@type": "Answer", "text": "Проектируем и монтируем автономные, сетевые и гибридные системы для частных домов, коммерческих и других объектов."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Проектируем и монтируем ${system_types_plural} системы для частных домов, коммерческих и других объектов."}
           },
           {
             "@type": "Question",
@@ -128,7 +128,7 @@
           <div class="solar-hero__copy">
             <p class="solar-eyebrow">Солнечная энергетика</p>
             <h1>Солнечные панели и электростанции под ключ в Крыму</h1>
-            <p class="solar-lead">КэпСтрой поставляет панели LONGi ${panel_power_w} Вт и создаёт ${system_types_plural} системы по всему Крыму.</p>
+            <p class="solar-lead">КэпСтрой поставляет панели ${product_brand} ${panel_power_w} Вт и создаёт ${system_types_plural} системы по всему Крыму.</p>
             <div class="solar-actions"><a href="#calculator" class="btn btn--primary">Рассчитать систему</a><a href="#panel" class="solar-text-link">Купить панели</a></div>
           </div>
           <figure class="solar-hero__photo">
@@ -225,9 +225,9 @@
       <div class="container solar-faq">
         <div class="solar-heading"><h2>Вопросы перед заказом</h2><p>Коротко о покупке панелей, доставке и составе солнечной системы.</p></div>
         <div>
-          <details><summary>Можно купить только солнечные панели?</summary><p>Да. Можно заказать отдельные панели LONGi ${panel_power_w} Вт, панели с монтажом или полноценную солнечную электростанцию.</p></details>
+          <details><summary>Можно купить только солнечные панели?</summary><p>Да. Можно заказать отдельные панели ${product_brand} ${panel_power_w} Вт, панели с монтажом или полноценную солнечную электростанцию.</p></details>
           <details><summary>Доставляете панели по всему Крыму?</summary><p>Да, доставляем по всему Крыму. Стоимость зависит от населённого пункта и объёма заказа, поэтому рассчитывается индивидуально.</p></details>
-          <details><summary>Какие солнечные системы вы устанавливаете?</summary><p>Проектируем и монтируем автономные, сетевые и гибридные системы для частных домов, коммерческих и других объектов.</p></details>
+          <details><summary>Какие солнечные системы вы устанавливаете?</summary><p>Проектируем и монтируем ${system_types_plural} системы для частных домов, коммерческих и других объектов.</p></details>
           <details><summary>Инвертор и аккумуляторы можно заказать вместе с панелями?</summary><p>Да. Подбираем совместимые инверторы, аккумуляторы, крепления и другое оборудование под задачу и параметры объекта.</p></details>
           <details><summary>Что показывает калькулятор на странице?</summary><p>Калькулятор показывает номинальную мощность выбранного количества панелей и их стоимость. Монтаж, доставка и комплектующие рассчитываются отдельно.</p></details>
         </div>
