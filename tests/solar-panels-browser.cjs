@@ -11,11 +11,29 @@ const base = process.argv[2] || 'http://127.0.0.1:8765';
 const origin = new URL(base).origin;
 assert.equal(new URL(base).hostname, '127.0.0.1', 'Local server only');
 
+const citySolarPages = [
+  ['simferopol', 'Симферополь', 'Симферополе'],
+  ['sevastopol', 'Севастополь', 'Севастополе'],
+  ['jalta', 'Ялта', 'Ялте'],
+  ['evpatorija', 'Евпатория', 'Евпатории'],
+  ['kerch', 'Керчь', 'Керчи'],
+  ['feodosija', 'Феодосия', 'Феодосии'],
+  ['alushta', 'Алушта', 'Алуште'],
+  ['sudak', 'Судак', 'Судаке'],
+  ['dzhankoj', 'Джанкой', 'Джанкое'],
+  ['saki', 'Саки', 'Саках'],
+  ['bahchisaraj', 'Бахчисарай', 'Бахчисарае'],
+  ['armjansk', 'Армянск', 'Армянске'],
+];
+const cityWidths = [360, 390, 768, 900, 1024, 1280, 1440];
+
 const screenshotDirectory = path.resolve(__dirname, '../html/screenshots/solnechnye-paneli');
 fs.mkdirSync(screenshotDirectory, { recursive: true });
 
+let browser;
+
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     reducedMotion: 'reduce',
     viewport: { width: 390, height: 844 },
@@ -202,6 +220,86 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
     assert.ok(await page.locator('a[href="/uslugi/solnechnye-paneli/"]').count(), `Missing solar entry point on ${route}`);
   }
 
+  const cityHeadings = new Set();
+  for (const [slug, city, cityPrepositional] of citySolarPages) {
+    const route = `/krym/${slug}/solnechnye-paneli/`;
+    for (const width of cityWidths) {
+      await page.setViewportSize({ width, height: 900 });
+      const response = await page.goto(origin + route, { waitUntil: 'load' });
+      assert.equal(response?.status(), 200, `${route}@${width}: HTTP 200`);
+      const state = await page.evaluate(({ route, city, cityPrepositional }) => {
+        const visible = (element) => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          return style.display !== 'none' && style.visibility !== 'hidden';
+        };
+        const form = document.getElementById('solar-request-form');
+        const cityHub = `/krym/${route.split('/')[2]}/`;
+        return {
+          canonical: document.querySelector('link[rel="canonical"]')?.href || '',
+          h1: document.querySelector('h1')?.textContent.trim() || '',
+          offer: document.querySelector('.solar-lead')?.textContent.replace(/\s+/g, ' ').trim() || '',
+          localVisible: visible(document.querySelector('[data-solar-city-content]')),
+          localParagraphs: document.querySelectorAll('[data-solar-city-content] .solar-local__copy > p').length,
+          localPoints: document.querySelectorAll('[data-solar-city-content] .solar-local__copy li').length,
+          mainSolarLink: Boolean(document.querySelector('a[href="/uslugi/solnechnye-paneli/"]')),
+          cityHubLink: Boolean(document.querySelector(`a[href="${cityHub}"]`)),
+          neighborLinks: document.querySelectorAll('[data-solar-neighbors] a[href$="/solnechnye-paneli/"]').length,
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+          ctaVisible: [...document.querySelectorAll('.solar-actions .btn, .solar-mobile-cta .btn, .solar-product__copy .btn')].some(visible),
+          formVisible: visible(form),
+          phoneEditable: Boolean(form?.querySelector('[name="phone"]')?.matches(':enabled:not([readonly])')),
+          submitUsable: Boolean(form?.querySelector('button[type="submit"]')?.matches(':enabled')),
+          cityField: form?.querySelector('[name="city"]')?.value || '',
+          expectedH1: `Солнечные панели и электростанции в ${cityPrepositional}`,
+          city,
+        };
+      }, { route, city, cityPrepositional });
+      assert.equal(state.canonical, `https://kepstroy.ru${route}`, `${route}@${width}: self canonical`);
+      assert.equal(state.h1, state.expectedH1, `${route}@${width}: H1`);
+      assert.match(state.offer, /LONGi Hi-MO X10 Scientist 650 Вт/, `${route}@${width}: product in primary offer`);
+      assert.match(state.offer, /20 000 ₽/, `${route}@${width}: price in primary offer`);
+      assert.match(state.offer, new RegExp(cityPrepositional), `${route}@${width}: city in primary offer`);
+      assert.equal(state.localVisible, true, `${route}@${width}: local block visible`);
+      assert.ok(state.localParagraphs >= 2, `${route}@${width}: local paragraphs`);
+      assert.ok(state.localPoints >= 3, `${route}@${width}: local planning points`);
+      assert.equal(state.mainSolarLink, true, `${route}@${width}: main solar link`);
+      assert.equal(state.cityHubLink, true, `${route}@${width}: city hub link`);
+      assert.ok(state.neighborLinks >= 1 && state.neighborLinks <= 4, `${route}@${width}: neighbor links`);
+      assert.equal(state.overflow, false, `${route}@${width}: horizontal overflow`);
+      assert.equal(state.ctaVisible, true, `${route}@${width}: visible CTA`);
+      assert.equal(state.formVisible, true, `${route}@${width}: visible form`);
+      assert.equal(state.phoneEditable, true, `${route}@${width}: editable phone`);
+      assert.equal(state.submitUsable, true, `${route}@${width}: enabled submit`);
+      assert.equal(state.cityField, city, `${route}@${width}: qualified city`);
+
+      await page.locator('#panel-quantity').fill('3');
+      await page.locator('#solar-calculate').click();
+      assert.equal(await page.locator('#solar-result-power').textContent(), '1,95 кВт', `${route}@${width}: calculator power`);
+      assert.equal(await page.locator('#solar-result-price').textContent(), 'Стоимость панелей: 60 000 ₽', `${route}@${width}: calculator price`);
+    }
+    cityHeadings.add(await page.locator('h1').textContent());
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('#questions summary').first().click();
+    assert.equal(await page.locator('#questions details').first().evaluate((element) => element.open), true, `${route}: FAQ opens`);
+    for (const image of await page.locator('.solar-page img').all()) {
+      await image.scrollIntoViewIfNeeded();
+      await image.evaluate((element) => element.decode());
+      assert.equal(await image.evaluate((element) => element.naturalWidth > 0), true, `${route}: image decodes`);
+    }
+    if (slug === 'jalta') {
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.screenshot({ path: path.join(screenshotDirectory, 'jalta-mobile-hero.png') });
+      await page.screenshot({ path: path.join(screenshotDirectory, 'jalta-mobile-full.png'), fullPage: true });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.screenshot({ path: path.join(screenshotDirectory, 'jalta-desktop-hero.png') });
+      await page.screenshot({ path: path.join(screenshotDirectory, 'jalta-desktop-full.png'), fullPage: true });
+    }
+  }
+  assert.equal(cityHeadings.size, citySolarPages.length, 'City H1 values must be unique');
+
   submissions.length = 0;
   await page.goto(`${origin}/krym/jalta/solnechnye-paneli/?utm_source=city-test&utm_medium=cpc&utm_campaign=solar-jalta&yclid=jalta-123`);
   const cityForm = page.locator('#solar-request-form');
@@ -239,9 +337,11 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
   assert.match(renderedLead, /Населённый пункт: Гурзуф/);
 
   await browser.close();
+  browser = null;
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ submitted: submissions.length, screenshotDirectory }, null, 2));
-})().catch((error) => {
+})().catch(async (error) => {
+  if (browser) await browser.close().catch(() => {});
   console.error(error);
   process.exitCode = 1;
 });

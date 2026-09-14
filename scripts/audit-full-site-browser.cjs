@@ -270,8 +270,8 @@ async function main() {
     .filter((file) => file.endsWith('.html') && !path.basename(file).startsWith('yandex_'))
     .map(urlForFile)
     .sort();
-  if (publicPages.length !== 56) {
-    throw new Error(`Expected 56 public HTML pages including 404, found ${publicPages.length}`);
+  if (publicPages.length !== 68) {
+    throw new Error(`Expected 68 public HTML pages including 404, found ${publicPages.length}`);
   }
 
   const local = createServer();
