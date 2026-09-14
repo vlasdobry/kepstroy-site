@@ -200,8 +200,9 @@
           <div class="solar-field"><label for="placement">Место установки</label><select id="placement" name="placement"><option value="consult" selected>Нужна консультация</option><option value="roof">Крыша</option><option value="ground">Наземная конструкция</option></select></div>
           <div class="solar-field"><label for="solar-locality">Населённый пункт <span>(необязательно)</span></label><input id="solar-locality" name="locality" type="text" maxlength="100" placeholder="Например, Симферополь"></div>
           <button id="solar-calculate" type="button" class="btn btn--primary">Рассчитать</button>
+          <p id="solar-calculator-error" class="solar-calculator__error" role="alert" hidden>Введите целое количество панелей от 1 до 100.</p>
           <output id="solar-result" class="solar-result" aria-live="polite" for="panel-quantity">
-            <span>10 панелей</span><strong>6,5 кВт</strong><span>Стоимость панелей: 200 000 ₽</span><small>Остальные части системы рассчитываются отдельно.</small>
+            <span id="solar-result-quantity">10 панелей</span><strong id="solar-result-power">6,5 кВт</strong><span id="solar-result-price">Стоимость панелей: 200 000 ₽</span><small>Остальные части системы рассчитываются отдельно.</small>
           </output>
           <a href="#request" class="solar-calculator__request">Отправить параметры инженеру</a>
         </form>
@@ -236,7 +237,7 @@
     <section id="request" class="solar-section">
       <div class="container solar-request">
         <div class="solar-heading"><h2>Получите расчёт для своего объекта</h2><p>Оставьте номер. Андрей уточнит задачу и предложит следующий шаг.</p><a href="tel:+79784615962" class="solar-request__phone">+7 (978) 461-59-62</a><p class="solar-note">Звонки принимаем ежедневно с 08:00 до 20:00.</p></div>
-        <form id="solar-request-form" class="solar-form" action="/submit" method="POST">
+        <form id="solar-request-form" class="solar-form" action="/submit" method="POST" data-error-goal="solar_submit_error">
           <input type="hidden" name="form_source" value="kepstroy">
           <input type="hidden" name="service" value="Солнечные панели и электростанции">
           <input type="hidden" name="message" id="solar-message" value="Предварительный расчёт: 10 панелей, 6,5 кВт, стоимость панелей 200 000 ₽.">

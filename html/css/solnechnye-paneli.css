@@ -398,9 +398,17 @@ body:has(.solar-page) .menu-toggle:focus-visible {
 }
 
 .solar-calculator > .btn,
+.solar-calculator__error,
 .solar-calculator__request,
 .solar-result {
   grid-column: 1 / -1;
+}
+
+.solar-calculator__error {
+  margin: -6px 0 0;
+  color: #8b1e1e;
+  font-size: .82rem;
+  font-weight: 700;
 }
 
 .solar-result {
