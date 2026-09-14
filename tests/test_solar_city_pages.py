@@ -66,13 +66,9 @@ def robots_groups(source):
         for agent in current_agents:
             groups.setdefault(agent.lower(), []).extend(current_rules)
 
-    for raw_line in source.splitlines() + [""]:
+    for raw_line in source.splitlines():
         line = raw_line.split("#", 1)[0].strip()
         if not line:
-            if current_agents:
-                save_group()
-                current_agents = []
-                current_rules = []
             continue
         field, separator, value = line.partition(":")
         if not separator:
@@ -87,7 +83,20 @@ def robots_groups(source):
             current_agents.append(value)
         elif current_agents and field in {"allow", "disallow"}:
             current_rules.append((field, value))
+    if current_agents:
+        save_group()
     return groups
+
+
+def robots_pattern_specificity(pattern, path):
+    terminal = pattern.endswith("$")
+    body = pattern[:-1] if terminal else pattern
+    expression = "^" + re.escape(body).replace(r"\*", ".*")
+    if terminal:
+        expression += "$"
+    if re.match(expression, path) is None:
+        return None
+    return len(body.replace("*", ""))
 
 
 def robots_allows(source, user_agent, path):
@@ -95,9 +104,10 @@ def robots_allows(source, user_agent, path):
     agent = user_agent.lower()
     rules = groups[agent] if agent in groups else groups.get("*", [])
     matching_rules = [
-        (len(pattern), directive == "allow")
+        (specificity, directive == "allow")
         for directive, pattern in rules
-        if pattern and path.startswith(pattern)
+        if pattern
+        and (specificity := robots_pattern_specificity(pattern, path)) is not None
     ]
     if not matching_rules:
         return True
@@ -643,6 +653,49 @@ class SolarCityPagesTests(unittest.TestCase):
                 "Claude-SearchBot",
                 "/krym/jalta/solnechnye-paneli/",
             )
+        )
+
+    def test_robots_ignores_blank_and_comment_lines_inside_group(self):
+        source = (
+            "User-agent: *\n"
+            "\n"
+            "# Rules may be separated for readability.\n"
+            "Allow: /\n"
+            "\n"
+            "# Solar city paths are blocked.\n"
+            "Disallow: /krym/\n"
+        )
+        self.assertFalse(
+            robots_allows(
+                source,
+                "Claude-SearchBot",
+                "/krym/jalta/solnechnye-paneli/",
+            )
+        )
+
+    def test_robots_wildcard_path_pattern_blocks_matching_subtree(self):
+        source = "User-agent: *\nDisallow: /krym/*/private\n"
+        self.assertFalse(
+            robots_allows(
+                source,
+                "Claude-SearchBot",
+                "/krym/jalta/private/specification/",
+            )
+        )
+        self.assertTrue(
+            robots_allows(
+                source,
+                "Claude-SearchBot",
+                "/krym/jalta/solnechnye-paneli/",
+            )
+        )
+
+    def test_robots_terminal_marker_matches_only_the_exact_path(self):
+        path = "/krym/jalta/solnechnye-paneli/"
+        source = f"User-agent: *\nDisallow: {path}$\n"
+        self.assertFalse(robots_allows(source, "Claude-SearchBot", path))
+        self.assertTrue(
+            robots_allows(source, "Claude-SearchBot", f"{path}details/")
         )
 
     def test_robots_detects_path_level_block(self):
