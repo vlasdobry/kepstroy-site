@@ -7,7 +7,13 @@ from itertools import combinations
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.readiness_checks import SOLAR_FORBIDDEN_CLAIMS, check_traffic_readiness
+from scripts import readiness_checks
+from scripts.readiness_checks import (
+    SOLAR_FORBIDDEN_CLAIMS,
+    check_traffic_readiness,
+    parse_html_contract,
+    visible_text,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,13 +46,7 @@ def city_page(city):
 
 
 def plain_text(source):
-    source = re.sub(
-        r"<script\b.*?</script>|<style\b.*?</style>",
-        " ",
-        source,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    return " ".join(unescape(re.sub(r"<[^>]+>", " ", source)).split())
+    return visible_text(source)
 
 
 def json_ld_nodes(source):
@@ -134,12 +134,8 @@ class SolarCityPagesTests(unittest.TestCase):
                     "https://kepstroy.ru/krym/"
                     f"{city['slug']}/solnechnye-paneli/"
                 )
-                self.assertEqual(
-                    [canonical],
-                    re.findall(
-                        r'<link\s+rel="canonical"\s+href="([^"]+)"', source
-                    ),
-                )
+                contract = parse_html_contract(source)
+                self.assertEqual([canonical], contract.canonicals)
 
                 title_matches = re.findall(r"<title>(.*?)</title>", source, re.DOTALL)
                 description_matches = re.findall(
@@ -319,24 +315,30 @@ class SolarCityPagesTests(unittest.TestCase):
         for city in city_registry():
             with self.subTest(city=city["slug"]):
                 source = sources[city["slug"]]
-                form_match = re.search(
-                    r'<form\b[^>]*action="/submit"[^>]*>.*?</form>',
-                    source,
-                    re.IGNORECASE | re.DOTALL,
+                forms = parse_html_contract(source).submit_forms
+                self.assertEqual(1, len(forms))
+                controls = forms[0]["controls"]
+                self.assertTrue(
+                    any(
+                        control.get("name") == "form_source"
+                        and control.get("value") == "kepstroy"
+                        for control in controls
+                    )
                 )
-                self.assertIsNotNone(form_match)
-                form = form_match.group(0)
-                self.assertRegex(
-                    form,
-                    r'<input[^>]+name="form_source"[^>]+value="kepstroy"',
+                self.assertTrue(
+                    any(
+                        control.get("name") == "service"
+                        and control.get("value")
+                        == "Солнечные панели и электростанции"
+                        for control in controls
+                    )
                 )
-                self.assertRegex(
-                    form,
-                    r'<input[^>]+name="service"[^>]+value="Солнечные панели и электростанции"',
-                )
-                self.assertRegex(
-                    form,
-                    rf'name="(?:city|locality)"[^>]+value="{re.escape(city["city"])}"',
+                self.assertTrue(
+                    any(
+                        control.get("name") in {"city", "locality"}
+                        and control.get("value") == city["city"]
+                        for control in controls
+                    )
                 )
                 self.assertIn('href="/uslugi/solnechnye-paneli/"', source)
                 self.assertIn(f'href="/krym/{city["slug"]}/"', source)
@@ -370,24 +372,29 @@ class SolarCityPagesTests(unittest.TestCase):
                 for pattern in SOLAR_FORBIDDEN_CLAIMS
             )
 
-        forbidden_examples = (
-            "Поставка 5 сентября.",
-            "Поставка 05.09.2026.",
-            "Доставка запланирована на 05/09/2026.",
-            "Монтаж за два дня.",
-            "Монтаж за 2 дня.",
-            "Гарантия на монтаж два года.",
-            "Гарантия на монтаж 2 года.",
-            "Система вырабатывает 900 кВт·ч в месяц.",
-            "Годовая выработка системы 4 МВт·ч.",
-            "Годовая выработка системы 4 МВт ч.",
-            "Годовая выработка системы 4 МВт.ч.",
-            "Комплект даёт 1200 киловатт-часов в год.",
-            "Предлагаем бесплатную установку оборудования.",
-            "Вы получите полностью независимое электроснабжение.",
-        )
-        for copy in forbidden_examples:
-            with self.subTest(copy=copy):
+        forbidden_examples = {
+            "efficiency_before_number": "Максимальная эффективность модуля достигает 24,6%.",
+            "efficiency_after_number": "24,6% КПД подтверждает высокую производительность.",
+            "named_delivery_date": "Поставка 5 сентября.",
+            "numeric_delivery_date": "Поставка 05.09.2026.",
+            "slash_delivery_date": "Доставка запланирована на 05/09/2026.",
+            "word_installation_duration": "Монтаж за два дня.",
+            "numeric_installation_duration": "Монтаж за 2 дня.",
+            "working_day_duration": "Монтаж занимает 2 рабочих дня.",
+            "word_warranty_15": "Гарантия на монтаж пятнадцать лет.",
+            "word_warranty_30": "Гарантия на панели тридцати лет.",
+            "word_compound_warranty": "Пятнадцатилетняя гарантия на оборудование.",
+            "numeric_warranty": "Гарантия на монтаж 2 года.",
+            "kilowatt_hours": "Система вырабатывает 900 кВт·ч в месяц.",
+            "megawatt_hours_dot": "Годовая выработка системы 4 МВт·ч.",
+            "megawatt_hours_space": "Годовая выработка системы 4 МВт ч.",
+            "megawatt_hours_period": "Годовая выработка системы 4 МВт.ч.",
+            "spelled_energy_unit": "Комплект даёт 1200 киловатт-часов в год.",
+            "free_installation": "Предлагаем бесплатную установку оборудования.",
+            "independence_absolute": "Вы получите полностью независимое электроснабжение.",
+        }
+        for case, copy in forbidden_examples.items():
+            with self.subTest(case=case, copy=copy):
                 self.assertTrue(is_forbidden(copy), copy)
 
         confirmed_examples = (
@@ -400,6 +407,49 @@ class SolarCityPagesTests(unittest.TestCase):
         for copy in confirmed_examples:
             with self.subTest(copy=copy):
                 self.assertFalse(is_forbidden(copy), copy)
+
+    def test_visible_text_excludes_non_rendered_and_explicitly_hidden_content(self):
+        source = """
+        <head><title>24,6% КПД и бесплатная установка</title></head>
+        <main>
+          <p>Видимый подтверждённый текст.</p>
+          <script>Поставка 5 сентября.</script>
+          <style>.fake::before { content: "24,6% КПД"; }</style>
+          <noscript>Гарантия на монтаж тридцать лет.</noscript>
+          <template>Бесплатная установка.</template>
+          <div hidden>Монтаж за два дня.</div>
+          <div aria-hidden="true">Выработка 4 МВт·ч.</div>
+        </main>
+        """
+        self.assertEqual("Видимый подтверждённый текст.", plain_text(source))
+
+    def test_contract_parser_accepts_attribute_order_and_quote_variations(self):
+        self.assertTrue(
+            hasattr(readiness_checks, "parse_html_contract"),
+            "readiness must expose structural HTML contract parsing",
+        )
+        source = """
+        <link href='https://kepstroy.ru/krym/saki/solnechnye-paneli/'
+              data-owner='generator' rel='stylesheet canonical'>
+        <form method='POST' class='lead' action='/submit'>
+          <input value='kepstroy' type='hidden' name='form_source'>
+          <input value='Саки' name='locality' type='hidden'>
+        </form>
+        """
+        contract = readiness_checks.parse_html_contract(source)
+        self.assertEqual(
+            ["https://kepstroy.ru/krym/saki/solnechnye-paneli/"],
+            contract.canonicals,
+        )
+        self.assertEqual(1, len(contract.submit_forms))
+        controls = contract.submit_forms[0]["controls"]
+        self.assertIn(
+            {"value": "kepstroy", "type": "hidden", "name": "form_source"},
+            controls,
+        )
+        self.assertIn(
+            {"value": "Саки", "name": "locality", "type": "hidden"}, controls
+        )
 
     def test_similarity_guard_detects_city_only_and_one_word_variations(self):
         simferopol = {

@@ -4,6 +4,7 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
 from pathlib import Path
 
 
@@ -30,7 +31,8 @@ SOLAR_CITY_SLUGS = {
 
 SOLAR_QUANTITY = (
     r"(?:\d+(?:[,.]\d+)?|один|одна|одно|одну|два|две|три|четыре|пять|"
-    r"шесть|семь|восемь|девять|десять)"
+    r"шесть|семь|восемь|девять|десять|пятнадцат(?:ь|и|ью)|"
+    r"тридцат(?:ь|и|ью))"
 )
 SOLAR_DURATION = (
     r"(?:час(?:а|ов)?|д(?:ень|ня|ней)|сут(?:ки|ок)|недел(?:я|и|ь)|"
@@ -45,38 +47,134 @@ SOLAR_MONTH = (
 )
 
 SOLAR_FORBIDDEN_CLAIMS = (
-    r"КПД.{0,30}24[,.]6",
+    r"(?:КПД|эффективност\w*)[^.!?]{0,45}24[,.]6\s*%",
+    r"24[,.]6\s*%[^.!?]{0,45}(?:КПД|эффективност\w*)",
     r"окупаем",
     r"15-летн.{0,30}гарант",
     r"30-летн.{0,30}гарант",
     r"(?:гарант[^.!?]{0,30}|на\s+)(?:15|30)\s+лет",
     rf"гарант\w*[^.!?]{{0,60}}{SOLAR_QUANTITY}\s+{SOLAR_DURATION}",
+    r"(?:пятнадцати|тридцати)[-\s]?летн\w*[^.!?]{0,35}гарант\w*",
     rf"\d[\d\s]*(?:[,.]\d+)?\s*{SOLAR_ENERGY_UNIT}",
     rf"(?:поставк\w*|доставк\w*)[^.!?]{{0,50}}\b(?:[0-3]?\d)\s+{SOLAR_MONTH}\b",
     r"(?:поставк\w*|доставк\w*)[^.!?]{0,50}\b"
     r"(?:0?[1-9]|[12]\d|3[01])[./-](?:0?[1-9]|1[0-2])"
     r"(?:[./-](?:\d{2}|\d{4}))?\b",
     rf"(?:монтаж\w*|установ\w*|достав\w*|поставк\w*)[^.!?]{{0,60}}"
-    rf"(?:за|в\s+течение|срок\w*)?\s*{SOLAR_QUANTITY}\s+{SOLAR_DURATION}",
+    rf"(?:за|в\s+течение|срок\w*)?\s*{SOLAR_QUANTITY}\s+"
+    rf"(?:рабоч\w+\s+)?{SOLAR_DURATION}",
     r"бесплатн[^.!?]{0,40}(?:достав|монтаж|установ)|(?:достав|монтаж|установ)[^.!?]{0,40}бесплатн",
     r"полн(?:ая|ое|ый|ую|остью)\s+(?:энерго)?независим\w*",
 )
 
 
-def _visible_text(source: str) -> str:
-    source = re.sub(
-        r"<script\b.*?</script>|<style\b.*?</style>",
-        " ",
-        source,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    source = re.sub(r"<[^>]+>", " ", source)
-    return " ".join(source.split())
+NON_RENDERED_ELEMENTS = {"head", "script", "style", "noscript", "template"}
+VOID_ELEMENTS = {
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr",
+}
+
+
+class HTMLContractParser(HTMLParser):
+    """Small structural parser for visibility, canonicals and lead forms."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.visible_parts = []
+        self.canonicals = []
+        self.forms = []
+        self._current_form = None
+        self._element_stack = []
+        self._hidden_depth = 0
+
+    @property
+    def visible_text(self):
+        return " ".join(" ".join(self.visible_parts).split())
+
+    @property
+    def submit_forms(self):
+        return [form for form in self.forms if form["attrs"].get("action") == "/submit"]
+
+    def _start(self, tag, attrs, push):
+        tag = tag.lower()
+        attributes = {name.lower(): value or "" for name, value in attrs}
+
+        rel = attributes.get("rel", "").lower().split()
+        if tag == "link" and "canonical" in rel and attributes.get("href"):
+            self.canonicals.append(attributes["href"])
+
+        if tag == "form" and self._current_form is None:
+            self._current_form = {"attrs": attributes, "controls": []}
+        elif tag in {"input", "select", "textarea"} and self._current_form is not None:
+            self._current_form["controls"].append(attributes)
+
+        starts_hidden = (
+            tag in NON_RENDERED_ELEMENTS
+            or "hidden" in attributes
+            or attributes.get("aria-hidden", "").lower() == "true"
+        )
+        if push and tag not in VOID_ELEMENTS:
+            self._element_stack.append((tag, starts_hidden))
+            if starts_hidden:
+                self._hidden_depth += 1
+
+    def handle_starttag(self, tag, attrs):
+        self._start(tag, attrs, push=True)
+
+    def handle_startendtag(self, tag, attrs):
+        self._start(tag, attrs, push=False)
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+        if tag == "form" and self._current_form is not None:
+            self.forms.append(self._current_form)
+            self._current_form = None
+
+        matching_index = next(
+            (
+                index
+                for index in range(len(self._element_stack) - 1, -1, -1)
+                if self._element_stack[index][0] == tag
+            ),
+            None,
+        )
+        if matching_index is None:
+            return
+        closing = self._element_stack[matching_index:]
+        del self._element_stack[matching_index:]
+        self._hidden_depth -= sum(starts_hidden for _, starts_hidden in closing)
+
+    def handle_data(self, data):
+        if self._hidden_depth == 0 and data.strip():
+            self.visible_parts.append(data)
+
+
+def parse_html_contract(source: str) -> HTMLContractParser:
+    parser = HTMLContractParser()
+    parser.feed(source)
+    parser.close()
+    return parser
+
+
+def visible_text(source: str) -> str:
+    return parse_html_contract(source).visible_text
 
 
 def _check_solar_offer(path: Path, relative: str, errors: list[str]):
     source = path.read_text(encoding="utf-8")
-    visible = _visible_text(source)
+    visible = visible_text(source)
     for claim in SOLAR_FORBIDDEN_CLAIMS:
         if re.search(claim, visible, re.IGNORECASE):
             errors.append(f"{relative}: unconfirmed solar claim")
@@ -145,26 +243,24 @@ def _check_solar_city_pages(repo_root: Path, errors: list[str]):
             continue
 
         source = path.read_text(encoding="utf-8")
+        contract = parse_html_contract(source)
         canonical = f"https://kepstroy.ru/krym/{slug}/solnechnye-paneli/"
-        canonicals = re.findall(
-            r'<link\s+rel="canonical"\s+href="([^"]+)"', source, re.IGNORECASE
-        )
-        if canonicals != [canonical]:
+        if contract.canonicals != [canonical]:
             errors.append(f"{relative}: solar city canonical must be {canonical}")
 
         _check_solar_offer(path, relative, errors)
 
         city = city_by_slug.get(slug)
         city_name = city.get("city") if city else None
-        submit_forms = re.findall(
-            r'<form\b[^>]*action="/submit"[^>]*>.*?</form>',
-            source,
-            re.IGNORECASE | re.DOTALL,
+        has_city = any(
+            any(
+                control.get("name") in {"city", "locality"}
+                and control.get("value") == (city_name or "")
+                for control in form["controls"]
+            )
+            for form in contract.submit_forms
         )
-        city_pattern = re.compile(
-            rf'name="(?:city|locality)"[^>]+value="{re.escape(city_name or "")}"'
-        )
-        if not submit_forms or not any(city_pattern.search(form) for form in submit_forms):
+        if not contract.submit_forms or not has_city:
             errors.append(f"{relative}: lead form must preserve city {city_name!r}")
 
     generator = repo_root / "generators" / "generate-solar-pages.py"
