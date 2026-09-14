@@ -1,6 +1,3 @@
-const SOLAR_PANEL_POWER_KW = 0.65;
-const SOLAR_PANEL_PRICE = 20000;
-
 const SCENARIO_LABELS = {
   panels: 'Только панели',
   installation: 'Панели с монтажом',
@@ -26,15 +23,38 @@ const formatNumber = (value, maximumFractionDigits = 0) => (
     .replace(/[\u00a0\u202f]/g, ' ')
 );
 
-const calculatePanels = (rawQuantity) => {
+const normalizeSolarCalculatorConfig = ({ panelPowerW, panelPriceRub } = {}) => {
+  const normalized = {
+    panelPowerW: Number(panelPowerW),
+    panelPriceRub: Number(panelPriceRub),
+  };
+  if (
+    !Number.isFinite(normalized.panelPowerW)
+    || normalized.panelPowerW <= 0
+    || !Number.isFinite(normalized.panelPriceRub)
+    || normalized.panelPriceRub <= 0
+  ) {
+    throw new RangeError('Параметры солнечной панели должны быть положительными числами');
+  }
+  return normalized;
+};
+
+const readSolarCalculatorConfig = (root) => normalizeSolarCalculatorConfig({
+  panelPowerW: root?.dataset?.panelPowerW,
+  panelPriceRub: root?.dataset?.panelPriceRub,
+});
+
+const calculatePanels = (rawQuantity, config) => {
   const quantity = Number(rawQuantity);
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
     throw new RangeError('Количество панелей должно быть целым числом от 1 до 100');
   }
+  const { panelPowerW, panelPriceRub } = normalizeSolarCalculatorConfig(config);
   return {
     quantity,
-    powerKw: Math.round(quantity * SOLAR_PANEL_POWER_KW * 100) / 100,
-    panelsPrice: quantity * SOLAR_PANEL_PRICE,
+    panelPowerKw: panelPowerW / 1000,
+    powerKw: Math.round(quantity * panelPowerW) / 1000,
+    panelsPrice: quantity * panelPriceRub,
   };
 };
 
@@ -66,7 +86,7 @@ const buildLeadMessage = ({
     'Предварительный расчёт солнечной системы',
     `Сценарий: ${SCENARIO_LABELS[scenario] || SCENARIO_LABELS.turnkey}`,
     `Количество: ${calculation.quantity} панелей`,
-    `Номинальная мощность панелей: 0,65 × ${calculation.quantity} = ${formatNumber(calculation.powerKw, 2)} кВт`,
+    `Номинальная мощность панелей: ${formatNumber(calculation.panelPowerKw, 3)} × ${calculation.quantity} = ${formatNumber(calculation.powerKw, 3)} кВт`,
     `Стоимость панелей: ${formatNumber(calculation.panelsPrice)} ₽`,
     `Тип системы: ${SYSTEM_LABELS[systemType] || SYSTEM_LABELS.unknown}`,
     `Размещение: ${PLACEMENT_LABELS[placement] || PLACEMENT_LABELS.consult}`,
@@ -147,7 +167,8 @@ if (typeof document !== 'undefined') {
 
     const calculator = document.getElementById('solar-calculator');
     const requestForm = document.getElementById('solar-request-form');
-    if (!calculator || !requestForm) return;
+    const calculatorConfigRoot = document.querySelector('.solar-page');
+    if (!calculator || !requestForm || !calculatorConfigRoot) return;
 
     const quantityInput = document.getElementById('panel-quantity');
     const scenarioInput = document.getElementById('order-scenario');
@@ -160,9 +181,18 @@ if (typeof document !== 'undefined') {
     const resultPrice = document.getElementById('solar-result-price');
     const error = document.getElementById('solar-calculator-error');
     const calculateButton = document.getElementById('solar-calculate');
+    let calculatorConfig;
+    try {
+      calculatorConfig = readSolarCalculatorConfig(calculatorConfigRoot);
+    } catch {
+      error.textContent = 'Предварительный расчёт временно недоступен.';
+      error.hidden = false;
+      calculateButton.disabled = true;
+      return;
+    }
     let calculatorStarted = false;
     let formStarted = false;
-    let currentCalculation = calculatePanels(quantityInput.value);
+    let currentCalculation = calculatePanels(quantityInput.value, calculatorConfig);
 
     const qualification = () => ({
       calculation: currentCalculation,
@@ -179,7 +209,7 @@ if (typeof document !== 'undefined') {
 
     const renderCalculation = () => {
       try {
-        currentCalculation = calculatePanels(quantityInput.value);
+        currentCalculation = calculatePanels(quantityInput.value, calculatorConfig);
         quantityInput.removeAttribute('aria-invalid');
         error.hidden = true;
         resultQuantity.textContent = `${currentCalculation.quantity} панелей`;
@@ -219,10 +249,10 @@ if (typeof document !== 'undefined') {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    SOLAR_PANEL_POWER_KW,
-    SOLAR_PANEL_PRICE,
     calculatePanels,
     buildLeadMessage,
+    normalizeSolarCalculatorConfig,
+    readSolarCalculatorConfig,
     resolveSolarPageCity,
     syncSolarCityField,
   };

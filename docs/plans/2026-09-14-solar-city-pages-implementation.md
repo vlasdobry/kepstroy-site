@@ -502,15 +502,17 @@ git commit -m "docs: document solar city release"
 | Task 5 — sitemap и GEO-файлы | ✅ | `cab8f59` |
 | Task 6 — город в заявке | ✅ | `03ed47d` |
 | Task 7 — браузерный аудит | ✅ | `70cb70d` |
-| Task 8 — финальная проверка и документация | ✅ | коммит финализации с сообщением `docs: record solar city rollout verification` |
+| Task 8 — финальная проверка и документация | ✅ | `b44992e` |
+
+Финальный release-review закрыт отдельным коммитом с сообщением `fix: address solar release review`: усилена anti-spam проверка структурированных полей города, конфигурация калькулятора связана с единым источником оффера, уточнены FAQ/характеристики/Schema.org/метаданные и датировка sitemap. SHA фиксируется в отчёте выполнения, поскольку заранее включить идентификатор самого коммита в его содержимое невозможно.
 
 Дополнительные review/fix-коммиты между указанными этапами сохранены в истории ветки. Реализация следует утверждённому дизайну: один источник общего оффера, ровно 12 городских URL, самостоятельные canonical, уникальные локальные блоки, согласованные FAQ/Schema, ограниченная перелинковка и структурированная квалификация города в заявке.
 
 ## Verification evidence — 14.09.2026
 
-- `python -m unittest discover -s tests -v` — 172 passed, 6 skipped (ограничения symlink/POSIX на Windows), 0 failures;
-- все `tests/test_*.cjs` — 49 passed;
-- `npm test` в `form-handler` — 18 passed;
+- `python -m unittest discover -s tests -v` — 177 passed, 6 skipped (ограничения symlink/POSIX на Windows), 0 failures;
+- все `tests/test_*.cjs` — 51 passed;
+- `npm test` в `form-handler` — 22 passed;
 - `generate-city-indexes.py --check` — 12 актуальных страниц;
 - `generate-city-septik.py --check` — 12 актуальных страниц;
 - `generate-solar-pages.py --check` — 13 актуальных страниц;

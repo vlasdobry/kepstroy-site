@@ -1,4 +1,5 @@
 import importlib.util
+import copy
 import json
 import re
 import shutil
@@ -68,8 +69,42 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual(20000, offer["price"])
         self.assertEqual("RUB", offer["priceCurrency"])
         self.assertEqual("https://schema.org/InStock", offer["availability"])
+        self.assertNotIn("image", product)
+        self.assertIn(
+            "Визуализация солнечной системы на частном доме.", text
+        )
         for unconfirmed in ("sku", "gtin", "aggregateRating", "review", "warranty"):
             self.assertNotIn(unconfirmed, product)
+
+    def test_main_faq_matches_the_complete_approved_question_set(self):
+        text = self.page()
+        expected_questions = [
+            "Можно купить только солнечные панели?",
+            "Есть ли панели в наличии?",
+            "Доставляете ли по всему Крыму?",
+            "Какие системы устанавливает КэпСтрой?",
+            "Можно установить панели на крыше или на участке?",
+            "От чего зависит стоимость электростанции под ключ?",
+            "Можно ли использовать аккумуляторы для резерва при отключениях?",
+        ]
+        visible = [
+            (re.sub(r"<[^>]+>", "", question).strip(), re.sub(r"<[^>]+>", "", answer).strip())
+            for question, answer in re.findall(
+                r"<details><summary>(.*?)</summary><p>(.*?)</p></details>",
+                text,
+                re.DOTALL,
+            )
+        ]
+        faq = next(
+            node for node in json_ld_nodes(text) if node.get("@type") == "FAQPage"
+        )
+        schema = [
+            (item["name"], item["acceptedAnswer"]["text"])
+            for item in faq["mainEntity"]
+        ]
+
+        self.assertEqual(expected_questions, [question for question, _ in visible])
+        self.assertEqual(visible, schema)
 
     def test_offer_boundaries(self):
         text = self.page()
@@ -92,6 +127,31 @@ class SolarPanelsPageTests(unittest.TestCase):
             self.assertNotRegex(visible, re.compile(pattern, re.IGNORECASE))
         self.assertNotIn("—", visible)
         self.assertNotIn("–", visible)
+
+    def test_all_solar_pages_qualify_model_specific_characteristics(self):
+        notice = "Характеристики сверяются по паспорту поставляемой модификации."
+        pages = [PAGE, *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html"))]
+        self.assertEqual(13, len(pages))
+        for page in pages:
+            source = page.read_text(encoding="utf-8")
+            self.assertEqual(1, source.count(notice), str(page))
+
+    def test_solar_sources_do_not_promise_unconfirmed_service_maintenance(self):
+        paths = [
+            ROOT / "generators" / "solar-main-template.html",
+            ROOT / "generators" / "solar-city-template.html",
+            ROOT / "generators" / "solar-city-content.json",
+            HTML / "llms-full.txt",
+            PAGE,
+            *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html")),
+        ]
+        unsupported = re.compile(
+            r"сервисн(?:ое|ого) обслужив|сервис силами|по сервису|"
+            r"монтируем и обслуживаем|установк[^.]{0,80}и сервис",
+            re.IGNORECASE,
+        )
+        for path in paths:
+            self.assertNotRegex(path.read_text(encoding="utf-8"), unsupported, str(path))
 
     def test_form_and_calculator_contract(self):
         text = self.page()
@@ -122,8 +182,29 @@ class SolarPanelsPageTests(unittest.TestCase):
 
         self.assertTrue(SCRIPT.exists(), "Solar calculator script must exist")
         script = SCRIPT.read_text(encoding="utf-8")
-        self.assertRegex(script, r"\b0\.65\b")
-        self.assertRegex(script, r"\b20000\b")
+        self.assertNotRegex(script, r"\b0\.65\b")
+        self.assertNotRegex(script, r"\b20000\b")
+        self.assertIn("data-panel-power-w", text)
+        self.assertIn("data-panel-price-rub", text)
+
+    def test_offer_mutation_drives_calculator_config_in_all_rendered_pages(self):
+        module = self.solar_generator()
+        cities, city_content, offer, main_template, city_template = module.load_inputs()
+        mutated_offer = copy.deepcopy(offer)
+        mutated_offer["panel_power_w"] = 720
+        mutated_offer["panel_power_kw"] = 0.72
+        mutated_offer["panel_price_rub"] = 23456
+
+        rendered = module.render_pages(
+            cities, city_content, mutated_offer, main_template, city_template
+        )
+
+        self.assertEqual(13, len(rendered))
+        for path, source in rendered.items():
+            self.assertIn('data-panel-power-w="720"', source, str(path))
+            self.assertIn('data-panel-price-rub="23456"', source, str(path))
+            self.assertIn("7,2 кВт", source, str(path))
+            self.assertIn("234 560 ₽", source, str(path))
 
     def test_local_anchors_images_and_assets(self):
         text = self.page()
@@ -187,11 +268,11 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual({expected_version}, set(versions))
 
     def test_all_generated_solar_pages_use_the_current_js_cache_version(self):
-        expected_version = "5"
+        expected_version = "6"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(
-                f'<script src="/js/solnechnye-paneli.js?v={expected_version}"></script>',
+                '<script src="/js/solnechnye-paneli.js?v=${solar_js_version}"></script>',
                 template,
             )
         pages = [PAGE, *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html"))]

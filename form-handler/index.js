@@ -176,7 +176,7 @@ function hasValidBrowserSource(req) {
 }
 
 function hasSuspiciousContent(body) {
-  const text = ['name', 'service', 'message']
+  const text = ['name', 'service', 'message', 'city', 'locality']
     .map((key) => body[key] || '')
     .join('\n');
   return SPAM_PATTERNS.some((pattern) => pattern.test(text));
@@ -389,13 +389,21 @@ async function pollUpdates(offset = 0) {
   setTimeout(() => pollUpdates(offset), 5000);
 }
 
-if (!BOT_TOKEN || !CHAT_ID) {
-  console.error('Missing BOT_TOKEN or CHAT_ID environment variables');
-  process.exit(1);
+function startServer() {
+  if (!BOT_TOKEN || !CHAT_ID) {
+    console.error('Missing BOT_TOKEN or CHAT_ID environment variables');
+    process.exit(1);
+  }
+
+  const port = process.env.PORT || 3000;
+  return app.listen(port, () => {
+    console.log(`Form handler listening on port ${port}`);
+    pollUpdates();
+  });
 }
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Form handler listening on port ${PORT}`);
-  pollUpdates();
-});
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer };

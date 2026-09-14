@@ -7,6 +7,12 @@ const {
   calculatePanels,
   syncSolarCityField
 } = require('../../html/js/solnechnye-paneli.js');
+const solarOffer = require('../../generators/solar-page-data.json');
+
+const solarCalculatorConfig = {
+  panelPowerW: solarOffer.panel_power_w,
+  panelPriceRub: solarOffer.panel_price_rub
+};
 
 const decodeTelegramHtml = (value) => value
   .replace(/&lt;/g, '<')
@@ -117,7 +123,7 @@ test('renders default city once from frontend payload through Telegram lead', ()
   };
   const city = syncSolarCityField(form);
   const message = buildSolarQualification({
-    calculation: calculatePanels(10),
+    calculation: calculatePanels(10, solarCalculatorConfig),
     scenario: 'turnkey',
     systemType: 'hybrid',
     placement: 'roof',
@@ -144,7 +150,7 @@ test('keeps generated city and a distinct editable locality in Telegram lead', (
     city,
     locality: 'Гурзуф',
     message: buildSolarQualification({
-      calculation: calculatePanels(10),
+      calculation: calculatePanels(10, solarCalculatorConfig),
       scenario: 'turnkey',
       systemType: 'unknown',
       placement: 'consult',
@@ -162,7 +168,7 @@ test('keeps generated city and a distinct editable locality in Telegram lead', (
 test('keeps main-page locality as one structured backend field', () => {
   const locality = 'Алушта';
   const message = buildSolarQualification({
-    calculation: calculatePanels(10),
+    calculation: calculatePanels(10, solarCalculatorConfig),
     scenario: 'turnkey',
     systemType: 'unknown',
     placement: 'consult',

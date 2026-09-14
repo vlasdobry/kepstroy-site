@@ -301,8 +301,19 @@ class SolarCityPagesTests(unittest.TestCase):
                 local = plain_text(local_source)
                 self.assertIn("Солнечные", h1)
                 self.assertIn(f"в {city['city_prepositional']}", h1)
-                self.assertIn(city["city"], title)
-                self.assertIn(city["city"], description)
+                self.assertEqual(
+                    "Солнечные панели "
+                    f"в {city['city_prepositional']}: монтаж | КэпСтрой",
+                    title,
+                )
+                self.assertTrue(
+                    description.startswith(
+                        f"КэпСтрой в {city['city_prepositional']}: "
+                    ),
+                    description,
+                )
+                self.assertNotIn("в городе ", title.lower())
+                self.assertNotIn("в городе ", description.lower())
                 self.assertGreaterEqual(len(local.split()), 60)
                 self.assertGreaterEqual(
                     len(re.findall(r"<p\b", local_source, re.IGNORECASE)), 2
@@ -433,6 +444,7 @@ class SolarCityPagesTests(unittest.TestCase):
                 self.assertEqual("Республика Крым", served.get("AdministrativeArea"))
 
                 product = next(node for node in nodes if node.get("@type") == "Product")
+                self.assertNotIn("image", product)
                 offer = product.get("offers", {})
                 self.assertEqual("Offer", offer.get("@type"))
                 self.assertEqual(20000, offer.get("price"))
@@ -605,6 +617,30 @@ class SolarCityPagesTests(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertEqual(1, urls.count(url))
         self.assertEqual(1, urls.count(f"{SITE_ORIGIN}/uslugi/solnechnye-paneli/"))
+
+    def test_sitemap_lastmod_marks_only_changed_main_city_hub_and_solar_urls(self):
+        namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        records = {
+            node.findtext("sm:loc", namespaces=namespace): node.findtext(
+                "sm:lastmod", namespaces=namespace
+            )
+            for node in ET.parse(HTML / "sitemap.xml").findall("sm:url", namespace)
+        }
+        city_hubs = {
+            f"{SITE_ORIGIN}/krym/{city['slug']}/" for city in city_registry()
+        }
+        expected_changed = {
+            f"{SITE_ORIGIN}/",
+            f"{SITE_ORIGIN}/krym/",
+            f"{SITE_ORIGIN}/uslugi/solnechnye-paneli/",
+            *city_hubs,
+            *city_solar_urls(),
+        }
+        dated_as_rollout = {
+            url for url, lastmod in records.items() if lastmod == "2026-09-14"
+        }
+
+        self.assertEqual(expected_changed, dated_as_rollout)
 
     def test_sitemap_exactly_matches_public_indexable_canonicals(self):
         html_pages = [

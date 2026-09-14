@@ -23,6 +23,7 @@ MAIN_TEMPLATE_PATH = GENERATOR_DIR / "solar-main-template.html"
 CITY_TEMPLATE_PATH = GENERATOR_DIR / "solar-city-template.html"
 MAIN_OUTPUT = Path("uslugi/solnechnye-paneli/index.html")
 SOLAR_CSS_VERSION = "4"
+SOLAR_JS_VERSION = "6"
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 REQUIRED_OFFER_KEYS = {
     "product_name",
@@ -261,6 +262,7 @@ def _common_context(offer):
     system_types_plural = _plural_system_types(offer["system_types"])
     return {
         "solar_css_version": SOLAR_CSS_VERSION,
+        "solar_js_version": SOLAR_JS_VERSION,
         "product_name": escape(offer["product_name"]),
         "product_name_schema": _json_script_string(offer["product_name"]),
         "product_brand": escape(product_brand),

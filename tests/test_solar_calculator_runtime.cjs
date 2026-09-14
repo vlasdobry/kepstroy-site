@@ -4,35 +4,84 @@ const assert = require('node:assert/strict');
 const {
   calculatePanels,
   buildLeadMessage,
+  readSolarCalculatorConfig,
   resolveSolarPageCity,
   syncSolarCityField,
 } = require('../html/js/solnechnye-paneli.js');
 const { cities } = require('../generators/city-septik-data.json');
+const offer = require('../generators/solar-page-data.json');
+
+const defaultConfig = {
+  panelPowerW: offer.panel_power_w,
+  panelPriceRub: offer.panel_price_rub,
+};
 
 
 test('calculates nominal panel power and panel-only price', () => {
-  assert.deepEqual(calculatePanels(1), {
+  assert.deepEqual(calculatePanels(1, defaultConfig), {
     quantity: 1,
+    panelPowerKw: 0.65,
     powerKw: 0.65,
     panelsPrice: 20000,
   });
-  assert.deepEqual(calculatePanels('10'), {
+  assert.deepEqual(calculatePanels('10', defaultConfig), {
     quantity: 10,
+    panelPowerKw: 0.65,
     powerKw: 6.5,
     panelsPrice: 200000,
   });
-  assert.deepEqual(calculatePanels(100), {
+  assert.deepEqual(calculatePanels(100, defaultConfig), {
     quantity: 100,
+    panelPowerKw: 0.65,
     powerKw: 65,
     panelsPrice: 2000000,
   });
 });
 
 
+test('reads positive finite calculator config and follows changed offer values', () => {
+  const config = readSolarCalculatorConfig({
+    dataset: { panelPowerW: '720', panelPriceRub: '23456' },
+  });
+  const calculation = calculatePanels(10, config);
+
+  assert.deepEqual(calculation, {
+    quantity: 10,
+    panelPowerKw: 0.72,
+    powerKw: 7.2,
+    panelsPrice: 234560,
+  });
+  assert.match(buildLeadMessage({
+    calculation,
+    scenario: 'turnkey',
+    systemType: 'hybrid',
+    placement: 'roof',
+    comment: '',
+  }), /0,72 × 10 = 7,2 кВт[\s\S]*234 560 ₽/);
+});
+
+
+test('rejects missing, non-finite and non-positive calculator config', () => {
+  for (const dataset of [
+    {},
+    { panelPowerW: '0', panelPriceRub: '20000' },
+    { panelPowerW: '650', panelPriceRub: '-1' },
+    { panelPowerW: 'Infinity', panelPriceRub: '20000' },
+    { panelPowerW: '650', panelPriceRub: 'not-a-number' },
+  ]) {
+    assert.throws(
+      () => readSolarCalculatorConfig({ dataset }),
+      { name: 'RangeError' },
+      JSON.stringify(dataset),
+    );
+  }
+});
+
+
 test('rejects fractional, empty and out-of-range quantities', () => {
   for (const quantity of [0, 101, 1.5, '', 'abc', null, undefined]) {
     assert.throws(
-      () => calculatePanels(quantity),
+      () => calculatePanels(quantity, defaultConfig),
       { name: 'RangeError' },
       `quantity ${String(quantity)} must be rejected`,
     );
@@ -41,7 +90,7 @@ test('rejects fractional, empty and out-of-range quantities', () => {
 
 
 test('serializes calculator qualification without structured locality into one lead message', () => {
-  const calculation = calculatePanels(10);
+  const calculation = calculatePanels(10, defaultConfig);
   const message = buildLeadMessage({
     calculation,
     scenario: 'turnkey',
@@ -98,7 +147,7 @@ test('keeps main page city empty and tolerates an absent hidden city field', () 
 
 test('keeps city and locality out of the free-text calculator message', () => {
   const message = buildLeadMessage({
-    calculation: calculatePanels(10),
+    calculation: calculatePanels(10, defaultConfig),
     scenario: 'turnkey',
     systemType: 'unknown',
     placement: 'consult',
@@ -110,7 +159,7 @@ test('keeps city and locality out of the free-text calculator message', () => {
   assert.doesNotMatch(message, /Населённый пункт: Ялта/);
 
   const nearbyLocality = buildLeadMessage({
-    calculation: calculatePanels(10),
+    calculation: calculatePanels(10, defaultConfig),
     scenario: 'turnkey',
     systemType: 'unknown',
     placement: 'consult',
@@ -124,7 +173,7 @@ test('keeps city and locality out of the free-text calculator message', () => {
 
 test('omits empty optional locality and comment without undefined values', () => {
   const message = buildLeadMessage({
-    calculation: calculatePanels(2),
+    calculation: calculatePanels(2, defaultConfig),
     scenario: 'panels',
     systemType: 'unknown',
     placement: 'consult',
