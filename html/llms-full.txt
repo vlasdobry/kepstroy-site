@@ -114,6 +114,23 @@
 
 Полный каталог городов: https://kepstroy.ru/krym/
 
+### Городские страницы солнечных панелей
+
+На городских страницах собраны условия заказа панелей, доставки по Крыму, подбора оборудования и монтажа солнечной электростанции для конкретного объекта:
+
+- [Симферополь](https://kepstroy.ru/krym/simferopol/solnechnye-paneli/)
+- [Севастополь](https://kepstroy.ru/krym/sevastopol/solnechnye-paneli/)
+- [Ялта](https://kepstroy.ru/krym/jalta/solnechnye-paneli/)
+- [Евпатория](https://kepstroy.ru/krym/evpatorija/solnechnye-paneli/)
+- [Керчь](https://kepstroy.ru/krym/kerch/solnechnye-paneli/)
+- [Феодосия](https://kepstroy.ru/krym/feodosija/solnechnye-paneli/)
+- [Алушта](https://kepstroy.ru/krym/alushta/solnechnye-paneli/)
+- [Судак](https://kepstroy.ru/krym/sudak/solnechnye-paneli/)
+- [Джанкой](https://kepstroy.ru/krym/dzhankoj/solnechnye-paneli/)
+- [Саки](https://kepstroy.ru/krym/saki/solnechnye-paneli/)
+- [Бахчисарай](https://kepstroy.ru/krym/bahchisaraj/solnechnye-paneli/)
+- [Армянск](https://kepstroy.ru/krym/armjansk/solnechnye-paneli/)
+
 ## Процесс работы
 
 1. **Звонок или заявка** — консультация, предварительная оценка

@@ -1,6 +1,7 @@
 import json
 import re
 import unittest
+import xml.etree.ElementTree as ET
 from difflib import SequenceMatcher
 from html import unescape
 from html.parser import HTMLParser
@@ -22,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "html"
 CITY_DATA = ROOT / "generators" / "city-septik-data.json"
 GENERAL_PAGE = HTML / "uslugi" / "solnechnye-paneli" / "index.html"
+SITE_ORIGIN = "https://kepstroy.ru"
 EXPECTED_SLUGS = {
     "alushta",
     "armjansk",
@@ -37,6 +39,55 @@ EXPECTED_SLUGS = {
     "sudak",
 }
 MAX_LOCAL_COPY_SIMILARITY = 0.86
+
+
+def city_solar_urls():
+    return {
+        f"{SITE_ORIGIN}/krym/{city['slug']}/solnechnye-paneli/"
+        for city in city_registry()
+    }
+
+
+def sitemap_urls():
+    return [
+        node.text or ""
+        for node in ET.parse(HTML / "sitemap.xml").iter(
+            "{http://www.sitemaps.org/schemas/sitemap/0.9}loc"
+        )
+    ]
+
+
+def robots_groups(source):
+    groups = {}
+    current_agents = []
+    current_rules = []
+
+    def save_group():
+        for agent in current_agents:
+            groups.setdefault(agent.lower(), []).extend(current_rules)
+
+    for raw_line in source.splitlines() + [""]:
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            if current_agents:
+                save_group()
+                current_agents = []
+                current_rules = []
+            continue
+        field, separator, value = line.partition(":")
+        if not separator:
+            continue
+        field = field.strip().lower()
+        value = value.strip()
+        if field == "user-agent":
+            if current_rules:
+                save_group()
+                current_agents = []
+                current_rules = []
+            current_agents.append(value)
+        elif current_agents and field in {"allow", "disallow"}:
+            current_rules.append((field, value))
+    return groups
 
 
 def city_registry():
@@ -144,6 +195,23 @@ def service_cards(source):
     parser = ServicesTilesParser()
     parser.feed(source)
     return parser.cards
+
+
+class RobotsMetaParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.values = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = {key.lower(): value or "" for key, value in attrs}
+        if tag.lower() == "meta" and attributes.get("name", "").lower() == "robots":
+            self.values.append(attributes.get("content", ""))
+
+
+def robots_meta_values(source):
+    parser = RobotsMetaParser()
+    parser.feed(source)
+    return parser.values
 
 
 class SolarCityPagesTests(unittest.TestCase):
@@ -483,6 +551,90 @@ class SolarCityPagesTests(unittest.TestCase):
                 footer_links = service_footer_links(hub_source)
                 self.assertEqual(1, footer_links.count("/uslugi/solnechnye-paneli/"))
                 self.assertNotIn(expected_city_solar, footer_links)
+
+    def test_sitemap_indexes_every_city_solar_canonical_exactly_once(self):
+        urls = sitemap_urls()
+        expected_city_urls = city_solar_urls()
+
+        self.assertEqual(len(urls), len(set(urls)), "sitemap contains duplicate URLs")
+        self.assertEqual(65, len(urls), "sitemap must match all indexable pages")
+        self.assertEqual(
+            expected_city_urls,
+            {url for url in urls if url.endswith("/solnechnye-paneli/") and "/krym/" in url},
+        )
+        for url in expected_city_urls:
+            with self.subTest(url=url):
+                self.assertEqual(1, urls.count(url))
+        self.assertEqual(1, urls.count(f"{SITE_ORIGIN}/uslugi/solnechnye-paneli/"))
+
+    def test_sitemap_exactly_matches_public_indexable_canonicals(self):
+        html_pages = [
+            path
+            for path in HTML.rglob("*.html")
+            if path.name != "yandex_42d19edda2426210.html"
+        ]
+        indexable_canonicals = []
+        for path in html_pages:
+            source = path.read_text(encoding="utf-8")
+            if path.name == "404.html" or any(
+                "noindex" in value.lower() for value in robots_meta_values(source)
+            ):
+                continue
+            contract = parse_html_contract(source)
+            self.assertEqual(
+                1,
+                len(contract.canonicals),
+                path.relative_to(ROOT).as_posix(),
+            )
+            indexable_canonicals.extend(contract.canonicals)
+
+        self.assertEqual(68, len(html_pages))
+        self.assertEqual(65, len(indexable_canonicals))
+        self.assertEqual(set(indexable_canonicals), set(sitemap_urls()))
+
+    def test_city_solar_pages_are_indexable_and_allowed_by_robots(self):
+        for city in city_registry():
+            with self.subTest(city=city["slug"]):
+                source = city_page(city).read_text(encoding="utf-8")
+                canonical = (
+                    f"{SITE_ORIGIN}/krym/{city['slug']}/solnechnye-paneli/"
+                )
+                self.assertEqual([canonical], parse_html_contract(source).canonicals)
+                self.assertFalse(
+                    any(
+                        "noindex" in value.lower()
+                        for value in robots_meta_values(source)
+                    )
+                )
+
+        groups = robots_groups((HTML / "robots.txt").read_text(encoding="utf-8"))
+        for agent in (
+            "YandexBot",
+            "YandexImages",
+            "ChatGPT-User",
+            "Claude-User",
+            "PerplexityBot",
+        ):
+            with self.subTest(agent=agent):
+                self.assertIn(("allow", "/"), groups.get(agent.lower(), []))
+                self.assertNotIn(("disallow", "/"), groups.get(agent.lower(), []))
+
+    def test_ai_discovery_files_list_main_and_city_solar_pages_once(self):
+        expected_urls = city_solar_urls() | {
+            f"{SITE_ORIGIN}/uslugi/solnechnye-paneli/"
+        }
+        for filename in ("llms.txt", "llms-full.txt"):
+            source = (HTML / filename).read_text(encoding="utf-8")
+            with self.subTest(filename=filename):
+                for url in expected_urls:
+                    self.assertEqual(1, source.count(url), url)
+                listed_city_urls = set(
+                    re.findall(
+                        r"https://kepstroy\.ru/krym/[^\s)]+/solnechnye-paneli/",
+                        source,
+                    )
+                )
+                self.assertEqual(city_solar_urls(), listed_city_urls)
 
     def test_readiness_reports_missing_city_outputs_instead_of_crashing(self):
         original_exists = Path.exists
