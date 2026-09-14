@@ -564,6 +564,50 @@ body:has(.solar-page) .menu-toggle:focus-visible {
   font-weight: 700;
 }
 
+.solar-local__copy {
+  max-width: 880px;
+}
+
+.solar-local__copy p + p,
+.solar-local__copy h3 {
+  margin-top: 24px;
+}
+
+.solar-local__copy ul {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-left: 22px;
+}
+
+.solar-local__copy li {
+  padding-left: 4px;
+  line-height: 1.6;
+}
+
+.solar-city-directory {
+  border-top: 1px solid var(--solar-line);
+}
+
+.solar-city-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.solar-city-grid a {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  padding: 14px 16px;
+  color: var(--solar-ink);
+  font-weight: 750;
+  background: #fff;
+  border: 1px solid var(--solar-line);
+  border-radius: 8px;
+}
+
 .solar-footer {
   display: flex;
   gap: 32px;
@@ -620,6 +664,10 @@ body:has(.solar-page) .menu-toggle:focus-visible {
   .solar-workflow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .solar-city-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 769px) and (max-width: 1023px) {
@@ -649,6 +697,10 @@ body:has(.solar-page) .menu-toggle:focus-visible {
   .solar-request {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+
+  .solar-city-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .solar-hero h1 {
@@ -797,6 +849,10 @@ body:has(.solar-page) .menu-toggle:focus-visible {
   .solar-actions .btn,
   .solar-actions .solar-text-link {
     width: 100%;
+  }
+
+  .solar-city-grid {
+    grid-template-columns: 1fr;
   }
 }
 

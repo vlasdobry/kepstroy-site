@@ -111,11 +111,21 @@ def validate_inputs(cities, city_content, offer):
     for slug, content in city_content.items():
         if not isinstance(content, dict):
             raise GeneratorError(f"Solar city content for {slug} must be an object")
-        for field in ("intro", "local_note"):
-            if not isinstance(content.get(field, ""), str):
+        if content.get("slug") != slug:
+            raise GeneratorError(f"Solar city content {slug}.slug must match its key")
+        for field in ("intro", "local_faq_question", "local_faq_answer"):
+            if not isinstance(content.get(field), str) or not content[field].strip():
                 raise GeneratorError(f"Solar city content {slug}.{field} must be text")
-        if not isinstance(content.get("faq", []), list):
-            raise GeneratorError(f"Solar city content {slug}.faq must be a list")
+        for field, minimum in (("planning_paragraphs", 2), ("planning_points", 3)):
+            values = content.get(field)
+            if (
+                not isinstance(values, list)
+                or len(values) < minimum
+                or not all(isinstance(value, str) and value.strip() for value in values)
+            ):
+                raise GeneratorError(
+                    f"Solar city content {slug}.{field} must contain at least {minimum} texts"
+                )
 
     if not isinstance(offer, dict) or set(offer) != REQUIRED_OFFER_KEYS:
         raise GeneratorError(
@@ -216,6 +226,26 @@ def _substitute(template, context):
         raise GeneratorError(f"Invalid template placeholder: {error}") from error
 
 
+def _render_city_grid(cities):
+    links = "".join(
+        f'<a href="/krym/{escape(city["slug"])}/solnechnye-paneli/">'
+        f'{escape(city["city"])}</a>'
+        for city in cities
+    )
+    return (
+        '\n    <section class="solar-section solar-city-directory" '
+        'aria-labelledby="solar-city-directory-title">\n'
+        '      <div class="container">\n'
+        '        <div class="solar-heading">'
+        '<h2 id="solar-city-directory-title">Солнечные панели и электростанции по городам Крыма</h2>'
+        '<p>Выберите город, чтобы открыть локальную страницу услуги. Доставку и монтаж выполняем по всему Крыму.</p>'
+        '</div>\n'
+        f'        <nav class="solar-city-grid" aria-label="Солнечные панели по городам Крыма">{links}</nav>\n'
+        '      </div>\n'
+        '    </section>\n'
+    )
+
+
 def render_pages(
     cities=None,
     city_content=None,
@@ -232,7 +262,9 @@ def render_pages(
     validate_inputs(cities, city_content, offer)
     common = _common_context(offer)
     rendered = {
-        MAIN_OUTPUT: _substitute(main_template, {**common, "city_grid": ""})
+        MAIN_OUTPUT: _substitute(
+            main_template, {**common, "city_grid": _render_city_grid(cities)}
+        )
     }
     for city in cities:
         slug = city["slug"]
@@ -245,8 +277,23 @@ def render_pages(
             "city_genitive": escape(city["city_genitive"]),
             "city_prepositional": escape(city["city_prepositional"]),
             "city_schema": json.dumps(city_name, ensure_ascii=False)[1:-1],
-            "intro": escape(content.get("intro", "")),
-            "local_note": escape(content.get("local_note", "")),
+            "intro": escape(content["intro"]),
+            "planning_paragraphs_html": "".join(
+                f"<p>{escape(paragraph)}</p>"
+                for paragraph in content["planning_paragraphs"]
+            ),
+            "planning_points_html": "".join(
+                f"<li>{escape(point)}</li>"
+                for point in content["planning_points"]
+            ),
+            "local_faq_question": escape(content["local_faq_question"]),
+            "local_faq_answer": escape(content["local_faq_answer"]),
+            "local_faq_question_schema": json.dumps(
+                content["local_faq_question"], ensure_ascii=False
+            )[1:-1],
+            "local_faq_answer_schema": json.dumps(
+                content["local_faq_answer"], ensure_ascii=False
+            )[1:-1],
         }
         relative_path = Path("krym") / slug / "solnechnye-paneli" / "index.html"
         rendered[relative_path] = _substitute(city_template, context)

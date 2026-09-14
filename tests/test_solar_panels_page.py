@@ -148,7 +148,10 @@ class SolarPanelsPageTests(unittest.TestCase):
         paths.extend(sorted((HTML / "krym").glob("*/index.html")))
         for path in paths:
             self.assertIn(f'href="{URL}"', path.read_text(encoding="utf-8"), str(path))
-        self.assertFalse(list((HTML / "krym").glob("*/solnechnye-paneli/index.html")))
+        city_solar_pages = list(
+            (HTML / "krym").glob("*/solnechnye-paneli/index.html")
+        )
+        self.assertEqual(12, len(city_solar_pages))
 
     def test_homepage_offer_card_schema_and_forms_use_confirmed_solar_offer(self):
         text = (HTML / "index.html").read_text(encoding="utf-8")
