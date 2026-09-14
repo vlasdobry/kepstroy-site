@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import math
 import os
 import re
 import shutil
@@ -627,6 +628,31 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
             },
             offer,
         )
+
+    def test_offer_numeric_fields_reject_booleans(self):
+        module, (cities, city_content, offer, _main, _city) = self.inputs()
+        for field in ("panel_power_w", "panel_power_kw", "panel_price_rub"):
+            for value in (True, False):
+                with self.subTest(field=field, value=value):
+                    mutated_offer = dict(offer)
+                    mutated_offer[field] = value
+                    with self.assertRaisesRegex(module.GeneratorError, field):
+                        module.validate_inputs(cities, city_content, mutated_offer)
+
+    def test_offer_numeric_fields_reject_non_positive_and_non_finite_values(self):
+        module, (cities, city_content, offer, _main, _city) = self.inputs()
+        invalid_values = {
+            "panel_power_w": (0, -1),
+            "panel_power_kw": (0, -0.1, math.nan, math.inf, -math.inf),
+            "panel_price_rub": (0, -1),
+        }
+        for field, values in invalid_values.items():
+            for value in values:
+                with self.subTest(field=field, value=value):
+                    mutated_offer = dict(offer)
+                    mutated_offer[field] = value
+                    with self.assertRaisesRegex(module.GeneratorError, field):
+                        module.validate_inputs(cities, city_content, mutated_offer)
 
     def test_rendered_offer_has_no_stale_brand_or_system_type_copy(self):
         module, (cities, city_content, offer, main_template, city_template) = self.inputs()

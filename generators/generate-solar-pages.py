@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import math
 import os
 import re
 import stat
@@ -122,14 +123,29 @@ def validate_inputs(cities, city_content, offer):
         )
     if not isinstance(offer["product_name"], str) or not offer["product_name"].strip():
         raise GeneratorError("Solar offer product_name must be text")
+    panel_power_w = offer["panel_power_w"]
     if (
-        not isinstance(offer["panel_power_w"], int)
-        or offer["panel_power_w"] <= 0
-        or not isinstance(offer["panel_power_kw"], (int, float))
-        or offer["panel_power_kw"] != offer["panel_power_w"] / 1000
+        isinstance(panel_power_w, bool)
+        or not isinstance(panel_power_w, int)
+        or panel_power_w <= 0
     ):
-        raise GeneratorError("Solar offer panel power values are inconsistent")
-    if not isinstance(offer["panel_price_rub"], int) or offer["panel_price_rub"] <= 0:
+        raise GeneratorError("Solar offer panel_power_w must be a positive integer")
+    panel_power_kw = offer["panel_power_kw"]
+    if (
+        isinstance(panel_power_kw, bool)
+        or not isinstance(panel_power_kw, (int, float))
+        or not math.isfinite(panel_power_kw)
+        or panel_power_kw <= 0
+    ):
+        raise GeneratorError("Solar offer panel_power_kw must be a positive finite number")
+    if panel_power_kw != panel_power_w / 1000:
+        raise GeneratorError("Solar offer panel_power_kw must match panel_power_w")
+    panel_price_rub = offer["panel_price_rub"]
+    if (
+        isinstance(panel_price_rub, bool)
+        or not isinstance(panel_price_rub, int)
+        or panel_price_rub <= 0
+    ):
         raise GeneratorError("Solar offer panel_price_rub must be a positive integer")
     if (
         not isinstance(offer["availability"], list)

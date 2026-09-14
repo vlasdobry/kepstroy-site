@@ -1,7 +1,9 @@
-import json
 import importlib.util
+import json
 import re
+import shutil
 import unittest
+import uuid
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 from pathlib import Path
@@ -226,16 +228,27 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertIn("User-agent: YandexBot\nAllow: /", robots)
         self.assertIn("User-agent: GPTBot\nAllow: /", robots)
 
-    def test_generator_keeps_published_main_page_in_sync_without_city_outputs(self):
+    def solar_generator(self):
         script = ROOT / "generators" / "generate-solar-pages.py"
         self.assertTrue(script.exists(), "solar generator API is missing")
         spec = importlib.util.spec_from_file_location("solar_page_generator", script)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        return module
 
+    def test_generator_keeps_published_main_page_in_sync(self):
+        module = self.solar_generator()
         rendered = module.render_pages(*module.load_inputs())
         main_path = Path("uslugi/solnechnye-paneli/index.html")
         self.assertEqual(PAGE.read_text(encoding="utf-8"), rendered[main_path])
+        self.assertEqual(
+            [], module.compare_outputs({main_path: rendered[main_path]}, HTML)
+        )
+
+    def test_generator_reports_exact_city_drift_for_main_only_fixture(self):
+        module = self.solar_generator()
+        rendered = module.render_pages(*module.load_inputs())
+        main_path = Path("uslugi/solnechnye-paneli/index.html")
 
         expected_city_drift = {
             Path("krym") / city["slug"] / "solnechnye-paneli" / "index.html"
@@ -245,11 +258,30 @@ class SolarPanelsPageTests(unittest.TestCase):
                 )
             )["cities"]
         }
-        self.assertEqual(
-            expected_city_drift,
-            set(module.compare_outputs(rendered, HTML)),
-            "Before city-page publication only the 12 city outputs may drift",
-        )
+        output_root = ROOT / "tests" / "solar-main-fixture.tmp" / uuid.uuid4().hex
+        output_root.mkdir(parents=True)
+        try:
+            module.atomic_write(output_root / main_path, rendered[main_path])
+            self.assertEqual(
+                expected_city_drift,
+                set(module.compare_outputs(rendered, output_root)),
+            )
+            self.assertEqual([], module.unexpected_outputs(rendered, output_root))
+        finally:
+            shutil.rmtree(output_root)
+            try:
+                output_root.parent.rmdir()
+            except OSError:
+                pass
+
+    def test_repository_solar_generator_drift_is_a_complete_city_set_or_empty(self):
+        module = self.solar_generator()
+        rendered = module.render_pages(*module.load_inputs())
+        city_paths = set(rendered) - {Path("uslugi/solnechnye-paneli/index.html")}
+        changed = set(module.compare_outputs(rendered, HTML))
+
+        self.assertIn(changed, (set(), city_paths))
+        self.assertEqual([], module.unexpected_outputs(rendered, HTML))
 
 
 if __name__ == "__main__":
