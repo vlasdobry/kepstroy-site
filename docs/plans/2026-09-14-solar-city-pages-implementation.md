@@ -1,5 +1,7 @@
 # Solar City Landing Pages Implementation Plan
 
+**Статус:** завершено локально 14.09.2026; релиз-кандидат проверен, но не отправлен и не развёрнут.
+
 > **For the agent:** REQUIRED SUB-SKILL: Use $executing-plans to implement this plan task-by-task.
 
 **Goal:** Выпустить 12 уникальных SEO/GEO-страниц солнечных панелей для существующих городов Крыма с централизованным обновлением общего оффера.
@@ -486,3 +488,38 @@ git commit -m "docs: document solar city release"
 **Step 6: Остановиться перед внешними изменениями**
 
 Не выполнять merge, push, deploy, реальную заявку, переобход Яндекс.Вебмастера или запуск рекламы без отдельного разрешения пользователя.
+
+---
+
+## Фактическое выполнение
+
+| Задача | Статус | Итоговый коммит этапа |
+|---|---|---|
+| Task 1 — контракт 12 URL | ✅ | `d5c470c` |
+| Task 2 — безопасный генератор | ✅ | `a2b2a2b` |
+| Task 3 — контент и 13 выходов | ✅ | `a797752` |
+| Task 4 — двусторонняя перелинковка | ✅ | `0e2afff` |
+| Task 5 — sitemap и GEO-файлы | ✅ | `cab8f59` |
+| Task 6 — город в заявке | ✅ | `03ed47d` |
+| Task 7 — браузерный аудит | ✅ | `70cb70d` |
+| Task 8 — финальная проверка и документация | ✅ | коммит финализации с сообщением `docs: record solar city rollout verification` |
+
+Дополнительные review/fix-коммиты между указанными этапами сохранены в истории ветки. Реализация следует утверждённому дизайну: один источник общего оффера, ровно 12 городских URL, самостоятельные canonical, уникальные локальные блоки, согласованные FAQ/Schema, ограниченная перелинковка и структурированная квалификация города в заявке.
+
+## Verification evidence — 14.09.2026
+
+- `python -m unittest discover -s tests -v` — 172 passed, 6 skipped (ограничения symlink/POSIX на Windows), 0 failures;
+- все `tests/test_*.cjs` — 49 passed;
+- `npm test` в `form-handler` — 18 passed;
+- `generate-city-indexes.py --check` — 12 актуальных страниц;
+- `generate-city-septik.py --check` — 12 актуальных страниц;
+- `generate-solar-pages.py --check` — 13 актуальных страниц;
+- `python scripts/validate.py` — passed;
+- `python scripts/audit-static-site.py` — 68 HTML / 65 indexable / 65 sitemap;
+- `tests/solar-panels-browser.cjs` — 84 городских page-width запуска, только перехваченный тестовый POST;
+- `scripts/audit-full-site-browser.cjs` — 272 запуска, 0 записей на локальный сервер;
+- `docker compose config --quiet` — exit 0;
+- локальные Docker build сайта и form-handler — exit 0, npm audit внутри build: 0 vulnerabilities;
+- read-only container checks — общая и 12 городских страниц, CSS, JS, WebP и модули form-handler присутствуют.
+
+Контент всех 12 городов перечитан: падежи, условные локальные формулировки, цена только за панель, отсутствие неподтверждённых КПД, гарантий, сроков, выработки, окупаемости, полной автономности и вымышленных офисов подтверждены тестами и ручной сверкой. Внешние действия не выполнялись.
