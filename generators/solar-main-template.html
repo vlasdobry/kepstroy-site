@@ -198,7 +198,7 @@
           <div class="solar-field"><label for="order-scenario">Что требуется</label><select id="order-scenario" name="order_scenario"><option value="panels">Только панели</option><option value="installation">Панели с монтажом</option><option value="turnkey" selected>Система под ключ</option></select></div>
           <div class="solar-field"><label for="system-type">Тип системы</label><select id="system-type" name="system_type"><option value="unknown" selected>Нужна консультация</option><option value="autonomous">${system_type_1}</option><option value="grid">${system_type_2}</option><option value="hybrid">${system_type_3}</option></select></div>
           <div class="solar-field"><label for="placement">Место установки</label><select id="placement" name="placement"><option value="consult" selected>Нужна консультация</option><option value="roof">Крыша</option><option value="ground">Наземная конструкция</option></select></div>
-          <div class="solar-field"><label for="solar-locality">Населённый пункт <span>(необязательно)</span></label><input id="solar-locality" name="locality" type="text" maxlength="100" placeholder="Например, Симферополь"></div>
+          <div class="solar-field"><label for="solar-locality">Населённый пункт <span>(необязательно)</span></label><input id="solar-locality" name="locality" type="text" maxlength="100" placeholder="Например, Симферополь" form="solar-request-form"></div>
           <button id="solar-calculate" type="button" class="btn btn--primary">Рассчитать</button>
           <p id="solar-calculator-error" class="solar-calculator__error" role="alert" hidden>Введите целое количество панелей от 1 до 100.</p>
           <output id="solar-result" class="solar-result" aria-live="polite" for="panel-quantity">
@@ -272,6 +272,6 @@
 
   <script src="/js/tracking.js?v=2"></script>
   <script src="/js/main.js?v=22"></script>
-  <script src="/js/solnechnye-paneli.js?v=4"></script>
+  <script src="/js/solnechnye-paneli.js?v=5"></script>
 </body>
 </html>

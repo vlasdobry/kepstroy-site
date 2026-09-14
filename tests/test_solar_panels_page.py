@@ -112,6 +112,7 @@ class SolarPanelsPageTests(unittest.TestCase):
             "Солнечные панели и электростанции", inputs["service"].get("value")
         )
         self.assertTrue({"website", "company", "message"} <= inputs.keys())
+        self.assertEqual("solar-request-form", inputs["locality"].get("form"))
         self.assertEqual("1", inputs["panel_quantity"].get("min"))
         self.assertEqual("100", inputs["panel_quantity"].get("max"))
         self.assertIn('action="/submit"', text)
@@ -186,7 +187,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual({expected_version}, set(versions))
 
     def test_all_generated_solar_pages_use_the_current_js_cache_version(self):
-        expected_version = "4"
+        expected_version = "5"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(

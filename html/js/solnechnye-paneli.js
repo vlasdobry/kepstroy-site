@@ -55,17 +55,11 @@ const syncSolarCityField = (requestForm) => {
   return pageCity;
 };
 
-const resolveSolarLocality = (requestForm, locality) => {
-  const safeLocality = cleanText(locality, 100);
-  return safeLocality === resolveSolarPageCity(requestForm) ? '' : safeLocality;
-};
-
 const buildLeadMessage = ({
   calculation,
   scenario,
   systemType,
   placement,
-  locality,
   comment,
 }) => {
   const lines = [
@@ -77,9 +71,7 @@ const buildLeadMessage = ({
     `Тип системы: ${SYSTEM_LABELS[systemType] || SYSTEM_LABELS.unknown}`,
     `Размещение: ${PLACEMENT_LABELS[placement] || PLACEMENT_LABELS.consult}`,
   ];
-  const safeLocality = cleanText(locality, 100);
   const safeComment = cleanText(comment, 500);
-  if (safeLocality) lines.push(`Населённый пункт: ${safeLocality}`);
   if (safeComment) lines.push(`Комментарий: ${safeComment}`);
   lines.push('Монтаж, доставка и комплектующие рассчитываются отдельно.');
   return lines.join('\n').slice(0, 1000);
@@ -161,7 +153,6 @@ if (typeof document !== 'undefined') {
     const scenarioInput = document.getElementById('order-scenario');
     const systemInput = document.getElementById('system-type');
     const placementInput = document.getElementById('placement');
-    const localityInput = document.getElementById('solar-locality');
     const commentInput = document.getElementById('solar-comment');
     const messageInput = document.getElementById('solar-message');
     const resultQuantity = document.getElementById('solar-result-quantity');
@@ -178,7 +169,6 @@ if (typeof document !== 'undefined') {
       scenario: scenarioInput.value,
       systemType: systemInput.value,
       placement: placementInput.value,
-      locality: resolveSolarLocality(requestForm, localityInput.value),
       comment: commentInput.value,
     });
 
@@ -234,7 +224,6 @@ if (typeof module !== 'undefined' && module.exports) {
     calculatePanels,
     buildLeadMessage,
     resolveSolarPageCity,
-    resolveSolarLocality,
     syncSolarCityField,
   };
 }

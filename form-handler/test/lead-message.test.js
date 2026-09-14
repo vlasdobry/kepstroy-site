@@ -5,7 +5,6 @@ const { buildLeadMessage, buildLeadStatusMessage } = require('../lead-message');
 const {
   buildLeadMessage: buildSolarQualification,
   calculatePanels,
-  resolveSolarLocality,
   syncSolarCityField
 } = require('../../html/js/solnechnye-paneli.js');
 
@@ -122,12 +121,12 @@ test('renders default city once from frontend payload through Telegram lead', ()
     scenario: 'turnkey',
     systemType: 'hybrid',
     placement: 'roof',
-    locality: resolveSolarLocality(form, 'Ялта'),
+    locality: 'Ялта',
     comment: ''
   });
   const text = buildLeadMessage({ city, locality: 'Ялта', message });
 
-  assert.equal((text.match(/Город страницы: Ялта/g) || []).length, 1);
+  assert.equal((text.match(/Ялта/g) || []).length, 1);
   assert.doesNotMatch(text, /Населённый пункт: Ялта/);
   assert.match(text, /10 панелей/);
   assert.match(text, /6,5 кВт/);
@@ -149,13 +148,31 @@ test('keeps generated city and a distinct editable locality in Telegram lead', (
       scenario: 'turnkey',
       systemType: 'unknown',
       placement: 'consult',
-      locality: resolveSolarLocality(form, 'Гурзуф'),
+      locality: 'Гурзуф',
       comment: ''
     })
   });
 
+  assert.equal((text.match(/Ялта/g) || []).length, 1);
+  assert.equal((text.match(/Гурзуф/g) || []).length, 1);
   assert.match(text, /Город страницы: Ялта/);
   assert.match(text, /Населённый пункт: Гурзуф/);
+});
+
+test('keeps main-page locality as one structured backend field', () => {
+  const locality = 'Алушта';
+  const message = buildSolarQualification({
+    calculation: calculatePanels(10),
+    scenario: 'turnkey',
+    systemType: 'unknown',
+    placement: 'consult',
+    locality,
+    comment: ''
+  });
+  const text = buildLeadMessage({ locality, message });
+
+  assert.equal((text.match(/Алушта/g) || []).length, 1);
+  assert.match(text, /Населённый пункт: Алушта/);
 });
 
 test('omits blank qualification values but preserves numeric zero', () => {

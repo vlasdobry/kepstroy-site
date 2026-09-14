@@ -5,7 +5,6 @@ const {
   calculatePanels,
   buildLeadMessage,
   resolveSolarPageCity,
-  resolveSolarLocality,
   syncSolarCityField,
 } = require('../html/js/solnechnye-paneli.js');
 const { cities } = require('../generators/city-septik-data.json');
@@ -41,7 +40,7 @@ test('rejects fractional, empty and out-of-range quantities', () => {
 });
 
 
-test('serializes the visible calculation and qualification into one lead message', () => {
+test('serializes calculator qualification without structured locality into one lead message', () => {
   const calculation = calculatePanels(10);
   const message = buildLeadMessage({
     calculation,
@@ -59,12 +58,13 @@ test('serializes the visible calculation and qualification into one lead message
     '200 000 ₽',
     'Гибридная',
     'Крыша',
-    'Саки',
     'Нужно резервное питание дома',
     'Монтаж, доставка и комплектующие рассчитываются отдельно',
   ]) {
     assert.match(message, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+  assert.doesNotMatch(message, /Населённый пункт:/);
+  assert.doesNotMatch(message, /Саки/);
   assert.ok(message.length <= 1000);
 });
 
@@ -96,14 +96,13 @@ test('keeps main page city empty and tolerates an absent hidden city field', () 
 });
 
 
-test('keeps city out of the free-text calculator message', () => {
-  const cityForm = { dataset: { solarCity: 'Ялта' } };
+test('keeps city and locality out of the free-text calculator message', () => {
   const message = buildLeadMessage({
     calculation: calculatePanels(10),
     scenario: 'turnkey',
     systemType: 'unknown',
     placement: 'consult',
-    locality: resolveSolarLocality(cityForm, 'Ялта'),
+    locality: 'Ялта',
     comment: '',
   });
 
@@ -115,10 +114,11 @@ test('keeps city out of the free-text calculator message', () => {
     scenario: 'turnkey',
     systemType: 'unknown',
     placement: 'consult',
-    locality: resolveSolarLocality(cityForm, 'Гурзуф'),
+    locality: 'Гурзуф',
     comment: '',
   });
-  assert.match(nearbyLocality, /Населённый пункт: Гурзуф/);
+  assert.doesNotMatch(nearbyLocality, /Населённый пункт:/);
+  assert.doesNotMatch(nearbyLocality, /Гурзуф/);
 });
 
 

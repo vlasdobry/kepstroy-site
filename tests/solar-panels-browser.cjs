@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
+const { buildLeadMessage } = require('../form-handler/lead-message');
 
 const base = process.argv[2] || 'http://127.0.0.1:8765';
 const origin = new URL(base).origin;
@@ -165,7 +166,9 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
   assert.match(payload.get('message') || '', /0,65 × 10 = 6,5 кВт/);
   assert.match(payload.get('message') || '', /Стоимость панелей: 200 000 ₽/);
   assert.match(payload.get('message') || '', /Тип системы: Гибридная/);
-  assert.match(payload.get('message') || '', /Населённый пункт: Алушта/);
+  assert.equal(payload.get('locality'), 'Алушта');
+  assert.doesNotMatch(payload.get('message') || '', /Населённый пункт:/);
+  assert.match(buildLeadMessage(Object.fromEntries(payload)), /Населённый пункт: Алушта/);
   assert.match(payload.get('landing_page') || '', /\/uslugi\/solnechnye-paneli\//);
   assert.match(payload.get('current_page') || '', /\/uslugi\/solnechnye-paneli\//);
   assert.equal(payload.get('city'), null, 'Main solar page must not invent a city');
@@ -203,6 +206,7 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
   await page.goto(`${origin}/krym/jalta/solnechnye-paneli/?utm_source=city-test&utm_medium=cpc&utm_campaign=solar-jalta&yclid=jalta-123`);
   const cityForm = page.locator('#solar-request-form');
   assert.equal(await cityForm.locator('#solar-locality').isEditable(), true);
+  await cityForm.locator('#solar-locality').fill('Гурзуф');
   await cityForm.locator('#solar-phone').fill('+7 (978) 123-45-67');
   await cityForm.locator('[name="consent"]').check();
   await cityForm.locator('[name="city"]').evaluate((input) => { input.value = 'Москва'; });
@@ -220,13 +224,19 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
     yclid: 'jalta-123',
     client_id: 'solar-test-client',
   })) assert.equal(cityPayload.get(key), value, `city payload ${key}`);
-  assert.equal(cityPayload.get('locality'), 'Ялта');
+  assert.equal(cityPayload.get('locality'), 'Гурзуф');
   assert.doesNotMatch(cityPayload.get('message') || '', /Город страницы:/);
   assert.doesNotMatch(cityPayload.get('message') || '', /Населённый пункт: Ялта/);
+  assert.doesNotMatch(cityPayload.get('message') || '', /Гурзуф/);
   assert.match(cityPayload.get('message') || '', /0,65 × 10 = 6,5 кВт/);
   assert.match(cityPayload.get('message') || '', /Стоимость панелей: 200 000 ₽/);
   assert.match(cityPayload.get('landing_page') || '', /\/krym\/jalta\/solnechnye-paneli\//);
   assert.match(cityPayload.get('current_page') || '', /\/krym\/jalta\/solnechnye-paneli\//);
+  const renderedLead = buildLeadMessage(Object.fromEntries(cityPayload));
+  assert.equal((renderedLead.match(/Ялта/g) || []).length, 1);
+  assert.equal((renderedLead.match(/Гурзуф/g) || []).length, 1);
+  assert.match(renderedLead, /Город страницы: Ялта/);
+  assert.match(renderedLead, /Населённый пункт: Гурзуф/);
 
   await browser.close();
   assert.deepEqual(errors, []);
