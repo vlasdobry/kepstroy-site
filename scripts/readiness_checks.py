@@ -1,5 +1,8 @@
 """Business-critical pre-deploy checks for traffic attribution and lead capture."""
+import json
 import re
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -9,6 +12,160 @@ UTILITY_URLS = {
     "https://kepstroy.ru/lead-magnet/",
     "https://kepstroy.ru/spasibo/",
 }
+
+SOLAR_CITY_SLUGS = {
+    "alushta",
+    "armjansk",
+    "bahchisaraj",
+    "dzhankoj",
+    "evpatorija",
+    "feodosija",
+    "jalta",
+    "kerch",
+    "saki",
+    "sevastopol",
+    "simferopol",
+    "sudak",
+}
+
+SOLAR_FORBIDDEN_CLAIMS = (
+    r"КПД.{0,30}24[,.]6",
+    r"окупаем",
+    r"15-летн.{0,30}гарант",
+    r"30-летн.{0,30}гарант",
+    r"(?:гарант[^.!?]{0,30}|на\s+)(?:15|30)\s+лет",
+    r"гарант[^.!?]{0,40}\d+\s+(?:год|лет|месяц)",
+    r"\d[\d\s]*(?:[,.]\d+)?\s*кВт[·*\s-]*ч",
+    r"(?:монтаж|установ|достав)[^.!?]{0,60}(?:за|в течение)\s*\d+\s+(?:час|дн|недел)",
+    r"(?:срок\s+(?:монтажа|установки|доставки)|(?:монтаж|установка|доставка)\s+за)"
+    r"[^.!?]{0,30}\d+\s+(?:час|дн|недел)",
+    r"бесплатн[^.!?]{0,40}(?:достав|монтаж)|(?:достав|монтаж)[^.!?]{0,40}бесплатн",
+    r"полная\s+(?:энерго)?независимость",
+)
+
+
+def _visible_text(source: str) -> str:
+    source = re.sub(
+        r"<script\b.*?</script>|<style\b.*?</style>",
+        " ",
+        source,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    source = re.sub(r"<[^>]+>", " ", source)
+    return " ".join(source.split())
+
+
+def _check_solar_offer(path: Path, relative: str, errors: list[str]):
+    source = path.read_text(encoding="utf-8")
+    visible = _visible_text(source)
+    for claim in SOLAR_FORBIDDEN_CLAIMS:
+        if re.search(claim, visible, re.IGNORECASE):
+            errors.append(f"{relative}: unconfirmed solar claim")
+            break
+
+    panel_price_pattern = re.compile(
+        r"(?:цена|стоимость)\s+(?:одной\s+)?панел[^.]{0,45}20\s*000\s*₽|"
+        r"20\s*000\s*₽[^.]{0,45}(?:цена|стоимость)\s+(?:одной\s+)?панел",
+        re.IGNORECASE,
+    )
+    separate_cost_pattern = re.compile(
+        r"(?:монтаж|инвертор|аккумулятор|комплектующ)[^.]{0,120}"
+        r"(?:рассчитыва|оплачива|стоимост)[^.]{0,80}(?:отдельно|индивидуально)",
+        re.IGNORECASE,
+    )
+    if not panel_price_pattern.search(visible):
+        errors.append(f"{relative}: panel price must be labeled as panel-only")
+    if not separate_cost_pattern.search(visible):
+        errors.append(
+            f"{relative}: installation and components must be priced separately"
+        )
+
+
+def _check_solar_city_pages(repo_root: Path, errors: list[str]):
+    html_root = repo_root / "html"
+    city_data_path = repo_root / "generators" / "city-septik-data.json"
+    if not city_data_path.exists():
+        errors.append("solar-city: city registry is missing")
+        return
+
+    try:
+        cities = json.loads(city_data_path.read_text(encoding="utf-8"))["cities"]
+    except (KeyError, TypeError, json.JSONDecodeError) as exc:
+        errors.append(f"solar-city: invalid city registry: {exc}")
+        return
+
+    registry = {city.get("slug") for city in cities if isinstance(city, dict)}
+    if registry != SOLAR_CITY_SLUGS:
+        errors.append(
+            "solar-city: city registry must exactly match the approved 12 slugs; "
+            f"missing={sorted(SOLAR_CITY_SLUGS - registry)}, "
+            f"extra={sorted(registry - SOLAR_CITY_SLUGS)}"
+        )
+
+    outputs = {
+        path.parent.parent.name
+        for path in (html_root / "krym").glob("*/solnechnye-paneli/index.html")
+    }
+    if outputs != SOLAR_CITY_SLUGS:
+        errors.append(
+            "solar-city: generated output set must exactly match the approved 12 slugs; "
+            f"missing={sorted(SOLAR_CITY_SLUGS - outputs)}, "
+            f"extra={sorted(outputs - SOLAR_CITY_SLUGS)}"
+        )
+
+    city_by_slug = {
+        city["slug"]: city
+        for city in cities
+        if isinstance(city, dict) and city.get("slug") in SOLAR_CITY_SLUGS
+    }
+    for slug in sorted(SOLAR_CITY_SLUGS):
+        relative = f"krym/{slug}/solnechnye-paneli/index.html"
+        path = html_root / relative
+        if not path.exists():
+            errors.append(f"{relative}: missing solar city page")
+            continue
+
+        source = path.read_text(encoding="utf-8")
+        canonical = f"https://kepstroy.ru/krym/{slug}/solnechnye-paneli/"
+        canonicals = re.findall(
+            r'<link\s+rel="canonical"\s+href="([^"]+)"', source, re.IGNORECASE
+        )
+        if canonicals != [canonical]:
+            errors.append(f"{relative}: solar city canonical must be {canonical}")
+
+        _check_solar_offer(path, relative, errors)
+
+        city = city_by_slug.get(slug)
+        city_name = city.get("city") if city else None
+        submit_forms = re.findall(
+            r'<form\b[^>]*action="/submit"[^>]*>.*?</form>',
+            source,
+            re.IGNORECASE | re.DOTALL,
+        )
+        city_pattern = re.compile(
+            rf'name="(?:city|locality)"[^>]+value="{re.escape(city_name or "")}"'
+        )
+        if not submit_forms or not any(city_pattern.search(form) for form in submit_forms):
+            errors.append(f"{relative}: lead form must preserve city {city_name!r}")
+
+    generator = repo_root / "generators" / "generate-solar-pages.py"
+    if not generator.exists():
+        errors.append("solar-city: generator drift check is missing")
+        return
+
+    result = subprocess.run(
+        [sys.executable, str(generator), "--check"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        suffix = f": {detail[0]}" if detail else ""
+        errors.append(f"solar-city: generated pages have manual drift{suffix}")
 
 
 def _production_pages(html_root: Path):
@@ -89,42 +246,8 @@ def check_traffic_readiness(repo_root: Path, errors: list[str]):
 
     solar_page = html_root / "uslugi" / "solnechnye-paneli" / "index.html"
     if solar_page.exists():
-        solar_text = solar_page.read_text(encoding="utf-8")
-        solar_visible = re.sub(
-            r"<script\b.*?</script>|<style\b.*?</style>",
-            " ",
-            solar_text,
-            flags=re.IGNORECASE | re.DOTALL,
+        _check_solar_offer(
+            solar_page, "uslugi/solnechnye-paneli/index.html", errors
         )
-        solar_visible = re.sub(r"<[^>]+>", " ", solar_visible)
-        solar_claims = (
-            r"КПД.{0,30}24[,.]6",
-            r"окупаем",
-            r"15-летн.{0,30}гарант",
-            r"30-летн.{0,30}гарант",
-            r"полная независимость",
-        )
-        for claim in solar_claims:
-            if re.search(claim, solar_visible, re.IGNORECASE):
-                errors.append(
-                    "uslugi/solnechnye-paneli/index.html: unconfirmed solar claim"
-                )
-                break
 
-        panel_price_pattern = re.compile(
-            r"(?:стоимость|цена)[^.<\n]{0,30}панел[^.<\n]{0,30}20\s*000\s*₽",
-            re.IGNORECASE,
-        )
-        separate_cost_pattern = re.compile(
-            r"(?:монтаж|инвертор|аккумулятор|комплектующ)[^.<\n]{0,100}"
-            r"(?:рассчитыва|оплачива|стоимост)[^.<\n]{0,80}(?:отдельно|индивидуально)",
-            re.IGNORECASE,
-        )
-        if not panel_price_pattern.search(solar_visible):
-            errors.append(
-                "uslugi/solnechnye-paneli/index.html: panel price must be labeled as panel-only"
-            )
-        if not separate_cost_pattern.search(solar_visible):
-            errors.append(
-                "uslugi/solnechnye-paneli/index.html: installation and components must be priced separately"
-            )
+    _check_solar_city_pages(repo_root, errors)
