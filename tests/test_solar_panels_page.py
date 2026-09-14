@@ -147,6 +147,48 @@ class SolarPanelsPageTests(unittest.TestCase):
             self.assertIn(f'href="{URL}"', path.read_text(encoding="utf-8"), str(path))
         self.assertFalse(list((HTML / "krym").glob("*/solnechnye-paneli/index.html")))
 
+    def test_homepage_offer_card_schema_and_forms_use_confirmed_solar_offer(self):
+        text = (HTML / "index.html").read_text(encoding="utf-8")
+        for expected in (
+            "Солнечные панели и электростанции",
+            "Панели LONGi 650 Вт, подбор инверторов и аккумуляторов, монтаж систем по всему Крыму.",
+            "20 000 ₽/шт.",
+            "Рассчитать систему",
+            'value="solnechnye-paneli"',
+        ):
+            self.assertIn(expected, text)
+
+        offers = [
+            node
+            for node in json_ld_nodes(text)
+            if node.get("@type") == "OfferCatalog"
+        ]
+        if not offers:
+            offers = [
+                node["hasOfferCatalog"]
+                for node in json_ld_nodes(text)
+                if isinstance(node, dict) and "hasOfferCatalog" in node
+            ]
+        self.assertTrue(offers)
+        solar_services = [
+            item.get("itemOffered", {}).get("name")
+            for catalog in offers
+            for item in catalog.get("itemListElement", [])
+        ]
+        self.assertIn("Солнечные панели и электростанции", solar_services)
+
+    def test_every_public_footer_lists_solar_panels_once(self):
+        failures = []
+        for path in sorted(HTML.rglob("*.html")):
+            text = path.read_text(encoding="utf-8")
+            footer = re.search(r"<footer\b.*?</footer>", text, re.IGNORECASE | re.DOTALL)
+            if not footer:
+                continue
+            count = footer.group(0).count(f'href="{URL}"')
+            if count != 1:
+                failures.append(f"{path.relative_to(ROOT).as_posix()}: {count}")
+        self.assertEqual([], failures)
+
     def test_sitemap_and_ai_files_reference_canonical(self):
         urls = [
             node.text

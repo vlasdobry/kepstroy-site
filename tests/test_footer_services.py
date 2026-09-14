@@ -14,6 +14,7 @@ EXPECTED_SERVICE_LINKS = {
     "/uslugi/gazosnabzhenie/",
     "/uslugi/elektrosnabzhenie/",
     "/uslugi/generatory/",
+    "/uslugi/solnechnye-paneli/",
     "/uslugi/yuridicheskoe-soprovozhdenie-podklyuchenij/",
 }
 
