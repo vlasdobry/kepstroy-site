@@ -4,8 +4,11 @@ const assert = require('node:assert/strict');
 const {
   calculatePanels,
   buildLeadMessage,
-  resolveSolarCity,
+  resolveSolarPageCity,
+  resolveSolarLocality,
+  syncSolarCityField,
 } = require('../html/js/solnechnye-paneli.js');
+const { cities } = require('../generators/city-septik-data.json');
 
 
 test('calculates nominal panel power and panel-only price', () => {
@@ -46,7 +49,6 @@ test('serializes the visible calculation and qualification into one lead message
     systemType: 'hybrid',
     placement: 'roof',
     locality: 'Саки',
-    city: 'Ялта',
     comment: 'Нужно резервное питание дома',
   });
 
@@ -58,7 +60,6 @@ test('serializes the visible calculation and qualification into one lead message
     'Гибридная',
     'Крыша',
     'Саки',
-    'Город страницы: Ялта',
     'Нужно резервное питание дома',
     'Монтаж, доставка и комплектующие рассчитываются отдельно',
   ]) {
@@ -68,28 +69,56 @@ test('serializes the visible calculation and qualification into one lead message
 });
 
 
-test('resolves only an allowlisted city solar route', () => {
-  assert.equal(resolveSolarCity('/krym/jalta/solnechnye-paneli/'), 'Ялта');
-  assert.equal(resolveSolarCity('/krym/jalta/solnechnye-paneli/index.html'), 'Ялта');
-  assert.equal(resolveSolarCity('/uslugi/solnechnye-paneli/'), '');
-  assert.equal(resolveSolarCity('/krym/moskva/solnechnye-paneli/'), '');
-  assert.equal(resolveSolarCity('/krym/jalta/generatory/'), '');
+test('restores hidden city from generated page context for all city pages', () => {
+  assert.equal(cities.length, 12);
+  for (const city of cities) {
+    const hiddenCity = { value: 'Подменённый город' };
+    const form = {
+      dataset: { solarCity: city.city },
+      elements: { namedItem: (name) => name === 'city' ? hiddenCity : null },
+    };
+
+    assert.equal(resolveSolarPageCity(form), city.city, city.slug);
+    assert.equal(syncSolarCityField(form), city.city, city.slug);
+    assert.equal(hiddenCity.value, city.city, city.slug);
+  }
 });
 
 
-test('does not duplicate a city when generated city and locality match', () => {
+test('keeps main page city empty and tolerates an absent hidden city field', () => {
+  const form = {
+    dataset: {},
+    elements: { namedItem: () => null },
+  };
+
+  assert.equal(resolveSolarPageCity(form), '');
+  assert.equal(syncSolarCityField(form), '');
+});
+
+
+test('keeps city out of the free-text calculator message', () => {
+  const cityForm = { dataset: { solarCity: 'Ялта' } };
   const message = buildLeadMessage({
     calculation: calculatePanels(10),
     scenario: 'turnkey',
     systemType: 'unknown',
     placement: 'consult',
-    city: 'Ялта',
-    locality: 'Ялта',
+    locality: resolveSolarLocality(cityForm, 'Ялта'),
     comment: '',
   });
 
-  assert.match(message, /Город страницы: Ялта/);
+  assert.doesNotMatch(message, /Город страницы:/);
   assert.doesNotMatch(message, /Населённый пункт: Ялта/);
+
+  const nearbyLocality = buildLeadMessage({
+    calculation: calculatePanels(10),
+    scenario: 'turnkey',
+    systemType: 'unknown',
+    placement: 'consult',
+    locality: resolveSolarLocality(cityForm, 'Гурзуф'),
+    comment: '',
+  });
+  assert.match(nearbyLocality, /Населённый пункт: Гурзуф/);
 });
 
 
@@ -100,7 +129,6 @@ test('omits empty optional locality and comment without undefined values', () =>
     systemType: 'unknown',
     placement: 'consult',
     locality: '   ',
-    city: '',
     comment: '',
   });
 
@@ -108,6 +136,5 @@ test('omits empty optional locality and comment without undefined values', () =>
   assert.match(message, /Нужна консультация/);
   assert.doesNotMatch(message, /undefined|null/);
   assert.doesNotMatch(message, /Населённый пункт:/);
-  assert.doesNotMatch(message, /Город страницы:/);
   assert.doesNotMatch(message, /Комментарий:/);
 });

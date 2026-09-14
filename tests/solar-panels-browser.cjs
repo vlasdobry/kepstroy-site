@@ -202,6 +202,7 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
   submissions.length = 0;
   await page.goto(`${origin}/krym/jalta/solnechnye-paneli/?utm_source=city-test&utm_medium=cpc&utm_campaign=solar-jalta&yclid=jalta-123`);
   const cityForm = page.locator('#solar-request-form');
+  assert.equal(await cityForm.locator('#solar-locality').isEditable(), true);
   await cityForm.locator('#solar-phone').fill('+7 (978) 123-45-67');
   await cityForm.locator('[name="consent"]').check();
   await cityForm.locator('[name="city"]').evaluate((input) => { input.value = 'Москва'; });
@@ -219,7 +220,9 @@ fs.mkdirSync(screenshotDirectory, { recursive: true });
     yclid: 'jalta-123',
     client_id: 'solar-test-client',
   })) assert.equal(cityPayload.get(key), value, `city payload ${key}`);
-  assert.match(cityPayload.get('message') || '', /Город страницы: Ялта/);
+  assert.equal(cityPayload.get('locality'), 'Ялта');
+  assert.doesNotMatch(cityPayload.get('message') || '', /Город страницы:/);
+  assert.doesNotMatch(cityPayload.get('message') || '', /Населённый пункт: Ялта/);
   assert.match(cityPayload.get('message') || '', /0,65 × 10 = 6,5 кВт/);
   assert.match(cityPayload.get('message') || '', /Стоимость панелей: 200 000 ₽/);
   assert.match(cityPayload.get('landing_page') || '', /\/krym\/jalta\/solnechnye-paneli\//);

@@ -48,7 +48,9 @@ const buildLeadMessage = (lead) => {
   appendIfPresent(lines, 'Количество проживающих', lead.people);
   appendIfPresent(lines, 'Расчётная стоимость', lead.price);
   appendIfPresent(lines, '🏙 Город страницы', lead.city);
-  appendIfPresent(lines, '📍 Населённый пункт', lead.locality);
+  if (String(lead.locality ?? '').trim() !== String(lead.city ?? '').trim()) {
+    appendIfPresent(lines, '📍 Населённый пункт', lead.locality);
+  }
 
   if (lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.utm_term) {
     lines.push(

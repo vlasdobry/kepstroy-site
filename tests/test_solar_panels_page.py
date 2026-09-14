@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 from pathlib import Path
 
+from scripts.readiness_checks import parse_html_contract
+
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "html"
@@ -184,7 +186,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual({expected_version}, set(versions))
 
     def test_all_generated_solar_pages_use_the_current_js_cache_version(self):
-        expected_version = "3"
+        expected_version = "4"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(
@@ -201,6 +203,13 @@ class SolarPanelsPageTests(unittest.TestCase):
             self.assertEqual([expected_version], matches, str(page))
             versions.extend(matches)
         self.assertEqual({expected_version}, set(versions))
+
+    def test_main_solar_form_has_no_city_page_context(self):
+        form = parse_html_contract(self.page()).submit_forms[0]
+        self.assertNotIn("data-solar-city", form["attrs"])
+        self.assertFalse(
+            any(control.get("name") == "city" for control in form["controls"])
+        )
 
     def test_homepage_offer_card_schema_and_forms_use_confirmed_solar_offer(self):
         text = (HTML / "index.html").read_text(encoding="utf-8")

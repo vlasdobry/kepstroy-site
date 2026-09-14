@@ -2,6 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { buildLeadMessage, buildLeadStatusMessage } = require('../lead-message');
+const {
+  buildLeadMessage: buildSolarQualification,
+  calculatePanels,
+  resolveSolarLocality,
+  syncSolarCityField
+} = require('../../html/js/solnechnye-paneli.js');
 
 const decodeTelegramHtml = (value) => value
   .replace(/&lt;/g, '<')
@@ -102,6 +108,54 @@ test('includes the generated city qualification in the Telegram lead', () => {
   assert.match(text, /Населённый пункт: посёлок рядом/);
   assert.doesNotMatch(text, /<b>Ялта<\/b>/);
   assert.ok(text.indexOf('Город страницы:') < text.indexOf('Сообщение:'));
+});
+
+test('renders default city once from frontend payload through Telegram lead', () => {
+  const hiddenCity = { value: 'Москва' };
+  const form = {
+    dataset: { solarCity: 'Ялта' },
+    elements: { namedItem: () => hiddenCity }
+  };
+  const city = syncSolarCityField(form);
+  const message = buildSolarQualification({
+    calculation: calculatePanels(10),
+    scenario: 'turnkey',
+    systemType: 'hybrid',
+    placement: 'roof',
+    locality: resolveSolarLocality(form, 'Ялта'),
+    comment: ''
+  });
+  const text = buildLeadMessage({ city, locality: 'Ялта', message });
+
+  assert.equal((text.match(/Город страницы: Ялта/g) || []).length, 1);
+  assert.doesNotMatch(text, /Населённый пункт: Ялта/);
+  assert.match(text, /10 панелей/);
+  assert.match(text, /6,5 кВт/);
+  assert.match(text, /200 000 ₽/);
+});
+
+test('keeps generated city and a distinct editable locality in Telegram lead', () => {
+  const hiddenCity = { value: '' };
+  const form = {
+    dataset: { solarCity: 'Ялта' },
+    elements: { namedItem: () => hiddenCity }
+  };
+  const city = syncSolarCityField(form);
+  const text = buildLeadMessage({
+    city,
+    locality: 'Гурзуф',
+    message: buildSolarQualification({
+      calculation: calculatePanels(10),
+      scenario: 'turnkey',
+      systemType: 'unknown',
+      placement: 'consult',
+      locality: resolveSolarLocality(form, 'Гурзуф'),
+      comment: ''
+    })
+  });
+
+  assert.match(text, /Город страницы: Ялта/);
+  assert.match(text, /Населённый пункт: Гурзуф/);
 });
 
 test('omits blank qualification values but preserves numeric zero', () => {

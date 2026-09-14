@@ -528,6 +528,9 @@ class SolarCityPagesTests(unittest.TestCase):
                 source = sources[city["slug"]]
                 forms = parse_html_contract(source).submit_forms
                 self.assertEqual(1, len(forms))
+                self.assertEqual(
+                    city["city"], forms[0]["attrs"].get("data-solar-city")
+                )
                 controls = forms[0]["controls"]
                 self.assertTrue(
                     any(
@@ -556,6 +559,12 @@ class SolarCityPagesTests(unittest.TestCase):
                     sum(control.get("name") == "city" for control in controls),
                     "City solar forms need one explicit generated city field",
                 )
+                locality = next(
+                    control for control in controls
+                    if control.get("name") == "locality"
+                )
+                self.assertNotIn("readonly", locality)
+                self.assertTrue(locality.get("placeholder", "").strip())
                 self.assertIn('href="/uslugi/solnechnye-paneli/"', source)
                 self.assertIn(f'href="/krym/{city["slug"]}/"', source)
 
