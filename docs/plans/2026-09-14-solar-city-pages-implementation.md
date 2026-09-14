@@ -221,7 +221,7 @@ Expected: 13 опубликованных файлов совпадают с г�
 python -m unittest tests.test_solar_city_pages tests.test_solar_panels_page -v
 ```
 
-Expected: PASS.
+Expected: контракты опубликованных страниц, метаданных, контента, Schema и формы проходят. Тест двусторонней ссылки из городского хаба остаётся ожидаемо RED до Task 4; никаких других failures нет.
 
 **Step 6: Commit**
 
