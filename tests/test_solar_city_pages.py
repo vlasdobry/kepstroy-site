@@ -5,7 +5,7 @@ from html import unescape
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.readiness_checks import check_traffic_readiness
+from scripts.readiness_checks import SOLAR_FORBIDDEN_CLAIMS, check_traffic_readiness
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,6 +75,21 @@ def nested_schema_types(value):
     return types
 
 
+def normalize_local_copy(source, city):
+    normalized = plain_text(source).lower()
+    city_tokens = {
+        city.get("city", ""),
+        city.get("city_genitive", ""),
+        city.get("city_dative", ""),
+        city.get("city_prepositional", ""),
+        city.get("slug", ""),
+    }
+    for token in sorted(filter(None, city_tokens), key=len, reverse=True):
+        normalized = re.sub(rf"\b{re.escape(token.lower())}\b", " ", normalized)
+    normalized = re.sub(r"[^а-яёa-z0-9]+", " ", normalized, flags=re.IGNORECASE)
+    return " ".join(normalized.split())
+
+
 class SolarCityPagesTests(unittest.TestCase):
     def require_all_sources(self):
         paths = {city["slug"]: city_page(city) for city in city_registry()}
@@ -137,17 +152,26 @@ class SolarCityPagesTests(unittest.TestCase):
                 title = plain_text(title_matches[0])
                 description = unescape(description_matches[0]).strip()
                 h1 = plain_text(h1_matches[0])
-                local = plain_text(local_matches[0])
+                local_source = local_matches[0]
+                local = plain_text(local_source)
                 self.assertIn("Солнечные", h1)
                 self.assertIn(f"в {city['city_prepositional']}", h1)
                 self.assertIn(city["city"], title)
                 self.assertIn(city["city"], description)
-                self.assertGreaterEqual(len(local.split()), 45)
+                self.assertGreaterEqual(len(local.split()), 60)
+                self.assertGreaterEqual(
+                    len(re.findall(r"<p\b", local_source, re.IGNORECASE)), 2
+                )
+                self.assertGreaterEqual(
+                    len(re.findall(r"<li\b", local_source, re.IGNORECASE)), 3
+                )
 
                 titles[city["slug"]] = title
                 descriptions[city["slug"]] = description
                 headings[city["slug"]] = h1
-                local_blocks[city["slug"]] = local
+                local_blocks[city["slug"]] = normalize_local_copy(
+                    local_source, city
+                )
 
         for label, values in (
             ("title", titles),
@@ -229,8 +253,12 @@ class SolarCityPagesTests(unittest.TestCase):
 
                 product = next(node for node in nodes if node.get("@type") == "Product")
                 offer = product.get("offers", {})
+                self.assertEqual("Offer", offer.get("@type"))
                 self.assertEqual(20000, offer.get("price"))
                 self.assertEqual("RUB", offer.get("priceCurrency"))
+                self.assertEqual(
+                    "https://schema.org/InStock", offer.get("availability")
+                )
 
                 visible = plain_text(source)
                 faq = next(node for node in nodes if node.get("@type") == "FAQPage")
@@ -245,20 +273,7 @@ class SolarCityPagesTests(unittest.TestCase):
         targets.extend(
             (city_page(city), sources[city["slug"]]) for city in city_registry()
         )
-        forbidden = (
-            r"КПД.{0,30}24[,.]6",
-            r"окупаем",
-            r"15-летн.{0,30}гарант",
-            r"30-летн.{0,30}гарант",
-            r"(?:гарант[^.!?]{0,30}|на\s+)(?:15|30)\s+лет",
-            r"гарант[^.!?]{0,40}\d+\s+(?:год|лет|месяц)",
-            r"\d[\d\s]*(?:[,.]\d+)?\s*кВт[·*\s-]*ч",
-            r"(?:монтаж|установ|достав)[^.!?]{0,60}(?:за|в течение)\s*\d+\s+(?:час|дн|недел)",
-            r"(?:срок\s+(?:монтажа|установки|доставки)|(?:монтаж|установка|доставка)\s+за)"
-            r"[^.!?]{0,30}\d+\s+(?:час|дн|недел)",
-            r"бесплатн[^.!?]{0,40}(?:достав|монтаж)|(?:достав|монтаж)[^.!?]{0,40}бесплатн",
-            r"полная\s+(?:энерго)?независимость",
-        )
+        forbidden = SOLAR_FORBIDDEN_CLAIMS
         for path, source in targets:
             with self.subTest(path=path.relative_to(ROOT).as_posix()):
                 visible = plain_text(source)
@@ -329,6 +344,35 @@ class SolarCityPagesTests(unittest.TestCase):
 
             missing = [error for error in errors if "missing solar city page" in error]
             self.assertEqual(12, len(missing), errors)
+
+    def test_readiness_claim_patterns_cover_variants_without_blocking_confirmed_copy(self):
+        def is_forbidden(copy):
+            return any(
+                re.search(pattern, copy, re.IGNORECASE)
+                for pattern in SOLAR_FORBIDDEN_CLAIMS
+            )
+
+        forbidden_examples = (
+            "Поставка 5 сентября.",
+            "Система вырабатывает 900 кВт·ч в месяц.",
+            "Комплект даёт 1200 киловатт-часов в год.",
+            "Панель генерирует 70 единиц энергии ежедневно.",
+            "Предлагаем бесплатную установку оборудования.",
+            "Вы получите полностью независимое электроснабжение.",
+        )
+        for copy in forbidden_examples:
+            with self.subTest(copy=copy):
+                self.assertTrue(is_forbidden(copy), copy)
+
+        confirmed_examples = (
+            "Двусторонняя генерация энергии.",
+            "Мощность панели 650 Вт.",
+            "Стоимость доставки рассчитывается после уточнения адреса.",
+            "Проектируем автономные, сетевые и гибридные системы.",
+        )
+        for copy in confirmed_examples:
+            with self.subTest(copy=copy):
+                self.assertFalse(is_forbidden(copy), copy)
 
 
 if __name__ == "__main__":
