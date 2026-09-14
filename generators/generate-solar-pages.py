@@ -22,6 +22,7 @@ OFFER_PATH = GENERATOR_DIR / "solar-page-data.json"
 MAIN_TEMPLATE_PATH = GENERATOR_DIR / "solar-main-template.html"
 CITY_TEMPLATE_PATH = GENERATOR_DIR / "solar-city-template.html"
 MAIN_OUTPUT = Path("uslugi/solnechnye-paneli/index.html")
+SOLAR_CSS_VERSION = "4"
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 REQUIRED_OFFER_KEYS = {
     "product_name",
@@ -189,8 +190,19 @@ def validate_inputs(cities, city_content, offer):
 
 def validate_neighbor_map(cities, neighbor_map):
     """Проверяет ограниченный детерминированный граф перелинковки городов."""
-    city_slugs = {city["slug"] for city in cities}
-    if not isinstance(neighbor_map, dict) or set(neighbor_map) != city_slugs:
+    if not isinstance(cities, list):
+        raise GeneratorError("City registry for neighbor map must be a list")
+    city_slugs = set()
+    for city in cities:
+        if not isinstance(city, dict):
+            raise GeneratorError("Each city for neighbor map must be an object")
+        slug = city.get("slug")
+        if not isinstance(slug, str) or not SLUG_PATTERN.fullmatch(slug):
+            raise GeneratorError("Each city for neighbor map must have a valid slug")
+        city_slugs.add(slug)
+    if not isinstance(neighbor_map, dict):
+        raise GeneratorError("Neighbor map must be an object")
+    if set(neighbor_map) != city_slugs:
         raise GeneratorError("Neighbor map must exactly match city registry")
     for slug, neighbors in neighbor_map.items():
         if not isinstance(neighbors, (list, tuple)) or not neighbors:
@@ -222,6 +234,20 @@ def _plural_system_types(system_types):
     return ", ".join(plural[:-1]) + " и " + plural[-1]
 
 
+def _json_script_string(value):
+    """Возвращает JSON string fragment, безопасный внутри HTML script element."""
+    if not isinstance(value, str):
+        raise GeneratorError("JSON-LD dynamic value must be text")
+    encoded = json.dumps(value, ensure_ascii=False)[1:-1]
+    return (
+        encoded.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+
+
 def _common_context(offer):
     availability_lower = " и ".join(value.lower() for value in offer["availability"])
     availability_sentence = availability_lower[:1].upper() + availability_lower[1:]
@@ -229,22 +255,22 @@ def _common_context(offer):
     default_quantity = 10
     system_types_plural = _plural_system_types(offer["system_types"])
     return {
+        "solar_css_version": SOLAR_CSS_VERSION,
         "product_name": escape(offer["product_name"]),
-        "product_name_schema": json.dumps(offer["product_name"], ensure_ascii=False)[1:-1],
+        "product_name_schema": _json_script_string(offer["product_name"]),
         "product_brand": escape(product_brand),
-        "product_brand_schema": json.dumps(product_brand, ensure_ascii=False)[1:-1],
+        "product_brand_schema": _json_script_string(product_brand),
         "panel_power_w": str(offer["panel_power_w"]),
         "panel_price_rub": str(offer["panel_price_rub"]),
         "panel_price_formatted": _format_number(offer["panel_price_rub"]),
         "availability_lower": escape(availability_lower),
+        "availability_lower_schema": _json_script_string(availability_lower),
         "availability_sentence": escape(availability_sentence),
         "system_type_1": escape(offer["system_types"][0]),
         "system_type_2": escape(offer["system_types"][1]),
         "system_type_3": escape(offer["system_types"][2]),
         "system_types_plural": escape(system_types_plural),
-        "system_types_plural_schema": json.dumps(
-            system_types_plural, ensure_ascii=False
-        )[1:-1],
+        "system_types_plural_schema": _json_script_string(system_types_plural),
         "default_panel_power_kw_formatted": _format_decimal(
             default_quantity * offer["panel_power_kw"]
         ),
@@ -324,10 +350,10 @@ def render_pages(
             "city": escape(city_name),
             "city_genitive": escape(city["city_genitive"]),
             "city_prepositional": escape(city["city_prepositional"]),
-            "city_schema": json.dumps(city_name, ensure_ascii=False)[1:-1],
-            "city_prepositional_schema": json.dumps(
-                city["city_prepositional"], ensure_ascii=False
-            )[1:-1],
+            "city_schema": _json_script_string(city_name),
+            "city_prepositional_schema": _json_script_string(
+                city["city_prepositional"]
+            ),
             "intro": escape(content["intro"]),
             "planning_paragraphs_html": "".join(
                 f"<p>{escape(paragraph)}</p>"
@@ -339,12 +365,12 @@ def render_pages(
             ),
             "local_faq_question": escape(content["local_faq_question"]),
             "local_faq_answer": escape(content["local_faq_answer"]),
-            "local_faq_question_schema": json.dumps(
-                content["local_faq_question"], ensure_ascii=False
-            )[1:-1],
-            "local_faq_answer_schema": json.dumps(
-                content["local_faq_answer"], ensure_ascii=False
-            )[1:-1],
+            "local_faq_question_schema": _json_script_string(
+                content["local_faq_question"]
+            ),
+            "local_faq_answer_schema": _json_script_string(
+                content["local_faq_answer"]
+            ),
             "neighbor_links": _render_neighbor_links(slug, cities_by_slug),
         }
         relative_path = Path("krym") / slug / "solnechnye-paneli" / "index.html"

@@ -597,6 +597,16 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
         cities = self.registry()
         module.validate_neighbor_map(cities, module.NEIGHBOR_SLUGS)
 
+        for invalid_cities in (None, "cities", [None], [{"slug": 42}]):
+            with self.subTest(invalid_cities=invalid_cities):
+                with self.assertRaisesRegex(module.GeneratorError, "(?i)city"):
+                    module.validate_neighbor_map(invalid_cities, module.NEIGHBOR_SLUGS)
+
+        for invalid_map in (None, "neighbors", []):
+            with self.subTest(invalid_map=invalid_map):
+                with self.assertRaisesRegex(module.GeneratorError, "(?i)neighbor"):
+                    module.validate_neighbor_map(cities, invalid_map)
+
         self_link = dict(module.NEIGHBOR_SLUGS)
         self_link[cities[0]["slug"]] = (cities[0]["slug"],)
         with self.assertRaisesRegex(module.GeneratorError, "self"):
@@ -613,6 +623,56 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
         unknown[cities[0]["slug"]] = ("unknown-city",)
         with self.assertRaisesRegex(module.GeneratorError, "unknown"):
             module.validate_neighbor_map(cities, unknown)
+
+        invalid_list = dict(module.NEIGHBOR_SLUGS)
+        invalid_list[cities[0]["slug"]] = "not-a-list"
+        with self.assertRaisesRegex(module.GeneratorError, "links"):
+            module.validate_neighbor_map(cities, invalid_list)
+
+    def test_json_ld_dynamic_strings_are_safe_inside_script_elements(self):
+        module, (cities, city_content, offer, main_template, city_template) = self.inputs()
+        marker = "</script><script>alert(1)</script><tag>&\u2028\u2029"
+        mutated_cities = json.loads(json.dumps(cities, ensure_ascii=False))
+        mutated_content = json.loads(json.dumps(city_content, ensure_ascii=False))
+        mutated_offer = json.loads(json.dumps(offer, ensure_ascii=False))
+
+        mutated_cities[0]["city"] = marker
+        mutated_cities[0]["city_genitive"] = marker
+        mutated_cities[0]["city_prepositional"] = marker
+        first_slug = mutated_cities[0]["slug"]
+        mutated_content[first_slug]["local_faq_question"] = marker
+        mutated_content[first_slug]["local_faq_answer"] = marker
+        mutated_offer["product_name"] = marker
+        mutated_offer["availability"] = [marker, marker]
+        mutated_offer["system_types"] = [marker, marker, marker]
+
+        rendered = module.render_pages(
+            mutated_cities,
+            mutated_content,
+            mutated_offer,
+            main_template,
+            city_template,
+        )
+        targets = (
+            rendered[module.MAIN_OUTPUT],
+            rendered[Path("krym") / first_slug / "solnechnye-paneli" / "index.html"],
+        )
+        for source in targets:
+            with self.subTest(page=source[:40]):
+                self.assertEqual(1, source.count('<script type="application/ld+json">'))
+                self.assertNotIn(marker, source)
+                payloads = re.findall(
+                    r'<script type="application/ld\+json">(.*?)</script>',
+                    source,
+                    re.DOTALL,
+                )
+                self.assertEqual(1, len(payloads))
+                payload = payloads[0]
+                json.loads(payload)
+                for escaped in ("\\u003c", "\\u003e", "\\u0026", "\\u2028", "\\u2029"):
+                    self.assertIn(escaped, payload.lower())
+                self.assertNotIn("\u2028", payload)
+                self.assertNotIn("\u2029", payload)
 
     def test_validate_inputs_rejects_unknown_duplicate_and_unsafe_slugs(self):
         module, (cities, city_content, offer, _main, _city) = self.inputs()

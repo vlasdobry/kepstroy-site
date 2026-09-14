@@ -164,6 +164,25 @@ class SolarPanelsPageTests(unittest.TestCase):
         )
         self.assertEqual(12, len(city_links))
 
+    def test_all_generated_solar_pages_use_the_current_css_cache_version(self):
+        expected_version = "4"
+        for template_name in ("solar-main-template.html", "solar-city-template.html"):
+            template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
+            self.assertIn(
+                'href="/css/solnechnye-paneli.css?v=${solar_css_version}"',
+                template,
+            )
+        pages = [PAGE, *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html"))]
+        versions = []
+        for page in pages:
+            source = page.read_text(encoding="utf-8")
+            matches = re.findall(
+                r'href="/css/solnechnye-paneli\.css\?v=([0-9]+)"', source
+            )
+            self.assertEqual([expected_version], matches, str(page))
+            versions.extend(matches)
+        self.assertEqual({expected_version}, set(versions))
+
     def test_homepage_offer_card_schema_and_forms_use_confirmed_solar_offer(self):
         text = (HTML / "index.html").read_text(encoding="utf-8")
         for expected in (

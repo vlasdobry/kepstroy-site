@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
   <link rel="preload" as="image" href="/images/solnechnye-paneli/solar-hero-960.webp" imagesrcset="/images/solnechnye-paneli/solar-hero-640.webp 640w, /images/solnechnye-paneli/solar-hero-960.webp 960w" imagesizes="(max-width: 760px) 100vw, 47vw">
   <link rel="stylesheet" href="/css/style.css?v=20">
-  <link rel="stylesheet" href="/css/solnechnye-paneli.css?v=1">
+  <link rel="stylesheet" href="/css/solnechnye-paneli.css?v=${solar_css_version}">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ru_RU">
   <meta property="og:title" content="Солнечные панели и электростанции в Крыму | КэпСтрой">
@@ -39,8 +39,8 @@
       {
         "@type": "Product",
         "@id": "https://kepstroy.ru/uslugi/solnechnye-paneli/#product",
-        "name": "Солнечная панель ${product_name} ${panel_power_w} Вт",
-        "description": "Солнечная панель мощностью ${panel_power_w} Вт. Доступна ${availability_lower} с доставкой по Крыму.",
+        "name": "Солнечная панель ${product_name_schema} ${panel_power_w} Вт",
+        "description": "Солнечная панель мощностью ${panel_power_w} Вт. Доступна ${availability_lower_schema} с доставкой по Крыму.",
         "brand": {"@type": "Brand", "name": "${product_brand_schema}"},
         "image": "https://kepstroy.ru/images/solnechnye-paneli/solar-panel-visualization.webp",
         "offers": {
@@ -76,7 +76,7 @@
           {
             "@type": "Question",
             "name": "Какие солнечные системы вы устанавливаете?",
-            "acceptedAnswer": {"@type": "Answer", "text": "Проектируем и монтируем ${system_types_plural} системы для частных домов, коммерческих и других объектов."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Проектируем и монтируем ${system_types_plural_schema} системы для частных домов, коммерческих и других объектов."}
           },
           {
             "@type": "Question",

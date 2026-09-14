@@ -168,6 +168,16 @@ class SolarCityPagesTests(unittest.TestCase):
                 self.assertGreaterEqual(
                     len(re.findall(r"<li\b", local_source, re.IGNORECASE)), 3
                 )
+                for head_token in (
+                    '<meta name="color-scheme" content="light only">',
+                    '<meta name="theme-color" content="#15803d">',
+                    '<link rel="icon" type="image/svg+xml" href="/images/favicon/favicon.svg?v=2">',
+                    "https://fonts.googleapis.com/css2?family=Manrope",
+                    '<link rel="stylesheet" href="/css/style.css?v=20">',
+                    '<link rel="preload" as="image" href="/images/solnechnye-paneli/solar-hero-960.webp"',
+                    '<meta property="og:image:alt" content="Визуализация дома с солнечными панелями на крыше в Крыму">',
+                ):
+                    self.assertIn(head_token, source)
 
                 titles[city["slug"]] = title
                 descriptions[city["slug"]] = description
