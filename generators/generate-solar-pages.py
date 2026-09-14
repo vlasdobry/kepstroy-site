@@ -31,6 +31,20 @@ REQUIRED_OFFER_KEYS = {
     "availability",
     "system_types",
 }
+NEIGHBOR_SLUGS = {
+    "simferopol": ("bahchisaraj", "saki", "alushta", "dzhankoj"),
+    "sevastopol": ("bahchisaraj", "saki", "jalta", "simferopol"),
+    "jalta": ("alushta", "sevastopol", "bahchisaraj", "simferopol"),
+    "evpatorija": ("saki", "simferopol", "dzhankoj", "bahchisaraj"),
+    "kerch": ("feodosija", "sudak", "dzhankoj", "simferopol"),
+    "feodosija": ("sudak", "kerch", "alushta", "simferopol"),
+    "alushta": ("jalta", "sudak", "simferopol", "feodosija"),
+    "sudak": ("feodosija", "alushta", "kerch", "simferopol"),
+    "dzhankoj": ("armjansk", "simferopol", "evpatorija", "kerch"),
+    "saki": ("evpatorija", "sevastopol", "simferopol", "bahchisaraj"),
+    "bahchisaraj": ("sevastopol", "simferopol", "saki", "jalta"),
+    "armjansk": ("dzhankoj", "evpatorija", "saki", "simferopol"),
+}
 
 
 class GeneratorError(ValueError):
@@ -127,6 +141,8 @@ def validate_inputs(cities, city_content, offer):
                     f"Solar city content {slug}.{field} must contain at least {minimum} texts"
                 )
 
+    validate_neighbor_map(cities, NEIGHBOR_SLUGS)
+
     if not isinstance(offer, dict) or set(offer) != REQUIRED_OFFER_KEYS:
         raise GeneratorError(
             "Solar offer must contain only the confirmed common offer fields"
@@ -171,6 +187,25 @@ def validate_inputs(cities, city_content, offer):
         raise GeneratorError("Solar offer system_types must contain three labels")
 
 
+def validate_neighbor_map(cities, neighbor_map):
+    """Проверяет ограниченный детерминированный граф перелинковки городов."""
+    city_slugs = {city["slug"] for city in cities}
+    if not isinstance(neighbor_map, dict) or set(neighbor_map) != city_slugs:
+        raise GeneratorError("Neighbor map must exactly match city registry")
+    for slug, neighbors in neighbor_map.items():
+        if not isinstance(neighbors, (list, tuple)) or not neighbors:
+            raise GeneratorError(f"Neighbor map {slug} must contain links")
+        if len(neighbors) > 4:
+            raise GeneratorError(f"Neighbor map {slug} must contain no more than four links")
+        if len(neighbors) != len(set(neighbors)):
+            raise GeneratorError(f"Neighbor map {slug} must not contain duplicates")
+        if slug in neighbors:
+            raise GeneratorError(f"Neighbor map {slug} must not contain a self link")
+        unknown = sorted(set(neighbors) - city_slugs)
+        if unknown:
+            raise GeneratorError(f"Neighbor map {slug} has unknown targets: {unknown}")
+
+
 def _format_number(value):
     return f"{value:,}".replace(",", " ")
 
@@ -192,6 +227,7 @@ def _common_context(offer):
     availability_sentence = availability_lower[:1].upper() + availability_lower[1:]
     product_brand = offer["product_name"].split(maxsplit=1)[0]
     default_quantity = 10
+    system_types_plural = _plural_system_types(offer["system_types"])
     return {
         "product_name": escape(offer["product_name"]),
         "product_name_schema": json.dumps(offer["product_name"], ensure_ascii=False)[1:-1],
@@ -205,7 +241,10 @@ def _common_context(offer):
         "system_type_1": escape(offer["system_types"][0]),
         "system_type_2": escape(offer["system_types"][1]),
         "system_type_3": escape(offer["system_types"][2]),
-        "system_types_plural": escape(_plural_system_types(offer["system_types"])),
+        "system_types_plural": escape(system_types_plural),
+        "system_types_plural_schema": json.dumps(
+            system_types_plural, ensure_ascii=False
+        )[1:-1],
         "default_panel_power_kw_formatted": _format_decimal(
             default_quantity * offer["panel_power_kw"]
         ),
@@ -246,6 +285,14 @@ def _render_city_grid(cities):
     )
 
 
+def _render_neighbor_links(slug, cities_by_slug):
+    return "".join(
+        f'<a href="/krym/{escape(neighbor_slug)}/solnechnye-paneli/">'
+        f'{escape(cities_by_slug[neighbor_slug]["city"])}</a>'
+        for neighbor_slug in NEIGHBOR_SLUGS[slug]
+    )
+
+
 def render_pages(
     cities=None,
     city_content=None,
@@ -261,6 +308,7 @@ def render_pages(
         raise GeneratorError("render_pages requires either all inputs or none")
     validate_inputs(cities, city_content, offer)
     common = _common_context(offer)
+    cities_by_slug = {city["slug"]: city for city in cities}
     rendered = {
         MAIN_OUTPUT: _substitute(
             main_template, {**common, "city_grid": _render_city_grid(cities)}
@@ -277,6 +325,9 @@ def render_pages(
             "city_genitive": escape(city["city_genitive"]),
             "city_prepositional": escape(city["city_prepositional"]),
             "city_schema": json.dumps(city_name, ensure_ascii=False)[1:-1],
+            "city_prepositional_schema": json.dumps(
+                city["city_prepositional"], ensure_ascii=False
+            )[1:-1],
             "intro": escape(content["intro"]),
             "planning_paragraphs_html": "".join(
                 f"<p>{escape(paragraph)}</p>"
@@ -294,6 +345,7 @@ def render_pages(
             "local_faq_answer_schema": json.dumps(
                 content["local_faq_answer"], ensure_ascii=False
             )[1:-1],
+            "neighbor_links": _render_neighbor_links(slug, cities_by_slug),
         }
         relative_path = Path("krym") / slug / "solnechnye-paneli" / "index.html"
         rendered[relative_path] = _substitute(city_template, context)

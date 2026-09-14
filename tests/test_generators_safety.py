@@ -592,6 +592,28 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
         content = json.loads(SOLAR_CITY_DATA.read_text(encoding="utf-8"))
         self.assertEqual(registry_slugs, set(content))
 
+    def test_neighbor_map_is_complete_bounded_and_rejects_invalid_targets(self):
+        module = self.module()
+        cities = self.registry()
+        module.validate_neighbor_map(cities, module.NEIGHBOR_SLUGS)
+
+        self_link = dict(module.NEIGHBOR_SLUGS)
+        self_link[cities[0]["slug"]] = (cities[0]["slug"],)
+        with self.assertRaisesRegex(module.GeneratorError, "self"):
+            module.validate_neighbor_map(cities, self_link)
+
+        too_many = dict(module.NEIGHBOR_SLUGS)
+        too_many[cities[0]["slug"]] = tuple(
+            city["slug"] for city in cities[1:6]
+        )
+        with self.assertRaisesRegex(module.GeneratorError, "four"):
+            module.validate_neighbor_map(cities, too_many)
+
+        unknown = dict(module.NEIGHBOR_SLUGS)
+        unknown[cities[0]["slug"]] = ("unknown-city",)
+        with self.assertRaisesRegex(module.GeneratorError, "unknown"):
+            module.validate_neighbor_map(cities, unknown)
+
     def test_validate_inputs_rejects_unknown_duplicate_and_unsafe_slugs(self):
         module, (cities, city_content, offer, _main, _city) = self.inputs()
 

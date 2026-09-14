@@ -152,6 +152,17 @@ class SolarPanelsPageTests(unittest.TestCase):
             (HTML / "krym").glob("*/solnechnye-paneli/index.html")
         )
         self.assertEqual(12, len(city_solar_pages))
+        directory = re.search(
+            r'<section\b[^>]*class="[^"]*solar-city-directory[^"]*"[^>]*>'
+            r"(.*?)</section>",
+            self.page(),
+            re.IGNORECASE | re.DOTALL,
+        )
+        self.assertIsNotNone(directory)
+        city_links = re.findall(
+            r'href="/krym/[^/]+/solnechnye-paneli/"', directory.group(1)
+        )
+        self.assertEqual(12, len(city_links))
 
     def test_homepage_offer_card_schema_and_forms_use_confirmed_solar_offer(self):
         text = (HTML / "index.html").read_text(encoding="utf-8")

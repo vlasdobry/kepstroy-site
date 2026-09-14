@@ -215,6 +215,16 @@ class SolarCityPagesTests(unittest.TestCase):
                     "монтаж",
                 ):
                     self.assertIn(expected, first_80_words)
+                lead_match = re.search(
+                    r'<p\s+class="solar-lead">(.*?)</p>',
+                    source,
+                    re.IGNORECASE | re.DOTALL,
+                )
+                self.assertIsNotNone(lead_match)
+                self.assertIn(
+                    f"в {city['city_prepositional']}",
+                    plain_text(lead_match.group(1)),
+                )
 
     def test_confirmed_offer_and_system_types_are_visible_without_javascript(self):
         sources = self.require_all_sources()
@@ -255,6 +265,11 @@ class SolarCityPagesTests(unittest.TestCase):
                 self.assertNotIn("PostalAddress", nested_schema_types(nodes))
 
                 service = next(node for node in nodes if node.get("@type") == "Service")
+                self.assertEqual(
+                    "Солнечные панели и электростанции "
+                    f"в {city['city_prepositional']}",
+                    service.get("name"),
+                )
                 area_served = service.get("areaServed")
                 area_items = area_served if isinstance(area_served, list) else [area_served]
                 served = {
@@ -274,12 +289,56 @@ class SolarCityPagesTests(unittest.TestCase):
                     "https://schema.org/InStock", offer.get("availability")
                 )
 
-                visible = plain_text(source)
                 faq = next(node for node in nodes if node.get("@type") == "FAQPage")
-                self.assertGreaterEqual(len(faq.get("mainEntity", [])), 2)
-                for item in faq["mainEntity"]:
-                    self.assertIn(item["name"], visible)
-                    self.assertIn(item["acceptedAnswer"]["text"], visible)
+                questions_section = re.search(
+                    r'<section\s+id="questions".*?</section>',
+                    source,
+                    re.IGNORECASE | re.DOTALL,
+                )
+                self.assertIsNotNone(questions_section)
+                visible_faq = [
+                    (plain_text(question), plain_text(answer))
+                    for question, answer in re.findall(
+                        r"<details>\s*<summary>(.*?)</summary>\s*<p>(.*?)</p>\s*</details>",
+                        questions_section.group(0),
+                        re.IGNORECASE | re.DOTALL,
+                    )
+                ]
+                schema_faq = [
+                    (item["name"], item["acceptedAnswer"]["text"])
+                    for item in faq.get("mainEntity", [])
+                ]
+                self.assertEqual(3, len(visible_faq))
+                self.assertEqual(visible_faq, schema_faq)
+
+    def test_neighbor_city_links_are_limited_valid_and_never_self_links(self):
+        sources = self.require_all_sources()
+        expected_slugs = {city["slug"] for city in city_registry()}
+        city_names = {city["slug"]: city["city"] for city in city_registry()}
+
+        for city in city_registry():
+            with self.subTest(city=city["slug"]):
+                section = re.search(
+                    r"<section\b[^>]*data-solar-neighbors[^>]*>(.*?)</section>",
+                    sources[city["slug"]],
+                    re.IGNORECASE | re.DOTALL,
+                )
+                self.assertIsNotNone(section)
+                links = re.findall(
+                    r'<a\s+href="/krym/([^/]+)/solnechnye-paneli/">(.*?)</a>',
+                    section.group(1),
+                    re.IGNORECASE | re.DOTALL,
+                )
+                self.assertGreaterEqual(len(links), 1)
+                self.assertLessEqual(len(links), 4)
+                linked_slugs = [slug for slug, _label in links]
+                self.assertEqual(len(linked_slugs), len(set(linked_slugs)))
+                self.assertNotIn(city["slug"], linked_slugs)
+                self.assertTrue(set(linked_slugs) <= expected_slugs)
+                self.assertEqual(
+                    [city_names[slug] for slug in linked_slugs],
+                    [plain_text(label) for _slug, label in links],
+                )
 
     def test_all_solar_pages_reject_unconfirmed_marketing_claims(self):
         sources = self.require_all_sources()
