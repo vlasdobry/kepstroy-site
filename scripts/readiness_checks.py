@@ -86,3 +86,45 @@ def check_traffic_readiness(repo_root: Path, errors: list[str]):
         for token in forbidden_tokens:
             if token in text:
                 errors.append(f"{path.relative_to(repo_root).as_posix()}: stale generator token {token!r}")
+
+    solar_page = html_root / "uslugi" / "solnechnye-paneli" / "index.html"
+    if solar_page.exists():
+        solar_text = solar_page.read_text(encoding="utf-8")
+        solar_visible = re.sub(
+            r"<script\b.*?</script>|<style\b.*?</style>",
+            " ",
+            solar_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        solar_visible = re.sub(r"<[^>]+>", " ", solar_visible)
+        solar_claims = (
+            r"КПД.{0,30}24[,.]6",
+            r"окупаем",
+            r"15-летн.{0,30}гарант",
+            r"30-летн.{0,30}гарант",
+            r"полная независимость",
+        )
+        for claim in solar_claims:
+            if re.search(claim, solar_visible, re.IGNORECASE):
+                errors.append(
+                    "uslugi/solnechnye-paneli/index.html: unconfirmed solar claim"
+                )
+                break
+
+        panel_price_pattern = re.compile(
+            r"(?:стоимость|цена)[^.<\n]{0,30}панел[^.<\n]{0,30}20\s*000\s*₽",
+            re.IGNORECASE,
+        )
+        separate_cost_pattern = re.compile(
+            r"(?:монтаж|инвертор|аккумулятор|комплектующ)[^.<\n]{0,100}"
+            r"(?:рассчитыва|оплачива|стоимост)[^.<\n]{0,80}(?:отдельно|индивидуально)",
+            re.IGNORECASE,
+        )
+        if not panel_price_pattern.search(solar_visible):
+            errors.append(
+                "uslugi/solnechnye-paneli/index.html: panel price must be labeled as panel-only"
+            )
+        if not separate_cost_pattern.search(solar_visible):
+            errors.append(
+                "uslugi/solnechnye-paneli/index.html: installation and components must be priced separately"
+            )
