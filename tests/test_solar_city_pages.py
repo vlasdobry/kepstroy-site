@@ -3,6 +3,7 @@ import re
 import unittest
 from difflib import SequenceMatcher
 from html import unescape
+from html.parser import HTMLParser
 from itertools import combinations
 from pathlib import Path
 from unittest.mock import patch
@@ -14,6 +15,7 @@ from scripts.readiness_checks import (
     parse_html_contract,
     visible_text,
 )
+from tests.test_footer_services import service_footer_links
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,6 +97,53 @@ def normalize_local_copy(source, city):
 
 def local_copy_similarity(left, right):
     return SequenceMatcher(None, left, right, autojunk=False).ratio()
+
+
+class ServicesTilesParser(HTMLParser):
+    """Collect service cards from the `.services-tiles` section structurally."""
+
+    def __init__(self):
+        super().__init__()
+        self.div_depth = 0
+        self.services_depth = None
+        self.current_card = None
+        self.cards = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        classes = set(attributes.get("class", "").split())
+        if tag == "div":
+            self.div_depth += 1
+            if self.services_depth is None and "services-tiles" in classes:
+                self.services_depth = self.div_depth
+        elif (
+            tag == "a"
+            and self.services_depth is not None
+            and "service-tile" in classes
+        ):
+            self.current_card = {"href": attributes.get("href"), "text": []}
+
+    def handle_data(self, data):
+        if self.current_card is not None:
+            self.current_card["text"].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self.current_card is not None:
+            self.current_card["text"] = " ".join(
+                "".join(self.current_card["text"]).split()
+            )
+            self.cards.append(self.current_card)
+            self.current_card = None
+        elif tag == "div":
+            if self.services_depth == self.div_depth:
+                self.services_depth = None
+            self.div_depth -= 1
+
+
+def service_cards(source):
+    parser = ServicesTilesParser()
+    parser.feed(source)
+    return parser.cards
 
 
 class SolarCityPagesTests(unittest.TestCase):
@@ -414,15 +463,26 @@ class SolarCityPagesTests(unittest.TestCase):
 
                 hub = HTML / "krym" / city["slug"] / "index.html"
                 hub_source = hub.read_text(encoding="utf-8")
-                self.assertIn(
-                    f'<a href="/krym/{city["slug"]}/solnechnye-paneli/" '
-                    'class="service-tile">',
-                    hub_source,
+                expected_city_solar = (
+                    f'/krym/{city["slug"]}/solnechnye-paneli/'
+                )
+                solar_cards = [
+                    card
+                    for card in service_cards(hub_source)
+                    if "solnechnye-paneli" in (card["href"] or "")
+                ]
+                self.assertEqual(1, len(solar_cards))
+                self.assertEqual(expected_city_solar, solar_cards[0]["href"])
+                self.assertNotEqual(
+                    "/uslugi/solnechnye-paneli/", solar_cards[0]["href"]
                 )
                 self.assertIn(
-                    '<a href="/uslugi/solnechnye-paneli/">Солнечные панели</a>',
-                    hub_source,
+                    f"в {city['city_prepositional']}", solar_cards[0]["text"]
                 )
+
+                footer_links = service_footer_links(hub_source)
+                self.assertEqual(1, footer_links.count("/uslugi/solnechnye-paneli/"))
+                self.assertNotIn(expected_city_solar, footer_links)
 
     def test_readiness_reports_missing_city_outputs_instead_of_crashing(self):
         original_exists = Path.exists
