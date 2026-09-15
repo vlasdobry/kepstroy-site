@@ -128,6 +128,26 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertNotIn("—", visible)
         self.assertNotIn("–", visible)
 
+    def test_request_copy_speaks_for_the_company_on_all_solar_pages(self):
+        expected = "Оставьте номер. Мы уточним задачу и предложим следующий шаг."
+        old_promises = (
+            "Оставьте номер. Андрей уточнит задачу и предложит следующий шаг.",
+            "Оставьте номер. Инженер уточнит задачу и предложит следующий шаг.",
+        )
+        paths = [
+            ROOT / "generators" / "solar-main-template.html",
+            ROOT / "generators" / "solar-city-template.html",
+            PAGE,
+            *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html")),
+        ]
+        self.assertEqual(15, len(paths))
+        for path in paths:
+            source = path.read_text(encoding="utf-8")
+            with self.subTest(path=path.relative_to(ROOT).as_posix()):
+                self.assertEqual(1, source.count(expected))
+                for old_promise in old_promises:
+                    self.assertNotIn(old_promise, source)
+
     def test_all_solar_pages_qualify_model_specific_characteristics(self):
         notice = "Характеристики сверяются по паспорту поставляемой модификации."
         pages = [PAGE, *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html"))]
@@ -249,7 +269,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual(12, len(city_links))
 
     def test_all_generated_solar_pages_use_the_current_css_cache_version(self):
-        expected_version = "4"
+        expected_version = "5"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(

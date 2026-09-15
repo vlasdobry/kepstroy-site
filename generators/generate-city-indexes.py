@@ -19,6 +19,8 @@ TEMPLATE_PATH = TEMPLATE_DIR / "city-index-template.html"
 
 PHONE = "+79784615962"
 PHONE_FORMATTED = "+7 (978) 461-59-62"
+SECONDARY_PHONE = "+79788213968"
+SECONDARY_PHONE_FORMATTED = "+7 (978) 821-39-68"
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
@@ -72,6 +74,8 @@ def render_pages(data_path=DATA_PATH, template_path=TEMPLATE_PATH):
             "slug": slug,
             "phone": PHONE,
             "phone_formatted": PHONE_FORMATTED,
+            "secondary_phone": SECONDARY_PHONE,
+            "secondary_phone_formatted": SECONDARY_PHONE_FORMATTED,
             "neighbor_links": build_neighbor_links(cities, slug),
             "schema_spacing": "  ",
             # Reviewed repository content, like the page template; not user input.

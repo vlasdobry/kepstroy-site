@@ -18,6 +18,9 @@ EXPECTED_SERVICE_LINKS = {
     "/uslugi/yuridicheskoe-soprovozhdenie-podklyuchenij/",
 }
 
+PRIMARY_PHONE = "+79784615962"
+SECONDARY_PHONE = "+79788213968"
+
 
 def is_verification_page(source):
     body = re.search(r"<body[^>]*>(?P<body>.*?)</body>", source, re.DOTALL | re.IGNORECASE)
@@ -83,6 +86,76 @@ class FooterServicesTests(unittest.TestCase):
             with self.subTest(href=href):
                 target = HTML_ROOT / href.removeprefix("/") / "index.html"
                 self.assertTrue(target.is_file(), f"missing footer target: {target}")
+
+    def test_every_public_footer_lists_both_clickable_phone_numbers_once(self):
+        sources = footer_sources()
+        self.assertGreaterEqual(len(sources), 69)
+
+        for path, source in sources:
+            with self.subTest(path=path.relative_to(REPO_ROOT).as_posix()):
+                footer = re.search(
+                    r"<footer\b.*?</footer>", source, re.DOTALL | re.IGNORECASE
+                )
+                self.assertIsNotNone(footer)
+                footer_html = footer.group(0)
+                primary_hrefs = footer_html.count(f'href="tel:{PRIMARY_PHONE}"')
+                secondary_hrefs = footer_html.count(f'href="tel:{SECONDARY_PHONE}"')
+                if path.parent == REPO_ROOT / "generators":
+                    primary_hrefs += footer_html.count('href="tel:${phone}"')
+                    secondary_hrefs += footer_html.count(
+                        'href="tel:${secondary_phone}"'
+                    )
+                self.assertEqual(
+                    1,
+                    primary_hrefs,
+                    "primary phone must appear once in the footer",
+                )
+                self.assertEqual(
+                    1,
+                    secondary_hrefs,
+                    "secondary phone must appear once in the footer",
+                )
+
+    def test_secondary_phone_is_not_added_to_headers_or_mobile_menus(self):
+        for path in sorted(HTML_ROOT.rglob("*.html")):
+            source = path.read_text(encoding="utf-8")
+            restricted_blocks = [
+                *re.findall(r"<header\b.*?</header>", source, re.DOTALL | re.IGNORECASE),
+                *re.findall(
+                    r'<nav\b[^>]*class=["\'][^"\']*mobile-menu[^"\']*["\'][^>]*>.*?</nav>',
+                    source,
+                    re.DOTALL | re.IGNORECASE,
+                ),
+            ]
+            with self.subTest(path=path.relative_to(REPO_ROOT).as_posix()):
+                self.assertTrue(
+                    all(f"tel:{SECONDARY_PHONE}" not in block for block in restricted_blocks)
+                )
+
+    def test_contacts_page_lists_secondary_phone_in_main_content(self):
+        source = (HTML_ROOT / "kontakty" / "index.html").read_text(encoding="utf-8")
+        page_content = source.split("<footer", maxsplit=1)[0]
+        self.assertIn(f'href="tel:{SECONDARY_PHONE}"', page_content)
+        self.assertIn("+7 (978) 821-39-68", page_content)
+
+    def test_generator_flex_footer_keeps_phone_numbers_in_one_column(self):
+        page = (HTML_ROOT / "uslugi" / "generatory" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        phone_group = re.search(
+            r'<div class="power-footer__phones">(?P<content>.*?)</div>',
+            page,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(phone_group)
+        self.assertIn(f'tel:{PRIMARY_PHONE}', phone_group.group("content"))
+        self.assertIn(f'tel:{SECONDARY_PHONE}', phone_group.group("content"))
+        self.assertIn('href="/css/generatory.css?v=2"', page)
+
+        stylesheet = (HTML_ROOT / "css" / "generatory.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(".power-footer__phones", stylesheet)
 
 
 if __name__ == "__main__":

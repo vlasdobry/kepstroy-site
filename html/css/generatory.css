@@ -92,6 +92,7 @@
 .power-footer nav { display: flex; flex-direction: column; gap: 12px; font-size: .85rem; }
 .power-footer > a { font-weight: 800; }
 .power-footer a { color: #e2eee6; }
+.power-footer__phones { display: flex; flex-direction: column; gap: 8px; font-weight: 800; }
 .power-mobile-cta { display: none; }
 @media (max-width: 1000px) {
   .power-actions { gap: 16px; }

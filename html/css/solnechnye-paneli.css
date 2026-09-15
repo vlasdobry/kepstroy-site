@@ -636,6 +636,13 @@ body:has(.solar-page) .menu-toggle:focus-visible {
   font-weight: 800;
 }
 
+.solar-footer__phones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 800;
+}
+
 .solar-footer a {
   color: #e2eee6;
 }
