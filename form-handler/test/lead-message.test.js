@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { buildLeadMessage, buildLeadStatusMessage } = require('../lead-message');
 const {
   buildLeadMessage: buildSolarQualification,
-  calculatePanels,
+  createSolarQualification,
   syncSolarCityField
 } = require('../../html/js/solnechnye-paneli.js');
 const solarOffer = require('../../generators/solar-page-data.json');
@@ -13,6 +13,16 @@ const solarCalculatorConfig = {
   panelPowerW: solarOffer.panel_power_w,
   panelPriceRub: solarOffer.panel_price_rub
 };
+
+const createTurnkeyQualification = (overrides = {}) => createSolarQualification({
+  scenario: 'turnkey',
+  objectType: 'house',
+  primaryTask: 'backup',
+  monthlyConsumption: 'unknown',
+  placement: 'roof',
+  panelQuantity: '',
+  ...overrides
+}, solarCalculatorConfig);
 
 const decodeTelegramHtml = (value) => value
   .replace(/&lt;/g, '<')
@@ -123,10 +133,7 @@ test('renders default city once from frontend payload through Telegram lead', ()
   };
   const city = syncSolarCityField(form);
   const message = buildSolarQualification({
-    calculation: calculatePanels(10, solarCalculatorConfig),
-    scenario: 'turnkey',
-    systemType: 'hybrid',
-    placement: 'roof',
+    qualification: createTurnkeyQualification(),
     locality: 'Ялта',
     comment: ''
   });
@@ -134,9 +141,8 @@ test('renders default city once from frontend payload through Telegram lead', ()
 
   assert.equal((text.match(/Ялта/g) || []).length, 1);
   assert.doesNotMatch(text, /Населённый пункт: Ялта/);
-  assert.match(text, /10 панелей/);
-  assert.match(text, /6,5 кВт/);
-  assert.match(text, /200 000 ₽/);
+  assert.match(text, /Задача: Резерв при отключениях/);
+  assert.doesNotMatch(text, /10 панелей|6,5 кВт|200 000 ₽/);
 });
 
 test('keeps generated city and a distinct editable locality in Telegram lead', () => {
@@ -150,10 +156,7 @@ test('keeps generated city and a distinct editable locality in Telegram lead', (
     city,
     locality: 'Гурзуф',
     message: buildSolarQualification({
-      calculation: calculatePanels(10, solarCalculatorConfig),
-      scenario: 'turnkey',
-      systemType: 'unknown',
-      placement: 'consult',
+      qualification: createTurnkeyQualification({ placement: 'consult' }),
       locality: 'Гурзуф',
       comment: ''
     })
@@ -168,10 +171,7 @@ test('keeps generated city and a distinct editable locality in Telegram lead', (
 test('keeps main-page locality as one structured backend field', () => {
   const locality = 'Алушта';
   const message = buildSolarQualification({
-    calculation: calculatePanels(10, solarCalculatorConfig),
-    scenario: 'turnkey',
-    systemType: 'unknown',
-    placement: 'consult',
+    qualification: createTurnkeyQualification({ placement: 'consult' }),
     locality,
     comment: ''
   });

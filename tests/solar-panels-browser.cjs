@@ -185,10 +185,19 @@ let browser;
   await page.locator('#questions summary').first().click();
   assert.equal(await page.locator('#questions details').first().evaluate((element) => element.open), true, 'FAQ must open');
 
-  await page.locator('#panel-quantity').fill('10');
+  await page.locator('#monthly-consumption').selectOption('bill');
+  await page.locator('#placement').selectOption('roof');
   await page.locator('#solar-calculate').click();
-  assert.equal(await page.locator('#solar-result-power').textContent(), '6,5 кВт');
-  assert.equal(await page.locator('#solar-result-price').textContent(), 'Стоимость панелей: 200 000 ₽');
+  await page.locator('#solar-calculate').click();
+  assert.equal(await page.locator('#solar-result-title').textContent(), 'Данные для подбора готовы');
+  assert.equal(
+    await page.locator('#solar-result-summary').textContent(),
+    'Резерв при отключениях · Частный дом · Есть квитанция за электричество',
+  );
+  assert.doesNotMatch(await page.locator('#solar-result').textContent(), /₽|6,5 кВт/);
+  const calculatorGoals = await page.evaluate(() => window.__goals || []);
+  assert.equal(calculatorGoals.filter((goal) => goal === 'solar_calculator_start').length, 1);
+  assert.equal(calculatorGoals.filter((goal) => goal === 'solar_calculator_result').length, 1);
 
   const form = page.locator('#solar-request-form');
   await form.locator('button[type="submit"]').click();
@@ -199,7 +208,6 @@ let browser;
   await form.locator('[name="consent"]').check();
   await form.locator('#solar-name').fill('Локальный тест');
   await form.locator('#solar-comment').fill('Дом в Алуште, нужна гибридная система');
-  await page.locator('#system-type').selectOption('hybrid');
   await page.locator('#placement').selectOption('roof');
   await page.locator('#solar-locality').fill('Алушта');
 
@@ -230,9 +238,10 @@ let browser;
     yclid: '12345',
     client_id: 'solar-test-client',
   })) assert.equal(payload.get(key), value, key);
-  assert.match(payload.get('message') || '', /0,65 × 10 = 6,5 кВт/);
-  assert.match(payload.get('message') || '', /Стоимость панелей: 200 000 ₽/);
-  assert.match(payload.get('message') || '', /Тип системы: Гибридная/);
+  assert.match(payload.get('message') || '', /Что требуется: Система под ключ/);
+  assert.match(payload.get('message') || '', /Задача: Резерв при отключениях/);
+  assert.match(payload.get('message') || '', /Потребление: Есть квитанция за электричество/);
+  assert.doesNotMatch(payload.get('message') || '', /Стоимость панелей:|10 панелей|6,5 кВт/);
   assert.equal(payload.get('locality'), 'Алушта');
   assert.doesNotMatch(payload.get('message') || '', /Населённый пункт:/);
   assert.match(buildLeadMessage(Object.fromEntries(payload)), /Населённый пункт: Алушта/);
@@ -347,10 +356,12 @@ let browser;
         expect(state.cityField === city, `qualified city ${JSON.stringify(state.cityField)} does not match ${JSON.stringify(city)}`);
         cityHeadings.add(state.h1);
 
+        await page.locator('#order-scenario').selectOption('panels');
+        expect(await page.locator('#panel-quantity-field').isVisible(), 'panel quantity must appear for panels-only scenario');
         await page.locator('#panel-quantity').fill('3');
         await page.locator('#solar-calculate').click();
-        expect(await page.locator('#solar-result-power').textContent() === '1,95 кВт', 'calculator power is incorrect');
-        expect(await page.locator('#solar-result-price').textContent() === 'Стоимость панелей: 60 000 ₽', 'calculator price is incorrect');
+        expect(await page.locator('#solar-result-title').textContent() === 'Расчёт панелей готов', 'panel calculation title is incorrect');
+        expect(await page.locator('#solar-result-summary').textContent() === '3 панели · 1,95 кВт · 60 000 ₽ за панели', 'panel calculation summary is incorrect');
       } catch (error) {
         comboFailures.push(`browser action failed: ${error.message}`);
       } finally {
@@ -399,12 +410,16 @@ let browser;
   );
   await page.locator('#questions summary').first().click();
   assert.equal(await page.locator('#questions details').first().evaluate((element) => element.open), true, 'Yalta FAQ must open');
-  await page.locator('#panel-quantity').fill('10');
-  await page.locator('#system-type').selectOption('hybrid');
-  await page.locator('#placement').selectOption('roof');
+  await page.locator('#object-type').selectOption('remote');
+  await page.locator('#primary-task').selectOption('autonomy');
+  await page.locator('#placement').selectOption('ground');
   await page.locator('#solar-calculate').click();
-  assert.equal(await page.locator('#solar-result-power').textContent(), '6,5 кВт', 'Yalta calculator power');
-  assert.equal(await page.locator('#solar-result-price').textContent(), 'Стоимость панелей: 200 000 ₽', 'Yalta calculator price');
+  assert.equal(await page.locator('#solar-result-title').textContent(), 'Данные для подбора готовы', 'Yalta qualification title');
+  assert.equal(
+    await page.locator('#solar-result-summary').textContent(),
+    'Обеспечить объект без электросети · Объект без электросети · данные о потреблении уточним',
+    'Yalta qualification summary',
+  );
 
   const cityForm = page.locator('#solar-request-form');
   assert.equal(await cityForm.locator('#solar-locality').isEditable(), true);
@@ -429,8 +444,9 @@ let browser;
   assert.equal(await cityForm.locator('#solar-name').inputValue(), 'Локальный тест', 'Yalta error must retain name');
   assert.equal(await cityForm.locator('#solar-comment').inputValue(), 'Сохранить данные после ошибки', 'Yalta error must retain comment');
   assert.equal(await cityForm.locator('[name="consent"]').isChecked(), true, 'Yalta error must retain consent');
-  assert.equal(await page.locator('#system-type').inputValue(), 'hybrid', 'Yalta error must retain system type');
-  assert.equal(await page.locator('#placement').inputValue(), 'roof', 'Yalta error must retain placement');
+  assert.equal(await page.locator('#object-type').inputValue(), 'remote', 'Yalta error must retain object type');
+  assert.equal(await page.locator('#primary-task').inputValue(), 'autonomy', 'Yalta error must retain primary task');
+  assert.equal(await page.locator('#placement').inputValue(), 'ground', 'Yalta error must retain placement');
   const cityFailedGoals = await page.evaluate(() => window.__goals || []);
   assert.equal(cityFailedGoals.includes('form_submit'), false, 'Yalta failed submit must not emit form_submit');
   assert.equal(cityFailedGoals.includes('solar_submit_error'), true, 'Yalta failed submit must emit solar_submit_error');
@@ -456,8 +472,9 @@ let browser;
   assert.doesNotMatch(cityPayload.get('message') || '', /Город страницы:/);
   assert.doesNotMatch(cityPayload.get('message') || '', /Населённый пункт: Ялта/);
   assert.doesNotMatch(cityPayload.get('message') || '', /Гурзуф/);
-  assert.match(cityPayload.get('message') || '', /0,65 × 10 = 6,5 кВт/);
-  assert.match(cityPayload.get('message') || '', /Стоимость панелей: 200 000 ₽/);
+  assert.match(cityPayload.get('message') || '', /Объект: Объект без электросети/);
+  assert.match(cityPayload.get('message') || '', /Задача: Обеспечить объект без электросети/);
+  assert.doesNotMatch(cityPayload.get('message') || '', /Стоимость панелей:|10 панелей|6,5 кВт/);
   assert.match(cityPayload.get('landing_page') || '', /\/krym\/jalta\/solnechnye-paneli\//);
   assert.match(cityPayload.get('current_page') || '', /\/krym\/jalta\/solnechnye-paneli\//);
   const renderedLead = buildLeadMessage(Object.fromEntries(cityPayload));

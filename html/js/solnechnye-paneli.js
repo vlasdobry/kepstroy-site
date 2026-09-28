@@ -4,11 +4,27 @@ const SCENARIO_LABELS = {
   turnkey: 'Система под ключ',
 };
 
-const SYSTEM_LABELS = {
-  unknown: 'Нужна консультация',
-  autonomous: 'Автономная',
-  grid: 'Сетевая',
-  hybrid: 'Гибридная',
+const OBJECT_LABELS = {
+  house: 'Частный дом',
+  dacha: 'Дача',
+  business: 'Коммерческий объект',
+  remote: 'Объект без электросети',
+  other: 'Другой объект',
+};
+
+const TASK_LABELS = {
+  backup: 'Резерв при отключениях',
+  saving: 'Снизить потребление из сети',
+  autonomy: 'Обеспечить объект без электросети',
+  panels: 'Купить солнечные панели',
+  consult: 'Нужна консультация',
+};
+
+const CONSUMPTION_LABELS = {
+  unknown: 'Нет данных',
+  bill: 'Есть квитанция за электричество',
+  meter: 'Есть показания счётчика',
+  appliances: 'Могу перечислить основные приборы',
 };
 
 const PLACEMENT_LABELS = {
@@ -22,6 +38,17 @@ const formatNumber = (value, maximumFractionDigits = 0) => (
     .format(value)
     .replace(/[\u00a0\u202f]/g, ' ')
 );
+
+const formatPanelsQuantity = (quantity) => {
+  const remainder100 = quantity % 100;
+  const remainder10 = quantity % 10;
+  const noun = remainder10 === 1 && remainder100 !== 11
+    ? 'панель'
+    : remainder10 >= 2 && remainder10 <= 4 && (remainder100 < 12 || remainder100 > 14)
+      ? 'панели'
+      : 'панелей';
+  return `${quantity} ${noun}`;
+};
 
 const normalizeSolarCalculatorConfig = ({ panelPowerW, panelPriceRub } = {}) => {
   const normalized = {
@@ -58,6 +85,30 @@ const calculatePanels = (rawQuantity, config) => {
   };
 };
 
+const createSolarQualification = ({
+  scenario = 'turnkey',
+  objectType = 'other',
+  primaryTask = 'consult',
+  monthlyConsumption = 'unknown',
+  placement = 'consult',
+  panelQuantity = '',
+} = {}, config) => {
+  const normalizedScenario = SCENARIO_LABELS[scenario] ? scenario : 'turnkey';
+  const trimmedQuantity = String(panelQuantity ?? '').trim();
+  return {
+    scenario: normalizedScenario,
+    objectType: OBJECT_LABELS[objectType] ? objectType : 'other',
+    primaryTask: TASK_LABELS[primaryTask] ? primaryTask : 'consult',
+    monthlyConsumption: CONSUMPTION_LABELS[monthlyConsumption]
+      ? monthlyConsumption
+      : 'unknown',
+    placement: PLACEMENT_LABELS[placement] ? placement : 'consult',
+    panelCalculation: normalizedScenario === 'panels' && trimmedQuantity
+      ? calculatePanels(trimmedQuantity, config)
+      : null,
+  };
+};
+
 const cleanText = (value, maxLength) => String(value || '')
   .replace(/\s+/g, ' ')
   .trim()
@@ -76,24 +127,31 @@ const syncSolarCityField = (requestForm) => {
 };
 
 const buildLeadMessage = ({
-  calculation,
-  scenario,
-  systemType,
-  placement,
+  qualification,
   comment,
 }) => {
+  const safeQualification = qualification || createSolarQualification();
   const lines = [
-    'Предварительный расчёт солнечной системы',
-    `Сценарий: ${SCENARIO_LABELS[scenario] || SCENARIO_LABELS.turnkey}`,
-    `Количество: ${calculation.quantity} панелей`,
-    `Номинальная мощность панелей: ${formatNumber(calculation.panelPowerKw, 3)} × ${calculation.quantity} = ${formatNumber(calculation.powerKw, 3)} кВт`,
-    `Стоимость панелей: ${formatNumber(calculation.panelsPrice)} ₽`,
-    `Тип системы: ${SYSTEM_LABELS[systemType] || SYSTEM_LABELS.unknown}`,
-    `Размещение: ${PLACEMENT_LABELS[placement] || PLACEMENT_LABELS.consult}`,
+    'Данные для подбора солнечной системы',
+    `Что требуется: ${SCENARIO_LABELS[safeQualification.scenario] || SCENARIO_LABELS.turnkey}`,
+    `Объект: ${OBJECT_LABELS[safeQualification.objectType] || OBJECT_LABELS.other}`,
+    `Задача: ${TASK_LABELS[safeQualification.primaryTask] || TASK_LABELS.consult}`,
+    `Потребление: ${CONSUMPTION_LABELS[safeQualification.monthlyConsumption] || CONSUMPTION_LABELS.unknown}`,
+    `Размещение: ${PLACEMENT_LABELS[safeQualification.placement] || PLACEMENT_LABELS.consult}`,
   ];
+  const calculation = safeQualification.panelCalculation;
+  if (safeQualification.scenario === 'panels') {
+    if (calculation) {
+      lines.push(`Количество: ${formatPanelsQuantity(calculation.quantity)}`);
+      lines.push(`Номинальная мощность панелей: ${formatNumber(calculation.panelPowerKw, 3)} × ${calculation.quantity} = ${formatNumber(calculation.powerKw, 3)} кВт`);
+      lines.push(`Стоимость панелей: ${formatNumber(calculation.panelsPrice)} ₽`);
+    } else {
+      lines.push('Количество панелей: уточнить');
+    }
+  }
   const safeComment = cleanText(comment, 500);
   if (safeComment) lines.push(`Комментарий: ${safeComment}`);
-  lines.push('Монтаж, доставка и комплектующие рассчитываются отдельно.');
+  lines.push('Состав и стоимость системы уточняются после проверки исходных данных.');
   return lines.join('\n').slice(0, 1000);
 };
 
@@ -170,15 +228,18 @@ if (typeof document !== 'undefined') {
     const calculatorConfigRoot = document.querySelector('.solar-page');
     if (!calculator || !requestForm || !calculatorConfigRoot) return;
 
-    const quantityInput = document.getElementById('panel-quantity');
     const scenarioInput = document.getElementById('order-scenario');
-    const systemInput = document.getElementById('system-type');
+    const objectInput = document.getElementById('object-type');
+    const taskInput = document.getElementById('primary-task');
+    const consumptionInput = document.getElementById('monthly-consumption');
     const placementInput = document.getElementById('placement');
+    const quantityField = document.getElementById('panel-quantity-field');
+    const quantityInput = document.getElementById('panel-quantity');
     const commentInput = document.getElementById('solar-comment');
     const messageInput = document.getElementById('solar-message');
-    const resultQuantity = document.getElementById('solar-result-quantity');
-    const resultPower = document.getElementById('solar-result-power');
-    const resultPrice = document.getElementById('solar-result-price');
+    const resultTitle = document.getElementById('solar-result-title');
+    const resultSummary = document.getElementById('solar-result-summary');
+    const resultNote = document.getElementById('solar-result-note');
     const error = document.getElementById('solar-calculator-error');
     const calculateButton = document.getElementById('solar-calculate');
     let calculatorConfig;
@@ -191,31 +252,47 @@ if (typeof document !== 'undefined') {
       return;
     }
     let calculatorStarted = false;
+    let calculatorResultTracked = false;
     let formStarted = false;
-    let currentCalculation = calculatePanels(quantityInput.value, calculatorConfig);
 
-    const qualification = () => ({
-      calculation: currentCalculation,
+    const qualification = () => createSolarQualification({
       scenario: scenarioInput.value,
-      systemType: systemInput.value,
+      objectType: objectInput.value,
+      primaryTask: taskInput.value,
+      monthlyConsumption: consumptionInput.value,
       placement: placementInput.value,
-      comment: commentInput.value,
-    });
+      panelQuantity: quantityInput.value,
+    }, calculatorConfig);
 
-    const syncMessage = () => {
+    const syncMessage = (currentQualification = qualification()) => {
       syncSolarCityField(requestForm);
-      messageInput.value = buildLeadMessage(qualification());
+      messageInput.value = buildLeadMessage({
+        qualification: currentQualification,
+        comment: commentInput.value,
+      });
     };
 
-    const renderCalculation = () => {
+    const renderQualification = () => {
+      const panelsOnly = scenarioInput.value === 'panels';
+      quantityField.hidden = !panelsOnly;
       try {
-        currentCalculation = calculatePanels(quantityInput.value, calculatorConfig);
+        const currentQualification = qualification();
         quantityInput.removeAttribute('aria-invalid');
         error.hidden = true;
-        resultQuantity.textContent = `${currentCalculation.quantity} панелей`;
-        resultPower.textContent = `${formatNumber(currentCalculation.powerKw, 2)} кВт`;
-        resultPrice.textContent = `Стоимость панелей: ${formatNumber(currentCalculation.panelsPrice)} ₽`;
-        syncMessage();
+        const calculation = currentQualification.panelCalculation;
+        resultTitle.textContent = calculation ? 'Расчёт панелей готов' : 'Данные для подбора готовы';
+        if (calculation) {
+          resultSummary.textContent = `${formatPanelsQuantity(calculation.quantity)} · ${formatNumber(calculation.powerKw, 3)} кВт · ${formatNumber(calculation.panelsPrice)} ₽ за панели`;
+          resultNote.textContent = 'Доставку, монтаж и комплектующие рассчитаем отдельно.';
+        } else if (panelsOnly) {
+          resultSummary.textContent = 'Количество и наличие панелей уточним при звонке';
+          resultNote.textContent = 'Можно продолжить без точного количества.';
+        } else {
+          const consumption = CONSUMPTION_LABELS[currentQualification.monthlyConsumption];
+          resultSummary.textContent = `${TASK_LABELS[currentQualification.primaryTask]} · ${OBJECT_LABELS[currentQualification.objectType]} · ${consumption === CONSUMPTION_LABELS.unknown ? 'данные о потреблении уточним' : consumption}`;
+          resultNote.textContent = 'Состав и стоимость системы уточним после проверки исходных данных.';
+        }
+        syncMessage(currentQualification);
         return true;
       } catch {
         quantityInput.setAttribute('aria-invalid', 'true');
@@ -224,16 +301,27 @@ if (typeof document !== 'undefined') {
       }
     };
 
-    calculator.addEventListener('input', () => {
-      if (!calculatorStarted) {
-        calculatorStarted = true;
-        trackSolarGoal('solar_calculator_start');
-      }
-      renderCalculation();
+    const markCalculatorStarted = () => {
+      if (calculatorStarted) return;
+      calculatorStarted = true;
+      trackSolarGoal('solar_calculator_start');
+    };
+
+    scenarioInput.addEventListener('change', () => {
+      if (scenarioInput.value === 'panels') taskInput.value = 'panels';
+      else if (taskInput.value === 'panels') taskInput.value = 'consult';
     });
-    calculator.addEventListener('change', renderCalculation);
+    calculator.addEventListener('input', () => {
+      markCalculatorStarted();
+      renderQualification();
+    });
+    calculator.addEventListener('change', renderQualification);
     calculateButton.addEventListener('click', () => {
-      if (renderCalculation()) trackSolarGoal('solar_calculator_result');
+      markCalculatorStarted();
+      if (renderQualification() && !calculatorResultTracked) {
+        calculatorResultTracked = true;
+        trackSolarGoal('solar_calculator_result');
+      }
     });
 
     requestForm.addEventListener('focusin', () => {
@@ -241,15 +329,16 @@ if (typeof document !== 'undefined') {
       formStarted = true;
       trackSolarGoal('solar_form_start');
     });
-    requestForm.addEventListener('submit', syncMessage, true);
-    commentInput.addEventListener('input', syncMessage);
-    syncMessage();
+    requestForm.addEventListener('submit', () => syncMessage(), true);
+    commentInput.addEventListener('input', () => syncMessage());
+    renderQualification();
   });
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     calculatePanels,
+    createSolarQualification,
     buildLeadMessage,
     normalizeSolarCalculatorConfig,
     readSolarCalculatorConfig,

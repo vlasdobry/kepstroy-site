@@ -22,8 +22,8 @@ OFFER_PATH = GENERATOR_DIR / "solar-page-data.json"
 MAIN_TEMPLATE_PATH = GENERATOR_DIR / "solar-main-template.html"
 CITY_TEMPLATE_PATH = GENERATOR_DIR / "solar-city-template.html"
 MAIN_OUTPUT = Path("uslugi/solnechnye-paneli/index.html")
-SOLAR_CSS_VERSION = "6"
-SOLAR_JS_VERSION = "6"
+SOLAR_CSS_VERSION = "7"
+SOLAR_JS_VERSION = "7"
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 REQUIRED_OFFER_KEYS = {
     "product_name",
@@ -228,10 +228,6 @@ def _format_number(value):
     return f"{value:,}".replace(",", " ")
 
 
-def _format_decimal(value):
-    return f"{value:g}".replace(".", ",")
-
-
 def _plural_system_types(system_types):
     plural = []
     for value in system_types:
@@ -258,7 +254,6 @@ def _common_context(offer):
     availability_lower = " и ".join(value.lower() for value in offer["availability"])
     availability_sentence = availability_lower[:1].upper() + availability_lower[1:]
     product_brand = offer["product_name"].split(maxsplit=1)[0]
-    default_quantity = 10
     system_types_plural = _plural_system_types(offer["system_types"])
     return {
         "solar_css_version": SOLAR_CSS_VERSION,
@@ -278,12 +273,6 @@ def _common_context(offer):
         "system_type_3": escape(offer["system_types"][2]),
         "system_types_plural": escape(system_types_plural),
         "system_types_plural_schema": _json_script_string(system_types_plural),
-        "default_panel_power_kw_formatted": _format_decimal(
-            default_quantity * offer["panel_power_kw"]
-        ),
-        "default_panels_price_formatted": _format_number(
-            default_quantity * offer["panel_price_rub"]
-        ),
     }
 
 

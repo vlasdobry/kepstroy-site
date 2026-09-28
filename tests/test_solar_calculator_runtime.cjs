@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   calculatePanels,
+  createSolarQualification,
   buildLeadMessage,
   readSolarCalculatorConfig,
   resolveSolarPageCity,
@@ -51,13 +52,18 @@ test('reads positive finite calculator config and follows changed offer values',
     powerKw: 7.2,
     panelsPrice: 234560,
   });
-  assert.match(buildLeadMessage({
-    calculation,
-    scenario: 'turnkey',
-    systemType: 'hybrid',
+  const qualification = createSolarQualification({
+    scenario: 'panels',
+    objectType: 'house',
+    primaryTask: 'panels',
+    monthlyConsumption: 'unknown',
     placement: 'roof',
-    comment: '',
-  }), /0,72 × 10 = 7,2 кВт[\s\S]*234 560 ₽/);
+    panelQuantity: '10',
+  }, config);
+  assert.match(
+    buildLeadMessage({ qualification, comment: '' }),
+    /0,72 × 10 = 7,2 кВт[\s\S]*234 560 ₽/,
+  );
 });
 
 
@@ -89,32 +95,82 @@ test('rejects fractional, empty and out-of-range quantities', () => {
 });
 
 
-test('serializes calculator qualification without structured locality into one lead message', () => {
-  const calculation = calculatePanels(10, defaultConfig);
-  const message = buildLeadMessage({
-    calculation,
+test('creates a task-first turnkey qualification without an invented panel quote', () => {
+  const qualification = createSolarQualification({
     scenario: 'turnkey',
-    systemType: 'hybrid',
+    objectType: 'house',
+    primaryTask: 'backup',
+    monthlyConsumption: 'bill',
     placement: 'roof',
+    panelQuantity: '10',
+  }, defaultConfig);
+  const message = buildLeadMessage({
+    qualification,
     locality: 'Саки',
     comment: 'Нужно резервное питание дома',
   });
 
   for (const expected of [
     'Система под ключ',
-    '10 панелей',
-    '6,5 кВт',
-    '200 000 ₽',
-    'Гибридная',
+    'Частный дом',
+    'Резерв при отключениях',
+    'Есть квитанция за электричество',
     'Крыша',
     'Нужно резервное питание дома',
-    'Монтаж, доставка и комплектующие рассчитываются отдельно',
+    'Состав и стоимость системы уточняются после проверки исходных данных',
   ]) {
     assert.match(message, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.doesNotMatch(message, /Населённый пункт:/);
   assert.doesNotMatch(message, /Саки/);
+  assert.doesNotMatch(message, /10 панелей|6,5 кВт|200 000 ₽/);
+  assert.equal(qualification.panelCalculation, null);
   assert.ok(message.length <= 1000);
+});
+
+
+test('adds a confirmed panel-only calculation only for a panels request', () => {
+  const qualification = createSolarQualification({
+    scenario: 'panels',
+    objectType: 'business',
+    primaryTask: 'panels',
+    monthlyConsumption: 'unknown',
+    placement: 'consult',
+    panelQuantity: '4',
+  }, defaultConfig);
+  const message = buildLeadMessage({ qualification, comment: '' });
+
+  assert.deepEqual(qualification.panelCalculation, {
+    quantity: 4,
+    panelPowerKw: 0.65,
+    powerKw: 2.6,
+    panelsPrice: 80000,
+  });
+  assert.match(message, /Только панели/);
+  assert.match(message, /0,65 × 4 = 2,6 кВт/);
+  assert.match(message, /Стоимость панелей: 80 000 ₽/);
+});
+
+
+test('allows an unknown panel quantity and validates it only for a panels request', () => {
+  const unknown = createSolarQualification({
+    scenario: 'panels',
+    objectType: 'other',
+    primaryTask: 'panels',
+    monthlyConsumption: 'unknown',
+    placement: 'consult',
+    panelQuantity: '',
+  }, defaultConfig);
+  assert.equal(unknown.panelCalculation, null);
+  assert.match(buildLeadMessage({ qualification: unknown, comment: '' }), /Количество панелей: уточнить/);
+
+  assert.throws(
+    () => createSolarQualification({ scenario: 'panels', panelQuantity: '101' }, defaultConfig),
+    { name: 'RangeError' },
+  );
+  assert.doesNotThrow(
+    () => createSolarQualification({ scenario: 'turnkey', panelQuantity: '101' }, defaultConfig),
+  );
 });
 
 
@@ -146,11 +202,16 @@ test('keeps main page city empty and tolerates an absent hidden city field', () 
 
 
 test('keeps city and locality out of the free-text calculator message', () => {
-  const message = buildLeadMessage({
-    calculation: calculatePanels(10, defaultConfig),
+  const qualification = createSolarQualification({
     scenario: 'turnkey',
-    systemType: 'unknown',
+    objectType: 'house',
+    primaryTask: 'backup',
+    monthlyConsumption: 'unknown',
     placement: 'consult',
+    panelQuantity: '',
+  }, defaultConfig);
+  const message = buildLeadMessage({
+    qualification,
     locality: 'Ялта',
     comment: '',
   });
@@ -159,10 +220,7 @@ test('keeps city and locality out of the free-text calculator message', () => {
   assert.doesNotMatch(message, /Населённый пункт: Ялта/);
 
   const nearbyLocality = buildLeadMessage({
-    calculation: calculatePanels(10, defaultConfig),
-    scenario: 'turnkey',
-    systemType: 'unknown',
-    placement: 'consult',
+    qualification,
     locality: 'Гурзуф',
     comment: '',
   });
@@ -172,17 +230,22 @@ test('keeps city and locality out of the free-text calculator message', () => {
 
 
 test('omits empty optional locality and comment without undefined values', () => {
-  const message = buildLeadMessage({
-    calculation: calculatePanels(2, defaultConfig),
+  const qualification = createSolarQualification({
     scenario: 'panels',
-    systemType: 'unknown',
+    objectType: 'other',
+    primaryTask: 'panels',
+    monthlyConsumption: 'unknown',
     placement: 'consult',
+    panelQuantity: '2',
+  }, defaultConfig);
+  const message = buildLeadMessage({
+    qualification,
     locality: '   ',
     comment: '',
   });
 
   assert.match(message, /Только панели/);
-  assert.match(message, /Нужна консультация/);
+  assert.match(message, /Другой объект/);
   assert.doesNotMatch(message, /undefined|null/);
   assert.doesNotMatch(message, /Населённый пункт:/);
   assert.doesNotMatch(message, /Комментарий:/);

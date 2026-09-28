@@ -251,8 +251,19 @@ class SolarPanelsPageTests(unittest.TestCase):
         )
         self.assertTrue({"website", "company", "message"} <= inputs.keys())
         self.assertEqual("solar-request-form", inputs["locality"].get("form"))
+        self.assertTrue(
+            {"order_scenario", "object_type", "primary_task", "monthly_consumption", "placement"}
+            <= inputs.keys()
+        )
+        self.assertNotIn("system_type", inputs)
         self.assertEqual("1", inputs["panel_quantity"].get("min"))
         self.assertEqual("100", inputs["panel_quantity"].get("max"))
+        self.assertNotIn("value", inputs["panel_quantity"])
+        self.assertIn('id="panel-quantity-field"', text)
+        self.assertRegex(
+            text,
+            re.compile(r'<div\b[^>]*id="panel-quantity-field"[^>]*\bhidden\b', re.I),
+        )
         self.assertIn('action="/submit"', text)
         self.assertIn("/js/tracking.js", text)
         self.assertIn("/js/main.js", text)
@@ -264,6 +275,20 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertNotRegex(script, r"\b20000\b")
         self.assertIn("data-panel-power-w", text)
         self.assertIn("data-panel-price-rub", text)
+
+        calculator = re.search(
+            r'<section\b[^>]*id="calculator"[^>]*>(.*?)</section>',
+            text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        self.assertIsNotNone(calculator)
+        calculator_text = calculator.group(1)
+        self.assertIn("Подбор системы по вашей задаче", calculator_text)
+        self.assertIn("Данные для подбора готовы", calculator_text)
+        self.assertIn("Состав и стоимость системы уточним после проверки исходных данных", calculator_text)
+        self.assertNotIn("10 панелей", calculator_text)
+        self.assertNotIn("6,5 кВт", calculator_text)
+        self.assertNotIn("200 000 ₽", calculator_text)
 
     def test_offer_mutation_drives_calculator_config_in_all_rendered_pages(self):
         module = self.solar_generator()
@@ -281,8 +306,14 @@ class SolarPanelsPageTests(unittest.TestCase):
         for path, source in rendered.items():
             self.assertIn('data-panel-power-w="720"', source, str(path))
             self.assertIn('data-panel-price-rub="23456"', source, str(path))
-            self.assertIn("7,2 кВт", source, str(path))
-            self.assertIn("234 560 ₽", source, str(path))
+            calculator = re.search(
+                r'<section\b[^>]*id="calculator"[^>]*>(.*?)</section>',
+                source,
+                re.IGNORECASE | re.DOTALL,
+            )
+            self.assertIsNotNone(calculator, str(path))
+            self.assertNotIn("7,2 кВт", calculator.group(1), str(path))
+            self.assertNotIn("234 560 ₽", calculator.group(1), str(path))
 
     def test_local_anchors_images_and_assets(self):
         text = self.page()
@@ -327,7 +358,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual(12, len(city_links))
 
     def test_all_generated_solar_pages_use_the_current_css_cache_version(self):
-        expected_version = "6"
+        expected_version = "7"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(
@@ -346,7 +377,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual({expected_version}, set(versions))
 
     def test_all_generated_solar_pages_use_the_current_js_cache_version(self):
-        expected_version = "6"
+        expected_version = "7"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(
