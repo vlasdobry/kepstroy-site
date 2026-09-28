@@ -173,6 +173,64 @@ class SolarPanelsPageTests(unittest.TestCase):
         for path in paths:
             self.assertNotRegex(path.read_text(encoding="utf-8"), unsupported, str(path))
 
+    def test_every_solar_hero_exposes_two_explicit_buyer_paths_and_phone(self):
+        pages = [PAGE, *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html"))]
+        self.assertEqual(13, len(pages))
+
+        for page in pages:
+            source = page.read_text(encoding="utf-8")
+            hero_match = re.search(
+                r'<section\b[^>]*class="[^"]*solar-hero[^"]*"[^>]*>(.*?)</section>',
+                source,
+                re.IGNORECASE | re.DOTALL,
+            )
+            self.assertIsNotNone(hero_match, str(page))
+            hero = hero_match.group(1)
+
+            self.assertEqual(1, hero.count('data-solar-intent="turnkey"'), str(page))
+            self.assertEqual(1, hero.count('data-solar-intent="panels"'), str(page))
+            self.assertRegex(
+                hero,
+                re.compile(
+                    r'<a\b[^>]*href="#calculator"[^>]*data-solar-intent="turnkey"[^>]*>'
+                    r'.*?Подобрать систему под ключ.*?</a>',
+                    re.IGNORECASE | re.DOTALL,
+                ),
+            )
+            self.assertRegex(
+                hero,
+                re.compile(
+                    r'<a\b[^>]*href="#panel"[^>]*data-solar-intent="panels"[^>]*>'
+                    r'.*?Купить панели LONGi 650 Вт.*?20 000 ₽/шт\..*?В наличии и под заказ.*?</a>',
+                    re.IGNORECASE | re.DOTALL,
+                ),
+            )
+            self.assertIn('href="tel:+79784615962"', hero, str(page))
+            self.assertIn("Итоговую стоимость системы рассчитаем после уточнения задачи.", hero)
+
+    def test_every_solar_mobile_cta_names_the_primary_outcome(self):
+        pages = [PAGE, *sorted((HTML / "krym").glob("*/solnechnye-paneli/index.html"))]
+        self.assertEqual(13, len(pages))
+
+        for page in pages:
+            source = page.read_text(encoding="utf-8")
+            mobile_cta = re.search(
+                r'<div\s+class="solar-mobile-cta">(.*?)</div>',
+                source,
+                re.IGNORECASE | re.DOTALL,
+            )
+            self.assertIsNotNone(mobile_cta, str(page))
+            self.assertIn(
+                '<a href="#calculator" class="btn btn--primary">Подобрать систему</a>',
+                mobile_cta.group(1),
+                str(page),
+            )
+            self.assertIn(
+                '<a href="tel:+79784615962">Позвонить</a>',
+                mobile_cta.group(1),
+                str(page),
+            )
+
     def test_form_and_calculator_contract(self):
         text = self.page()
         nodes = Elements(text).nodes
@@ -269,7 +327,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual(12, len(city_links))
 
     def test_all_generated_solar_pages_use_the_current_css_cache_version(self):
-        expected_version = "5"
+        expected_version = "6"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(

@@ -174,7 +174,7 @@ let browser;
       return {
         overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
         navigation: visible('.nav-main, .menu-toggle'),
-        cta: visible('.solar-actions .btn, .solar-mobile-cta .btn, .header__callback'),
+        cta: visible('.solar-actions .solar-intent-card, .solar-mobile-cta .btn, .header__callback'),
       };
     });
     if (state.overflow) errors.push(`horizontal overflow at ${width}px`);

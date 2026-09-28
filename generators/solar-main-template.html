@@ -138,7 +138,11 @@
             <p class="solar-eyebrow">Солнечная энергетика</p>
             <h1>Солнечные панели и электростанции под ключ в Крыму</h1>
             <p class="solar-lead">КэпСтрой поставляет панели ${product_brand} ${panel_power_w} Вт и создаёт ${system_types_plural} системы по всему Крыму.</p>
-            <div class="solar-actions"><a href="#calculator" class="btn btn--primary">Рассчитать систему</a><a href="#panel" class="solar-text-link">Купить панели</a></div>
+            <div class="solar-actions" aria-label="Выберите задачу">
+              <a href="#calculator" data-solar-intent="turnkey" class="solar-intent-card solar-intent-card--primary"><span>Система под ключ</span><strong>Подобрать систему под ключ</strong><small>Для дома, дачи или объекта: уточним нагрузку, сеть и место установки.</small></a>
+              <a href="#panel" data-solar-intent="panels" class="solar-intent-card"><span>Только панели</span><strong>Купить панели ${product_brand} ${panel_power_w} Вт</strong><small>${panel_price_formatted} ₽/шт. ${availability_sentence}.</small></a>
+            </div>
+            <p class="solar-hero__next-step">Итоговую стоимость системы рассчитаем после уточнения задачи. <a href="tel:+79784615962">Позвонить: +7 (978) 461-59-62</a></p>
           </div>
           <figure class="solar-hero__photo">
             <img src="/images/solnechnye-paneli/solar-hero-960.webp" srcset="/images/solnechnye-paneli/solar-hero-640.webp 640w, /images/solnechnye-paneli/solar-hero-960.webp 960w" sizes="(max-width: 760px) 100vw, 47vw" alt="Визуализация дома с солнечными панелями на крыше в Крыму" width="960" height="640" fetchpriority="high">
@@ -280,7 +284,7 @@
     <a href="/uslugi/solnechnye-paneli/">Солнечные панели</a>
     <a href="/uslugi/yuridicheskoe-soprovozhdenie-podklyuchenij/">Юридическое сопровождение</a>
   </nav></footer>
-  <div class="solar-mobile-cta"><a href="#calculator" class="btn btn--primary">Рассчитать</a><a href="tel:+79784615962">Позвонить</a></div>
+  <div class="solar-mobile-cta"><a href="#calculator" class="btn btn--primary">Подобрать систему</a><a href="tel:+79784615962">Позвонить</a></div>
 
   <script src="/js/tracking.js?v=2"></script>
   <script src="/js/main.js?v=22"></script>
