@@ -109,11 +109,26 @@ class DeployContractTests(unittest.TestCase):
         self.assertNotRegex(WORKFLOW, r"(?m)^\s*-X\s+POST\b")
         self.assertNotIn("--data-urlencode", WORKFLOW)
 
-    def test_smoke_checks_health_pages_and_telegram_read_only(self):
+    def test_smoke_checks_health_pages_and_configured_messengers_read_only(self):
         self.assertIn("http://localhost:3000/health", WORKFLOW)
         self.assertIn("https://kepstroy.ru/", WORKFLOW)
         self.assertIn("https://kepstroy.ru/uslugi/generatory/", WORKFLOW)
-        self.assertIn("/getMe", WORKFLOW)
+        self.assertIn("node check-delivery.js", WORKFLOW)
+        checker = (REPO_ROOT / "form-handler" / "check-delivery.js").read_text(encoding="utf-8")
+        self.assertIn("/getMe", checker)
+        self.assertIn("checkMax", checker)
+        self.assertNotIn("sendLead", checker)
+        self.assertNotIn("sendMessage", checker)
+
+    def test_max_secrets_reach_compose_and_server_env_with_restricted_permissions(self):
+        deploy = self.workflow_job("deploy")
+        for key in ("MAX_BOT_TOKEN", "MAX_CHAT_ID"):
+            self.assertIn(f"{key}: ${{{{ secrets.{key} }}}}", deploy)
+            self.assertRegex(deploy, rf"envs: [^\n]*\b{key}\b")
+            self.assertIn(f"{key}=${{{key}}}", deploy)
+            self.assertIn(f"{key}=${{{key}:-}}", COMPOSE)
+        self.assertLess(deploy.index("umask 077"), deploy.index("cat > .env"))
+        self.assertIn("chmod 600 .env", deploy)
 
 
 if __name__ == "__main__":

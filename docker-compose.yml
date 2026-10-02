@@ -46,9 +46,11 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     environment:
-      - BOT_TOKEN=${BOT_TOKEN}
-      - CHAT_ID=${CHAT_ID}
+      - BOT_TOKEN=${BOT_TOKEN:-}
+      - CHAT_ID=${CHAT_ID:-}
       - TELEGRAM_PROXY_URL=${TELEGRAM_PROXY_URL:-}
+      - MAX_BOT_TOKEN=${MAX_BOT_TOKEN:-}
+      - MAX_CHAT_ID=${MAX_CHAT_ID:-}
     security_opt:
       - no-new-privileges:true
     labels:

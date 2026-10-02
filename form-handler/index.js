@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const { buildLeadMessage, buildLeadStatusMessage } = require('./lead-message');
+const { requestJson } = require('./safe-request');
+const { createMaxClient } = require('./max-client');
+const { deliveryConfig, deliverLead } = require('./lead-delivery');
 
 const app = express();
 
@@ -40,9 +42,13 @@ const CHAT_ID = process.env.CHAT_ID;
 const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 
 const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
+const channels = deliveryConfig(process.env);
+const maxClient = channels.max ? createMaxClient({ token: process.env.MAX_BOT_TOKEN, chatId: process.env.MAX_CHAT_ID }) : null;
 
 // In-memory rate limiting storage. Enough for a single small container.
 const recentSubmissions = new Map();
+const pendingPhones = new Set();
+const pendingByIp = new Map();
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const PHONE_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_SUBMISSIONS_PER_IP = 3;
@@ -120,11 +126,12 @@ function isRateLimited(ip, phone) {
   const phoneKey = `phone:${normalizePhone(phone)}`;
 
   const ipEntry = recentSubmissions.get(ipKey);
-  if (ipEntry && ipEntry.count >= MAX_SUBMISSIONS_PER_IP) {
+  if ((ipEntry?.count || 0) + (pendingByIp.get(ip) || 0) >= MAX_SUBMISSIONS_PER_IP) {
     return true;
   }
 
   const phoneLast = recentSubmissions.get(phoneKey);
+  if (pendingPhones.has(normalizePhone(phone))) return true;
   if (phoneLast && now - phoneLast < PHONE_COOLDOWN_MS) {
     return true;
   }
@@ -147,17 +154,14 @@ function recordSubmission(ip, phone) {
 
 async function callTelegramAPI(method, body) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
-  const response = await fetch(url, {
+  const data = await requestJson(url, {
     method: 'POST',
     agent: telegramAgent,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
-  });
-  const text = await response.text();
-  if (!response.ok) {
-    throw new Error(`Telegram API ${method} ${response.status}: ${text}`);
-  }
-  return JSON.parse(text);
+  }, { channel: 'telegram' });
+  if (data?.ok !== true) throw new Error('telegram_missing_confirmation');
+  return data;
 }
 
 
@@ -219,7 +223,9 @@ async function sendTelegramMessage(text, phone) {
       ]
     };
   }
-  return callTelegramAPI('sendMessage', payload);
+  const data = await callTelegramAPI('sendMessage', payload);
+  if (!data.result?.message_id) throw new Error('telegram_missing_confirmation');
+  return data;
 }
 
 async function answerCallback(callbackQueryId, text) {
@@ -269,7 +275,7 @@ async function handleCallback(callbackQuery) {
     } catch (err) {
       console.error('answerCallbackQuery failed (ignored):', err.message);
     }
-    console.log('Lead taken in progress:', phone);
+    console.log('Lead taken in progress');
     return;
   }
 
@@ -281,7 +287,7 @@ async function handleCallback(callbackQuery) {
     } catch (err) {
       console.error('answerCallbackQuery failed (ignored):', err.message);
     }
-    console.log('Lead marked as done:', phone);
+    console.log('Lead marked as done');
   }
 }
 
@@ -290,11 +296,7 @@ app.post('/submit', async (req, res) => {
     const { name, phone, service, page, message } = req.body;
 
     if (!hasValidBrowserSource(req)) {
-      console.log('Submission rejected: invalid browser source', {
-        ip: getClientIp(req),
-        origin: req.headers.origin,
-        referer: req.headers.referer || req.headers.referrer
-      });
+      console.log('Submission rejected: invalid browser source');
       return res.status(403).send('Forbidden');
     }
 
@@ -308,18 +310,13 @@ app.post('/submit', async (req, res) => {
     }
 
     if (hasOversizedField(req.body) || hasSuspiciousContent(req.body)) {
-      console.log('Submission rejected: suspicious content', {
-        ip: getClientIp(req),
-        phone,
-        service,
-        page
-      });
+      console.log('Submission rejected: suspicious content');
       return res.status(400).send('Spam detected');
     }
 
     // Ignore CI test submissions but still return success
     if (isTestSubmission(req.body)) {
-      console.log('CI test submission ignored:', { name, phone, message });
+      console.log('CI test submission ignored');
       return res.redirect('https://kepstroy.ru/spasibo/');
     }
 
@@ -330,7 +327,7 @@ app.post('/submit', async (req, res) => {
 
     const clientIp = getClientIp(req);
     if (isRateLimited(clientIp, phone)) {
-      console.log('Rate limit exceeded:', { clientIp, phone });
+      console.log('Rate limit exceeded');
       return res.status(429).send('Слишком много заявок. Пожалуйста, подождите.');
     }
 
@@ -340,11 +337,22 @@ app.post('/submit', async (req, res) => {
       phone: phoneDisplay
     });
 
-    await sendTelegramMessage(text, digits);
-    recordSubmission(clientIp, phone);
+    pendingPhones.add(digits);
+    pendingByIp.set(clientIp, (pendingByIp.get(clientIp) || 0) + 1);
+    try {
+      await deliverLead({
+        ...(channels.telegram ? { telegram: () => sendTelegramMessage(text, digits) } : {}),
+        ...(channels.max ? { max: () => maxClient.sendLead(text, digits) } : {})
+      });
+      recordSubmission(clientIp, phone);
+    } finally {
+      pendingPhones.delete(digits);
+      const pending = (pendingByIp.get(clientIp) || 1) - 1;
+      if (pending) pendingByIp.set(clientIp, pending); else pendingByIp.delete(clientIp);
+    }
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
-    console.error('Form handler error:', error);
+    console.error('Form handler: submission delivery failed');
     res.status(500).send('Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62');
   }
 });
@@ -362,7 +370,7 @@ app.post('/webhook', async (req, res) => {
     }
     res.sendStatus(200);
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Webhook processing failed');
     res.sendStatus(200);
   }
 });
@@ -390,15 +398,15 @@ async function pollUpdates(offset = 0) {
 }
 
 function startServer() {
-  if (!BOT_TOKEN || !CHAT_ID) {
-    console.error('Missing BOT_TOKEN or CHAT_ID environment variables');
+  if (!channels.telegram && !channels.max) {
+    console.error('No delivery channel configured');
     process.exit(1);
   }
 
   const port = process.env.PORT || 3000;
   return app.listen(port, () => {
     console.log(`Form handler listening on port ${port}`);
-    pollUpdates();
+    if (channels.telegram) pollUpdates();
   });
 }
 

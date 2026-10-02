@@ -1,11 +1,15 @@
 {
   "name": "kepstroy-form-handler",
   "version": "1.0.0",
-  "description": "Form handler for kepstroy.ru — sends leads to Telegram",
+  "description": "Form handler for kepstroy.ru — independent Telegram and MAX lead delivery",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "max:discover": "node max-setup.js discover",
+    "max:check": "node max-setup.js check",
+    "max:send-test": "node max-setup.js send-test",
+    "check:delivery": "node check-delivery.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
