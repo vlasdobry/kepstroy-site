@@ -18,7 +18,13 @@ async function checkDelivery(env = process.env, fetchImpl, report) {
 }
 
 if (require.main === module) {
-  checkDelivery().catch(() => { console.error('No configured delivery channel passed connectivity checks'); process.exitCode = 1; });
+  // This one-shot, read-only CLI is done once any channel is verified.
+  // A proxy TCP handshake can outlive fetch abort; it must not hold the gate.
+  // Flush the final line before exiting. The long-running form server is untouched.
+  checkDelivery().then(
+    () => process.stdout.write('Messenger connectivity check passed\n', () => process.exit(0)),
+    () => process.stderr.write('No configured delivery channel passed connectivity checks\n', () => process.exit(1))
+  );
 }
 
 module.exports = { checkDelivery };
