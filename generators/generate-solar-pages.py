@@ -23,7 +23,7 @@ MAIN_TEMPLATE_PATH = GENERATOR_DIR / "solar-main-template.html"
 CITY_TEMPLATE_PATH = GENERATOR_DIR / "solar-city-template.html"
 MAIN_OUTPUT = Path("uslugi/solnechnye-paneli/index.html")
 SOLAR_CSS_VERSION = "7"
-SOLAR_JS_VERSION = "7"
+SOLAR_JS_VERSION = "8"
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 REQUIRED_OFFER_KEYS = {
     "product_name",

@@ -165,6 +165,7 @@ const trackSolarGoal = (goal) => {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
+    let handleIntent = null;
     const toggle = document.querySelector('.menu-toggle');
     const menu = document.getElementById('solar-menu');
     if (toggle && menu) {
@@ -210,6 +211,10 @@ if (typeof document !== 'undefined') {
         const target = document.getElementById(anchor.hash.slice(1));
         if (!target) return;
 
+        if (anchor.dataset.solarIntent && handleIntent) {
+          handleIntent(anchor.dataset.solarIntent);
+        }
+
         if (anchor.classList.contains('solar-skip') || menu.contains(anchor)) {
           if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
           target.focus({ preventScroll: true });
@@ -242,6 +247,12 @@ if (typeof document !== 'undefined') {
     const resultNote = document.getElementById('solar-result-note');
     const error = document.getElementById('solar-calculator-error');
     const calculateButton = document.getElementById('solar-calculate');
+    const requestTitle = document.querySelector('[data-solar-request-title]');
+    const requestCopy = document.querySelector('[data-solar-request-copy]');
+    const submitButton = requestForm.querySelector('button[type="submit"]');
+    const defaultRequestTitle = requestTitle?.textContent;
+    const defaultRequestCopy = requestCopy?.textContent;
+    const defaultSubmitLabel = submitButton?.textContent;
     let calculatorConfig;
     try {
       calculatorConfig = readSolarCalculatorConfig(calculatorConfigRoot);
@@ -275,6 +286,22 @@ if (typeof document !== 'undefined') {
     const renderQualification = () => {
       const panelsOnly = scenarioInput.value === 'panels';
       quantityField.hidden = !panelsOnly;
+      const installationOnly = scenarioInput.value === 'installation';
+      if (requestTitle) {
+        requestTitle.textContent = panelsOnly
+          ? requestTitle.dataset.solarPanelsTitle
+          : installationOnly ? 'Обсудим монтаж панелей для вашего объекта' : defaultRequestTitle;
+      }
+      if (requestCopy) {
+        requestCopy.textContent = panelsOnly
+          ? 'Оставьте номер. Уточним количество, наличие и доставку панелей.'
+          : defaultRequestCopy;
+      }
+      if (submitButton) {
+        submitButton.textContent = panelsOnly
+          ? 'Уточнить наличие'
+          : installationOnly ? 'Обсудить монтаж' : defaultSubmitLabel;
+      }
       try {
         const currentQualification = qualification();
         quantityInput.removeAttribute('aria-invalid');
@@ -307,6 +334,19 @@ if (typeof document !== 'undefined') {
       trackSolarGoal('solar_calculator_start');
     };
 
+    const selectIntent = (scenario) => {
+      if (!SCENARIO_LABELS[scenario]) return;
+      scenarioInput.value = scenario;
+      if (scenario === 'panels') taskInput.value = 'panels';
+      else if (taskInput.value === 'panels') taskInput.value = 'consult';
+      renderQualification();
+    };
+
+    handleIntent = (scenario) => {
+      selectIntent(scenario);
+      markCalculatorStarted();
+    };
+
     scenarioInput.addEventListener('change', () => {
       if (scenarioInput.value === 'panels') taskInput.value = 'panels';
       else if (taskInput.value === 'panels') taskInput.value = 'consult';
@@ -329,9 +369,16 @@ if (typeof document !== 'undefined') {
       formStarted = true;
       trackSolarGoal('solar_form_start');
     });
-    requestForm.addEventListener('submit', () => syncMessage(), true);
+    requestForm.addEventListener('submit', (event) => {
+      if (!renderQualification()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        quantityInput.focus();
+      }
+    }, true);
     commentInput.addEventListener('input', () => syncMessage());
-    renderQualification();
+    if (window.location.hash === '#panel') selectIntent('panels');
+    else renderQualification();
   });
 }
 

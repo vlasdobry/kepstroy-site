@@ -60,6 +60,9 @@ jobs:
       - name: Test analytics notice layout and events
         run: node tests/test_analytics_notice_browser.cjs
 
+      - name: Test solar buyer intent through the contact form
+        run: node tests/test_solar_intent_browser.cjs
+
       - name: Run site readiness tests
         run: python -m unittest discover -s tests -v
 

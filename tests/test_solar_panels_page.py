@@ -221,7 +221,7 @@ class SolarPanelsPageTests(unittest.TestCase):
             )
             self.assertIsNotNone(mobile_cta, str(page))
             self.assertIn(
-                '<a href="#calculator" class="btn btn--primary">Подобрать систему</a>',
+                '<a data-solar-intent="turnkey" href="#calculator" class="btn btn--primary">Подобрать систему</a>',
                 mobile_cta.group(1),
                 str(page),
             )
@@ -377,7 +377,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual({expected_version}, set(versions))
 
     def test_all_generated_solar_pages_use_the_current_js_cache_version(self):
-        expected_version = "7"
+        expected_version = "8"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(
