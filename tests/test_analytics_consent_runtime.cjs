@@ -383,6 +383,52 @@ test('trackGoal delegates normally before notice acknowledgement', () => {
   assert.equal(reachGoalCall[2], 'phone_click');
 });
 
+test('notice reports one actual display and one acknowledgement without duplicate events', () => {
+  const harness = createHarness();
+  assert.equal(harness.ymCalls('reachGoal').length, 0);
+  harness.completeDom();
+  harness.completeDom();
+  harness.runScript();
+  assert.deepEqual(Array.from(harness.ymCalls('reachGoal'), args => args[2]), ['analytics_notice_shown']);
+  harness.acknowledge();
+  harness.acknowledge();
+  assert.deepEqual(Array.from(harness.ymCalls('reachGoal'), args => args[2]), [
+    'analytics_notice_shown', 'analytics_notice_dismissed',
+  ]);
+  assert.equal(harness.storageWrites.length, 1);
+});
+
+test('already acknowledged notices do not report displays or dismissals', () => {
+  for (const stored of [{ storedAcknowledgement: 'true' }, { storedConsent: 'true' }]) {
+    const harness = createHarness({ ...stored, readyState: 'complete' });
+    harness.acknowledge();
+    assert.equal(harness.ymCalls('reachGoal').length, 0);
+  }
+});
+
+test('storage failure still reports a single dismissal and closes the notice', () => {
+  const harness = createHarness({ storageThrows: true, readyState: 'complete' });
+  harness.acknowledge();
+  harness.acknowledge();
+  assert.equal(harness.document.getElementById('cookieBanner').hidden, true);
+  assert.deepEqual(Array.from(harness.ymCalls('reachGoal'), args => args[2]), [
+    'analytics_notice_shown', 'analytics_notice_dismissed',
+  ]);
+});
+
+test('analytics event errors cannot prevent acknowledgement and hiding', () => {
+  const harness = createHarness({
+    readyState: 'complete',
+    preexistingYm(_counter, command) {
+      if (command === 'reachGoal') throw new Error('analytics unavailable');
+    },
+  });
+  assert.doesNotThrow(() => harness.acknowledge());
+  assert.equal(harness.document.getElementById('cookieBanner').hidden, true);
+  assert.equal(harness.window.KepstroyAnalytics.isNoticeAcknowledged(), true);
+  assert.deepEqual(harness.storageWrites, [[storageKey, 'true']]);
+});
+
 test('failed owned tag resets state and a later explicit load retries once', () => {
   const harness = createHarness();
   harness.completeDom();
@@ -418,11 +464,11 @@ test('existing ready Yandex loader without init evidence is initialized once', (
   assert.equal(harness.matchingMetrikaScripts().length, 1);
   assert.equal(harness.metrikaScripts().length, 0);
   assert.equal(harness.window.KepstroyAnalytics.state, 'loaded');
-  assert.deepEqual(ymCalls.map(args => args.slice(0, 2)), [[109754800, 'init']]);
+  assert.deepEqual(ymCalls.map(args => args.slice(0, 2)), [[109754800, 'init'], [109754800, 'reachGoal']]);
 
   harness.runScript();
   assert.equal(harness.matchingMetrikaScripts().length, 1);
-  assert.equal(ymCalls.length, 1);
+  assert.equal(ymCalls.length, 2);
 });
 
 test('existing Yandex loader URL variants are reused and receive one missing init', () => {
@@ -499,6 +545,6 @@ test('tracking client uses the analytics API before notice acknowledgement', asy
   await harness.window.KepstroyTracking.appendTo(params);
 
   assert.equal(params.get('client_id'), 'test-client-id');
-  assert.deepEqual(directYmCalls.map(args => args[1]), ['init', 'reachGoal', 'getClientID']);
+  assert.deepEqual(directYmCalls.map(args => args[1]), ['init', 'reachGoal', 'reachGoal', 'getClientID']);
   assert.ok(harness.timeoutDelays.includes(700));
 });

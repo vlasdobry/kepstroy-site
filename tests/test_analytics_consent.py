@@ -61,7 +61,7 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
                 self.assertEqual(
                     1,
                     len(loader_tags := re.findall(
-                        r'<script\b[^>]*\bsrc=["\']/js/analytics-consent\.js\?v=2["\'][^>]*></script>',
+                        r'<script\b[^>]*\bsrc=["\']/js/analytics-consent\.js\?v=3["\'][^>]*></script>',
                         source,
                         re.IGNORECASE,
                     )),
@@ -72,7 +72,7 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
     def test_shared_loader_runs_before_scripts_that_can_emit_goals(self):
         for path, source in [*public_html_sources(), *generated_page_templates()]:
             with self.subTest(path=path.relative_to(REPO_ROOT).as_posix()):
-                loader_position = source.index("/js/analytics-consent.js?v=2")
+                loader_position = source.index("/js/analytics-consent.js?v=3")
                 goal_script_positions = [
                     source.find(marker)
                     for marker in ("/js/tracking.js", "/js/main.js", "js/main.js")
@@ -149,7 +149,7 @@ class AnalyticsConsentContractsTests(unittest.TestCase):
 
     def test_predeploy_validator_accepts_only_the_shared_immediate_analytics_contract(self):
         validator = VALIDATOR.read_text(encoding="utf-8")
-        self.assertIn('/js/analytics-consent.js?v=2', validator)
+        self.assertIn('/js/analytics-consent.js?v=3', validator)
         self.assertNotIn("consent-gated Yandex.Metrika loader", validator)
 
         result = subprocess.run(

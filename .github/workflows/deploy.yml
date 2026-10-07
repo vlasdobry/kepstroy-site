@@ -57,6 +57,9 @@ jobs:
       - name: Test analytics consent runtime
         run: npm run test:analytics-consent
 
+      - name: Test analytics notice layout and events
+        run: node tests/test_analytics_notice_browser.cjs
+
       - name: Run site readiness tests
         run: python -m unittest discover -s tests -v
 

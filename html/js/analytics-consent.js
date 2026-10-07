@@ -9,6 +9,8 @@
   const TAG_URL = `https://mc.yandex.ru/metrika/tag.js?id=${COUNTER_ID}`;
   const document = root.document;
   let noticeAcknowledged = readAcknowledgement();
+  let noticeShownTracked = false;
+  let bannerPositionInstalled = false;
   let loaderState = 'idle';
   let ownedTag = null;
   let ownedYmQueue = null;
@@ -284,8 +286,10 @@
     document.body.appendChild(banner);
 
     acknowledgeButton.addEventListener('click', function acknowledgeMetrikaNotice() {
+      if (noticeAcknowledged || banner.hidden) return;
       storeAcknowledgement();
       banner.hidden = true;
+      trackGoal('analytics_notice_dismissed');
     });
 
     return banner;
@@ -295,6 +299,37 @@
     installBannerStyles();
     const banner = document.getElementById('cookieBanner') || createBanner();
     banner.hidden = noticeAcknowledged;
+    if (banner.hidden) return;
+    positionBanner(banner);
+    if (!noticeShownTracked) {
+      noticeShownTracked = true;
+      trackGoal('analytics_notice_shown');
+    }
+  }
+
+  function positionBanner(banner) {
+    const panels = Array.from(document.querySelectorAll('.solar-mobile-cta, .sticky-phone'));
+    const updatePosition = () => {
+      let bottom = 16;
+      if (typeof root.getComputedStyle === 'function') {
+        panels.forEach((panel) => {
+          const style = root.getComputedStyle(panel);
+          // Reserve the panel's layout height even during its slide-in animation.
+          if (style.position === 'fixed' && panel.offsetHeight > 0) {
+            bottom = Math.max(bottom, panel.offsetHeight + (parseFloat(style.bottom) || 0) + 12);
+          }
+        });
+      }
+      banner.style.bottom = `${bottom}px`;
+    };
+    updatePosition();
+    if (bannerPositionInstalled) return;
+    bannerPositionInstalled = true;
+    root.addEventListener('resize', updatePosition);
+    if (typeof root.ResizeObserver === 'function') {
+      const observer = new root.ResizeObserver(updatePosition);
+      panels.forEach(panel => observer.observe(panel));
+    }
   }
 
   root.KepstroyAnalytics = Object.freeze({

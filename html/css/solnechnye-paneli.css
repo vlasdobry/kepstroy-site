@@ -901,9 +901,6 @@ body:has(.solar-page) .menu-toggle:focus-visible {
     font-weight: 800;
   }
 
-  body:has(.solar-page) .cookie-banner {
-    bottom: 80px;
-  }
 }
 
 @media (max-width: 420px) {
