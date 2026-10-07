@@ -5,6 +5,18 @@ const http = require('node:http');
 const express = require('express');
 const packageJson = require('../package.json');
 const packageLock = require('../package-lock.json');
+const proxyaddr = require('proxy-addr');
+
+test('IPv4-mapped proxy subnets cannot trust arbitrary clients', () => {
+  const malformed = proxyaddr.compile('::ffff:10.0.0.0/8');
+  const intended = proxyaddr.compile('::ffff:10.0.0.0/104');
+  for (const address of ['203.0.113.9', '::ffff:203.0.113.9']) {
+    assert.equal(malformed(address), false);
+    assert.equal(intended(address), false);
+  }
+  assert.equal(intended('10.0.0.1'), true);
+  assert.equal(intended('::ffff:10.0.0.1'), true);
+});
 
 test('patched parser dependencies are pinned across config, lockfile, and installed tree', () => {
   assert.deepEqual(packageJson.overrides, {
