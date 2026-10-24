@@ -5,11 +5,13 @@ const { buildLeadMessage, buildLeadStatusMessage } = require('./lead-message');
 const { requestJson } = require('./safe-request');
 const { createMaxClient } = require('./max-client');
 const { deliveryConfig, deliverLead } = require('./lead-delivery');
+const { observeSubmission, submissionResult, reportSubmissionChannel, submissionErrorHandler } = require('./submission-observability');
 
 const app = express();
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
+app.use(observeSubmission);
 
 const ALLOWED_ORIGINS = new Set(['https://kepstroy.ru', 'https://www.kepstroy.ru']);
 const ALLOWED_HOSTS = new Set(['kepstroy.ru', 'www.kepstroy.ru']);
@@ -292,41 +294,54 @@ async function handleCallback(callbackQuery) {
 }
 
 app.post('/submit', async (req, res) => {
+  let failureReason = 'internal_error';
   try {
+    const fields = ['name', 'phone', 'service', 'page', 'message', 'city', 'locality', 'form_source', 'website', 'company'];
+    if (!req.body || Array.isArray(req.body) || fields.some(key => req.body[key] !== undefined && typeof req.body[key] !== 'string')) {
+      submissionResult(res, 'invalid_payload');
+      return res.status(400).send('Некорректный запрос');
+    }
     const { name, phone, service, page, message } = req.body;
 
     if (!hasValidBrowserSource(req)) {
+      submissionResult(res, 'invalid_source');
       console.log('Submission rejected: invalid browser source');
       return res.status(403).send('Forbidden');
     }
 
     // Honeypots: real users never fill these fields.
     if (fieldHasValue(req.body.website) || fieldHasValue(req.body.company)) {
+      submissionResult(res, 'bot_check');
       return res.status(400).send('Spam detected');
     }
 
     if (req.body.form_source !== 'kepstroy') {
+      submissionResult(res, 'invalid_form');
       return res.status(400).send('Invalid form');
     }
 
     if (hasOversizedField(req.body) || hasSuspiciousContent(req.body)) {
+      submissionResult(res, 'rejected_content');
       console.log('Submission rejected: suspicious content');
       return res.status(400).send('Spam detected');
     }
 
     // Ignore CI test submissions but still return success
     if (isTestSubmission(req.body)) {
+      submissionResult(res, 'test_ignored');
       console.log('CI test submission ignored');
       return res.redirect('https://kepstroy.ru/spasibo/');
     }
 
     const digits = normalizePhone(phone);
     if (!isLikelyRussianLeadPhone(phone)) {
+      submissionResult(res, 'invalid_phone');
       return res.status(400).send('Некорректный номер телефона');
     }
 
     const clientIp = getClientIp(req);
     if (isRateLimited(clientIp, phone)) {
+      submissionResult(res, 'rate_limit');
       console.log('Rate limit exceeded');
       return res.status(429).send('Слишком много заявок. Пожалуйста, подождите.');
     }
@@ -343,6 +358,9 @@ app.post('/submit', async (req, res) => {
       await deliverLead({
         ...(channels.telegram ? { telegram: () => sendTelegramMessage(text, digits) } : {}),
         ...(channels.max ? { max: () => maxClient.sendLead(text, digits) } : {})
+      }, event => reportSubmissionChannel(res, event)).catch(error => {
+        failureReason = 'delivery_failed';
+        throw error;
       });
       recordSubmission(clientIp, phone);
     } finally {
@@ -350,9 +368,11 @@ app.post('/submit', async (req, res) => {
       const pending = (pendingByIp.get(clientIp) || 1) - 1;
       if (pending) pendingByIp.set(clientIp, pending); else pendingByIp.delete(clientIp);
     }
+    submissionResult(res, 'delivered');
     res.redirect('https://kepstroy.ru/spasibo/');
   } catch (error) {
-    console.error('Form handler: submission delivery failed');
+    submissionResult(res, failureReason);
+    console.error('Form handler: submission failed');
     res.status(500).send('Ошибка отправки. Пожалуйста, позвоните напрямую: +7 (978) 461-59-62');
   }
 });
@@ -378,6 +398,8 @@ app.post('/webhook', async (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ ok: true });
 });
+
+app.use(submissionErrorHandler);
 
 async function pollUpdates(offset = 0) {
   try {

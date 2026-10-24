@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 
-COPY index.js lead-message.js lead-delivery.js max-client.js safe-request.js max-setup.js check-delivery.js ./
+COPY index.js lead-message.js lead-delivery.js max-client.js safe-request.js max-setup.js check-delivery.js submission-observability.js ./
 COPY certs/ ./certs/
 
 EXPOSE 3000

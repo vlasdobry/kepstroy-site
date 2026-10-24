@@ -210,6 +210,38 @@ function hasFilledHoneypot(form) {
     .some(input => input.value.trim());
 }
 
+async function sendFormRequest(formData) {
+  try {
+    await appendTrackingData(formData);
+  } catch {
+    throw { formDiagnostic: { reason: 'prepare_request', http_status: 0 } };
+  }
+  let response;
+  try {
+    response = await fetch('/submit', { method: 'POST', body: formData });
+  } catch {
+    throw { formDiagnostic: { reason: 'network', http_status: 0 } };
+  }
+  if (!response.ok) {
+    const knownReasons = ['invalid_source', 'bot_check', 'invalid_form', 'rejected_content',
+      'invalid_phone', 'rate_limit', 'delivery_failed', 'invalid_payload', 'payload_too_large', 'internal_error'];
+    const reason = response.headers?.get('X-Form-Error');
+    const requestId = response.headers?.get('X-Request-ID');
+    const params = { reason: knownReasons.includes(reason) ? reason : 'http_error',
+      http_status: Number.isInteger(response.status) && response.status >= 400 && response.status <= 599 ? response.status : 0 };
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId || '')) {
+      params.request_id = requestId;
+    }
+    throw { formDiagnostic: params };
+  }
+  return response;
+}
+
+function reportFormFailure(form, error) {
+  const goal = form.dataset.errorGoal === 'solar_submit_error' ? 'solar_submit_error' : 'form_submit_error';
+  trackGoal(goal, error?.formDiagnostic || { reason: 'prepare_request', http_status: 0 });
+}
+
 // === Universal form handler for all /submit forms ===
 document.querySelectorAll('form[action="/submit"]').forEach(form => {
   if (form.id === 'contact-form') return;
@@ -234,9 +266,7 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
       if (!formData.get('page')) {
         formData.append('page', window.location.href);
       }
-      await appendTrackingData(formData);
-
-      const response = await fetch('/submit', { method: 'POST', body: formData });
+      const response = await sendFormRequest(formData);
       if (response.ok) {
         trackGoal('form_submit');
         window.location.href = '/spasibo/';
@@ -249,22 +279,21 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalHtml;
       }
-      const errorGoal = form.dataset.errorGoal;
-      if (errorGoal) trackGoal(errorGoal);
+      reportFormFailure(form, error);
       alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62');
     }
   });
 });
 
 // === Traffic attribution and Yandex.Metrica goals ===
-function trackGoal(goal) {
+function trackGoal(goal, params) {
   try {
     if (window.KepstroyTracking) {
-      window.KepstroyTracking.trackGoal(goal);
+      window.KepstroyTracking.trackGoal(goal, params);
       return;
     }
     if (window.KepstroyAnalytics) {
-      window.KepstroyAnalytics.trackGoal(goal);
+      window.KepstroyAnalytics.trackGoal(goal, params);
     }
   } catch {
     // Analytics must never change the result of a user action.
@@ -304,12 +333,7 @@ if (contactForm) {
     try {
       const formData = new URLSearchParams(new FormData(contactForm));
       formData.append('page', window.location.href);
-      await appendTrackingData(formData);
-
-      const response = await fetch('/submit', {
-        method: 'POST',
-        body: formData
-      });
+      const response = await sendFormRequest(formData);
 
       if (response.ok) {
         // Track form submission
@@ -330,6 +354,7 @@ if (contactForm) {
       delete contactForm.dataset.submitting;
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalHtml;
+      reportFormFailure(contactForm, error);
       alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую.');
     }
   });

@@ -371,6 +371,13 @@ test('unavailable localStorage does not block Metrika or closing the notice', ()
   assert.equal(harness.window.KepstroyAnalytics.isNoticeAcknowledged(), true);
 });
 
+test('diagnostic goal parameters survive the analytics API', () => {
+  const h = createHarness();
+  const params = { reason: 'network', http_status: 0 };
+  h.window.KepstroyAnalytics.trackGoal('solar_submit_error', params);
+  assert.deepEqual(Array.from(h.ymCalls('reachGoal').at(-1)), [109754800, 'reachGoal', 'solar_submit_error', params]);
+});
+
 test('trackGoal delegates normally before notice acknowledgement', () => {
   const harness = createHarness();
   harness.completeDom();

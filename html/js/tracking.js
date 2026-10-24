@@ -91,10 +91,10 @@
     return analytics.getClientID();
   };
 
-  const trackGoal = (goal) => {
+  const trackGoal = (goal, params) => {
     const analytics = root.KepstroyAnalytics;
     if (analytics && typeof analytics.trackGoal === 'function') {
-      analytics.trackGoal(goal);
+      analytics.trackGoal(goal, params);
     }
   };
 

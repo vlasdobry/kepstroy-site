@@ -12,10 +12,12 @@ function createHarness({
   formId = 'calc-form',
   honeypotValue = '',
   trackGoalThrows = false,
+  errorGoal,
 } = {}) {
   const listeners = new Map();
   const alerts = [];
   const goals = [];
+  const goalDetails = [];
   let fetchCalls = 0;
 
   let buttonHtml = 'Отправить <span>расчёт</span>';
@@ -47,7 +49,7 @@ function createHarness({
   const honeypot = { inputs: honeypotInputs };
   const form = {
     id: formId,
-    dataset: {},
+    dataset: { ...(errorGoal ? { errorGoal } : {}) },
     fields: [
       ['name', 'Тест'],
       ['phone', '+79780000000'],
@@ -85,8 +87,9 @@ function createHarness({
   const window = {
     KepstroyTracking: {
       appendTo: appendTracking,
-      trackGoal(goal) {
+      trackGoal(goal, params) {
         goals.push(goal);
+        goalDetails.push({ goal, params });
         if (trackGoalThrows) throw new Error('analytics unavailable');
       },
     },
@@ -143,6 +146,7 @@ function createHarness({
       return fetchCalls;
     },
     goals,
+    goalDetails,
     window,
   };
 }
@@ -154,7 +158,7 @@ function assertFormRestored(harness) {
 }
 
 function assertNoSuccessSideEffects(harness) {
-  assert.deepEqual(harness.goals, []);
+  assert.ok(!harness.goals.includes('form_submit'));
   assert.equal(harness.window.location.href, initialUrl);
 }
 
@@ -174,6 +178,41 @@ test('double submit while attribution is pending sends one POST', async () => {
   await Promise.all([firstSubmit, secondSubmit]);
 
   assert.equal(harness.fetchCalls, 1);
+});
+
+test('solar HTTP refusal reports a safe reason and server correlation ID', async () => {
+  const requestId = 'e88a1445-0d18-4322-a474-df2081c3eab6';
+  const h = createHarness({ errorGoal: 'solar_submit_error', fetchResult: async () => ({
+    ok: false, status: 400,
+    headers: { get: name => ({ 'X-Request-ID': requestId, 'X-Form-Error': 'invalid_phone' })[name] },
+  }) });
+  await h.form.submit();
+  assert.deepEqual(h.goals, ['solar_submit_error']);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.goalDetails[0].params)), {
+    reason: 'invalid_phone', http_status: 400, request_id: requestId,
+  });
+  assertFormRestored(h);
+});
+
+test('network and preparation errors are distinct and do not report contact values', async () => {
+  for (const [reason, options] of [
+    ['network', { fetchResult: async () => { throw Error('secret phone +79781234567'); } }],
+    ['prepare_request', { appendTracking: async () => { throw Error('secret input'); } }],
+  ]) {
+    const h = createHarness(options);
+    await h.form.submit();
+    assert.deepEqual(h.goals, ['form_submit_error']);
+    assert.deepEqual(JSON.parse(JSON.stringify(h.goalDetails[0].params)), { reason, http_status: 0 });
+    assertFormRestored(h);
+  }
+});
+
+test('untrusted response diagnostics cannot enter analytics', async () => {
+  const h = createHarness({ fetchResult: async () => ({ ok: false, status: 503,
+    headers: { get: () => 'secret +79781234567 https://example.org/' },
+  }) });
+  await h.form.submit();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.goalDetails[0].params)), { reason: 'http_error', http_status: 503 });
 });
 
 test('rejected attribution sends no POST and restores the form', async () => {

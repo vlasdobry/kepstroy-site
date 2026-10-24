@@ -175,12 +175,13 @@
     return true;
   }
 
-  function trackGoal(goal) {
+  function trackGoal(goal, params) {
     if (!goal) return false;
     if (!loadMetrika() || typeof root.ym !== 'function') return false;
 
     try {
-      root.ym(COUNTER_ID, 'reachGoal', goal);
+      if (params) root.ym(COUNTER_ID, 'reachGoal', goal, params);
+      else root.ym(COUNTER_ID, 'reachGoal', goal);
       return true;
     } catch {
       return false;

@@ -95,7 +95,7 @@ class SiteReadinessTests(unittest.TestCase):
 
     def test_form_handler_image_contains_all_runtime_modules(self):
         dockerfile = (REPO_ROOT / "form-handler" / "Dockerfile").read_text(encoding="utf-8")
-        for module in ("index.js", "lead-message.js", "lead-delivery.js", "max-client.js", "safe-request.js", "max-setup.js", "check-delivery.js"):
+        for module in ("index.js", "lead-message.js", "lead-delivery.js", "max-client.js", "safe-request.js", "max-setup.js", "check-delivery.js", "submission-observability.js"):
             self.assertIn(module, dockerfile)
         self.assertIn("COPY certs/ ./certs/", dockerfile)
 
