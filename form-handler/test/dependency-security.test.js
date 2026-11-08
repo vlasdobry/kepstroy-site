@@ -21,12 +21,12 @@ test('IPv4-mapped proxy subnets cannot trust arbitrary clients', () => {
 test('patched parser dependencies are pinned across config, lockfile, and installed tree', () => {
   assert.deepEqual(packageJson.overrides, {
     'body-parser': '1.20.9',
-    qs: '6.16.0'
+    qs: '6.16.1'
   });
   assert.equal(packageLock.packages['node_modules/body-parser'].version, '1.20.9');
-  assert.equal(packageLock.packages['node_modules/qs'].version, '6.16.0');
+  assert.equal(packageLock.packages['node_modules/qs'].version, '6.16.1');
   assert.equal(require('body-parser/package.json').version, '1.20.9');
-  assert.equal(require('qs/package.json').version, '6.16.0');
+  assert.equal(require('qs/package.json').version, '6.16.1');
 });
 
 test('overridden urlencoded parser preserves expected inputs and rejects oversized bodies', async (t) => {
