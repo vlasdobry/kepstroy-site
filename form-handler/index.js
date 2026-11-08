@@ -6,6 +6,7 @@ const { requestJson } = require('./safe-request');
 const { createMaxClient } = require('./max-client');
 const { deliveryConfig, deliverLead } = require('./lead-delivery');
 const { observeSubmission, submissionResult, reportSubmissionChannel, submissionErrorHandler } = require('./submission-observability');
+const { createDuplicateGuard, normalizeText } = require('./lead-duplicates');
 
 const app = express();
 
@@ -46,6 +47,7 @@ const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
 const telegramAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : undefined;
 const channels = deliveryConfig(process.env);
 const maxClient = channels.max ? createMaxClient({ token: process.env.MAX_BOT_TOKEN, chatId: process.env.MAX_CHAT_ID }) : null;
+const duplicateGuard = createDuplicateGuard({ filePath: process.env.LEAD_STATE_PATH });
 
 // In-memory rate limiting storage. Enough for a single small container.
 const recentSubmissions = new Map();
@@ -69,6 +71,12 @@ const SPAM_PATTERNS = [
   /провер(?:ка|ки)\s+контрагент/i,
   /книг[аи]\s+покупок/i,
   /книг[аи]\s+продаж/i
+];
+// Match the offered service, not isolated words such as "сайт", "предложение" or an email.
+const UNSOLICITED_OFFER_PATTERNS = [
+  /(?:занима(?:юсь|емся)|предлага(?:ю|ем)|предложить|предложение).{0,100}(?:создани|разработ|продвижени|оптимизаци|seo|сео).{0,40}сайт/u,
+  /(?:продвин(?:уть|ем|у)|оптимизир(?:уем|ую)|разработа(?:ть|ем|ю)|созда(?:ть|дим|м)).{0,45}(?:ваш(?:его|ему)?\s+)?(?:web\s*)?сайт/u,
+  /(?:предлаг|предлож|внес(?:ём|ем|ти|ли)|включим).{0,160}(?:реестр.{0,50}(?:минпромторг|мпт)|минпромторг.{0,50}реестр)/u
 ];
 
 function cleanPhone(phone) {
@@ -182,10 +190,12 @@ function hasValidBrowserSource(req) {
 }
 
 function hasSuspiciousContent(body) {
-  const text = ['name', 'service', 'message', 'city', 'locality']
+  const text = ['name', 'service', 'message', 'comment', 'city', 'locality', 'septic_type', 'region']
     .map((key) => body[key] || '')
     .join('\n');
-  return SPAM_PATTERNS.some((pattern) => pattern.test(text));
+  const normalized = normalizeText(text);
+  return SPAM_PATTERNS.some((pattern) => pattern.test(normalized)) ||
+    UNSOLICITED_OFFER_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 function hasOversizedField(body) {
@@ -340,6 +350,12 @@ app.post('/submit', async (req, res) => {
     }
 
     const clientIp = getClientIp(req);
+    const duplicateRemaining = duplicateGuard.remaining(req.body, digits);
+    if (duplicateRemaining) {
+      submissionResult(res, 'duplicate_submission');
+      res.setHeader('Retry-After', Math.ceil(duplicateRemaining / 1000));
+      return res.status(409).send('Такая заявка уже получена. Для уточнения позвоните: +7 (978) 461-59-62');
+    }
     if (isRateLimited(clientIp, phone)) {
       submissionResult(res, 'rate_limit');
       console.log('Rate limit exceeded');
@@ -363,6 +379,7 @@ app.post('/submit', async (req, res) => {
         throw error;
       });
       recordSubmission(clientIp, phone);
+      duplicateGuard.record(req.body, digits);
     } finally {
       pendingPhones.delete(digits);
       const pending = (pendingByIp.get(clientIp) || 1) - 1;
@@ -396,7 +413,8 @@ app.post('/webhook', async (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true });
+  const ok = duplicateGuard.healthy();
+  res.status(ok ? 200 : 503).json({ ok });
 });
 
 app.use(submissionErrorHandler);

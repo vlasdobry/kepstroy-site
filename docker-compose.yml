@@ -51,6 +51,9 @@ services:
       - TELEGRAM_PROXY_URL=${TELEGRAM_PROXY_URL:-}
       - MAX_BOT_TOKEN=${MAX_BOT_TOKEN:-}
       - MAX_CHAT_ID=${MAX_CHAT_ID:-}
+      - LEAD_STATE_PATH=/app/data/lead-state.json
+    volumes:
+      - kepstroy-lead-state:/app/data
     security_opt:
       - no-new-privileges:true
     labels:
@@ -68,6 +71,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  kepstroy-lead-state:
 
 networks:
   web:

@@ -224,7 +224,7 @@ async function sendFormRequest(formData) {
   }
   if (!response.ok) {
     const knownReasons = ['invalid_source', 'bot_check', 'invalid_form', 'rejected_content',
-      'invalid_phone', 'rate_limit', 'delivery_failed', 'invalid_payload', 'payload_too_large', 'internal_error'];
+      'invalid_phone', 'rate_limit', 'delivery_failed', 'invalid_payload', 'payload_too_large', 'internal_error', 'duplicate_submission'];
     const reason = response.headers?.get('X-Form-Error');
     const requestId = response.headers?.get('X-Request-ID');
     const params = { reason: knownReasons.includes(reason) ? reason : 'http_error',
@@ -240,6 +240,12 @@ async function sendFormRequest(formData) {
 function reportFormFailure(form, error) {
   const goal = form.dataset.errorGoal === 'solar_submit_error' ? 'solar_submit_error' : 'form_submit_error';
   trackGoal(goal, error?.formDiagnostic || { reason: 'prepare_request', http_status: 0 });
+}
+
+function formFailureMessage(error, fallback) {
+  return error?.formDiagnostic?.reason === 'duplicate_submission'
+    ? 'Такая заявка уже получена. Если хотите уточнить детали, позвоните нам: +7 (978) 461-59-62'
+    : fallback;
 }
 
 // === Universal form handler for all /submit forms ===
@@ -280,7 +286,7 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
         submitBtn.innerHTML = originalHtml;
       }
       reportFormFailure(form, error);
-      alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62');
+      alert(formFailureMessage(error, 'Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62'));
     }
   });
 });
@@ -355,7 +361,7 @@ if (contactForm) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalHtml;
       reportFormFailure(contactForm, error);
-      alert('Ошибка отправки. Пожалуйста, позвоните нам напрямую.');
+      alert(formFailureMessage(error, 'Ошибка отправки. Пожалуйста, позвоните нам напрямую.'));
     }
   });
 }

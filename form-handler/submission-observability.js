@@ -2,7 +2,7 @@ const { randomUUID } = require('node:crypto');
 
 const REASONS = new Set(['invalid_source', 'bot_check', 'invalid_form', 'rejected_content',
   'invalid_phone', 'rate_limit', 'delivery_failed', 'invalid_payload', 'payload_too_large',
-  'test_ignored', 'delivered', 'request_aborted', 'internal_error']);
+  'test_ignored', 'delivered', 'request_aborted', 'internal_error', 'duplicate_submission']);
 
 function formKind(body) {
   if (typeof body?.service !== 'string') return 'other';

@@ -215,6 +215,19 @@ test('untrusted response diagnostics cannot enter analytics', async () => {
   assert.deepEqual(JSON.parse(JSON.stringify(h.goalDetails[0].params)), { reason: 'http_error', http_status: 503 });
 });
 
+for (const formId of ['calc-form', 'contact-form', 'solar-request-form']) {
+  test(`${formId}: duplicate is explained without a new success goal or redirect`, async () => {
+    const h = createHarness({ formId, fetchResult: async () => ({ ok: false, status: 409,
+      headers: { get: name => name === 'X-Form-Error' ? 'duplicate_submission' : null },
+    }) });
+    await h.form.submit();
+    assert.equal(h.goalDetails[0].params.reason, 'duplicate_submission');
+    assert.match(h.alerts[0], /уже получена/);
+    assertFormRestored(h);
+    assertNoSuccessSideEffects(h);
+  });
+}
+
 test('rejected attribution sends no POST and restores the form', async () => {
   let rejectTracking;
   const trackingPending = new Promise((resolve, reject) => {

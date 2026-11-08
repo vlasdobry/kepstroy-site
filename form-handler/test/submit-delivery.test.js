@@ -59,7 +59,7 @@ test('all channels failed =>500; failed submission is not rate-limited as delive
   assert.equal((await submit()).status, 500);
 });
 
-test('both channels receive full lead; confirmed submission gets cooldown', async (t) => {
+test('both channels receive full lead; confirmed duplicate is not delivered twice', async (t) => {
   const { submit, calls } = await fixture(t, { telegram: 'ok', max: 'ok' });
   assert.equal((await submit()).status, 302);
   assert.equal(calls.length, 2);
@@ -67,7 +67,7 @@ test('both channels receive full lead; confirmed submission gets cooldown', asyn
     assert.ok(JSON.parse(call.options.body).text.includes('YCLID: click-id'));
     assert.ok(call.options.signal);
   }
-  assert.equal((await submit()).status, 429);
+  assert.equal((await submit()).status, 409);
   assert.equal(calls.length, 2);
 });
 
