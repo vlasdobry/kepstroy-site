@@ -383,7 +383,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
     const targetId = this.getAttribute('href');
     if (targetId === '#') return;
-    
+
     const targetElement = document.querySelector(targetId);
     if (targetElement) {
       e.preventDefault();
@@ -401,12 +401,12 @@ let lastScroll = 0;
 
 window.addEventListener('scroll', () => {
   const currentScroll = window.scrollY;
-  
+
   if (currentScroll > 100) {
     header.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
   } else {
     header.style.boxShadow = 'none';
   }
-  
+
   lastScroll = currentScroll;
 });
