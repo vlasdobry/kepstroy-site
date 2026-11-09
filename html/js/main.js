@@ -210,7 +210,7 @@ function hasFilledHoneypot(form) {
     .some(input => input.value.trim());
 }
 
-async function sendFormRequest(formData) {
+async function sendFormRequest(formData, form) {
   try {
     await appendTrackingData(formData);
   } catch {
@@ -218,6 +218,7 @@ async function sendFormRequest(formData) {
   }
   let response;
   try {
+    notifyUtilityForm(form, 'attempt');
     response = await fetch('/submit', { method: 'POST', body: formData });
   } catch {
     throw { formDiagnostic: { reason: 'network', http_status: 0 } };
@@ -240,6 +241,14 @@ async function sendFormRequest(formData) {
 function reportFormFailure(form, error) {
   const goal = form.dataset.errorGoal === 'solar_submit_error' ? 'solar_submit_error' : 'form_submit_error';
   trackGoal(goal, error?.formDiagnostic || { reason: 'prepare_request', http_status: 0 });
+}
+
+// The utility component observes this handler; it never sends a second request.
+function notifyUtilityForm(form, phase, diagnostic) {
+  if (!form?.dataset.utilityService) return false;
+  return !form.dispatchEvent(new CustomEvent('kepstroy:form-result', {
+    cancelable: true, detail: { phase, diagnostic }
+  }));
 }
 
 function formFailureMessage(error, fallback) {
@@ -272,9 +281,10 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
       if (!formData.get('page')) {
         formData.append('page', window.location.href);
       }
-      const response = await sendFormRequest(formData);
+      const response = await sendFormRequest(formData, form);
       if (response.ok) {
         trackGoal('form_submit');
+        notifyUtilityForm(form, 'success');
         window.location.href = '/spasibo/';
       } else {
         throw new Error('Submit failed');
@@ -286,7 +296,9 @@ document.querySelectorAll('form[action="/submit"]').forEach(form => {
         submitBtn.innerHTML = originalHtml;
       }
       reportFormFailure(form, error);
-      alert(formFailureMessage(error, 'Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62'));
+      if (!notifyUtilityForm(form, 'error', error?.formDiagnostic)) {
+        alert(formFailureMessage(error, 'Ошибка отправки. Пожалуйста, позвоните нам напрямую: +7 (978) 461-59-62'));
+      }
     }
   });
 });

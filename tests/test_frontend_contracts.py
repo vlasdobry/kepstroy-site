@@ -234,7 +234,7 @@ class FrontendFormContractsTests(unittest.TestCase):
             main_js.count("document.querySelectorAll('form[action=\"/submit\"]')"),
         )
         self.assertEqual(1, handler.count("form.addEventListener('submit'"))
-        self.assertEqual(1, handler.count("await sendFormRequest(formData)"))
+        self.assertEqual(1, handler.count("await sendFormRequest(formData, form)"))
         self.assertEqual(1, main_js.count("fetch('/submit'"))
 
     def test_universal_handler_locks_form_before_waiting_for_tracking(self):
@@ -244,7 +244,7 @@ class FrontendFormContractsTests(unittest.TestCase):
             "if (form.dataset.submitting === 'true') return;",
             "form.dataset.submitting = 'true';",
             "submitBtn.disabled = true;",
-            "await sendFormRequest(formData)",
+            "await sendFormRequest(formData, form)",
         ]
         for token in tokens:
             self.assertIn(token, handler)

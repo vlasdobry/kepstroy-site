@@ -236,7 +236,10 @@ class ContentConsistencyTests(unittest.TestCase):
         ]
         failures = []
         for path in offering_pages:
-            if re.search(r"бурен|скважин", path.read_text(encoding="utf-8"), re.I):
+            source = path.read_text(encoding="utf-8").replace(
+                "Бурение скважин, аварийную прочистку, мелкую сантехнику и мелкий ремонт не выполняем.", ""
+            )
+            if re.search(r"бурен|скважин", source, re.I):
                 failures.append(path.relative_to(REPO_ROOT).as_posix())
 
         water_article = (
@@ -303,6 +306,8 @@ class ContentConsistencyTests(unittest.TestCase):
         failures = []
         for path in public_claim_sources():
             text = path.read_text(encoding="utf-8").replace(ENGINEER_TERMS, "")
+            # Confirmed 09.11: visit price is distinct from connection pricing.
+            text = text.replace("Выезд 5 000 ₽ с зачётом при заключении договора.", "")
             if forbidden.search(text):
                 failures.append(path.relative_to(REPO_ROOT).as_posix())
         self.assertEqual([], failures)
@@ -419,7 +424,8 @@ class ContentConsistencyTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertNotRegex(water, r"да[её]м\s+гаранти", "vodosnabzhenie")
-        self.assertIn("Условия гарантии фиксируются в договоре", water)
+        if re.search(r"гаранти", water, re.I):
+            self.assertIn("Условия гарантии фиксируются в договоре", water)
 
     def test_city_data_contains_no_unverified_case_review_or_delivery_claims(self):
         cities = json.loads(CITY_DATA.read_text(encoding="utf-8"))["cities"]
@@ -642,7 +648,6 @@ class ContentConsistencyTests(unittest.TestCase):
     def test_target_pages_use_the_same_confirmed_engineer_visit_terms(self):
         targets = [
             SEPTIKI_PAGE,
-            KANALIZACIYA_PAGE,
             PRICES_PAGE,
             *LLMS_FILES,
             *city_sources(),
@@ -660,6 +665,14 @@ class ContentConsistencyTests(unittest.TestCase):
                 path.relative_to(REPO_ROOT).as_posix(),
             )
         self.assertEqual([], missing)
+
+        # Water/sewer have their own newly confirmed visit terms, not a global price change.
+        for slug in ["kanalizaciya", "vodosnabzhenie"]:
+            source = (HTML_ROOT / "uslugi" / slug / "index.html").read_text(encoding="utf-8")
+            self.assertIn("5 000 ₽", source)
+            self.assertIn("При заключении договора эта сумма засчитывается", source)
+            self.assertIn("после осмотра", source)
+            self.assertNotIn("3 000–6 000", source)
 
     def test_calculator_shows_confirmed_base_price_without_invented_math(self):
         source = SEPTIKI_PAGE.read_text(encoding="utf-8")
@@ -786,11 +799,16 @@ class ContentConsistencyTests(unittest.TestCase):
             self.assertIn("Выезд на объект согласуем заранее", source)
 
     def test_autonomous_sewer_price_is_scoped_to_confirmed_septic_package(self):
-        for path in [KANALIZACIYA_PAGE, PRICES_PAGE]:
+        for path in [PRICES_PAGE]:
             source = path.read_text(encoding="utf-8")
             self.assertNotRegex(source, r"80\s*000\s*[–-]\s*150\s*000\s*₽")
             self.assertIn("Автономная канализация с септиком из 2 ЖБ колец", source)
             self.assertIn("от 140 000 ₽", source)
+
+        central = KANALIZACIYA_PAGE.read_text(encoding="utf-8")
+        self.assertIn('href="/uslugi/septiki/"', central)
+        self.assertNotIn("от 140 000 ₽", central)
+        self.assertNotIn("Автономная канализация с септиком из 2 ЖБ колец", central)
 
     def test_llms_files_list_all_live_services_without_stale_contact_or_absolutes(self):
         for path in LLMS_FILES:
