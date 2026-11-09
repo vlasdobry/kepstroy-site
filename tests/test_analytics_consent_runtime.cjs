@@ -28,6 +28,14 @@ class FakeElement {
     children.forEach(child => this.appendChild(child));
   }
 
+  prepend(child) {
+    child.parentNode = this;
+    this.children.unshift(child);
+    this.ownerDocument.register(child);
+  }
+
+  getBoundingClientRect() { return this.bounds || { top: 0, bottom: 150, left: 0, right: 390 }; }
+
   appendChild(child) {
     child.parentNode = this;
     this.children.push(child);
@@ -554,4 +562,23 @@ test('tracking client uses the analytics API before notice acknowledgement', asy
   assert.equal(params.get('client_id'), 'test-client-id');
   assert.deepEqual(directYmCalls.map(args => args[1]), ['init', 'reachGoal', 'reachGoal', 'getClientID']);
   assert.ok(harness.timeoutDelays.includes(700));
+});
+
+test('notice waits for a visible intersection before reporting a display', async () => {
+  const harness = createHarness();
+  let observed;
+  harness.window.IntersectionObserver = class {
+    constructor(callback) { this.callback = callback; observed = this; }
+    observe() {}
+    disconnect() {}
+  };
+  harness.completeDom();
+  const shown = () => harness.ymCalls('reachGoal').filter(args => args[2] === 'analytics_notice_shown').length;
+  assert.equal(shown(), 0, 'creating an offscreen notice is not a display');
+  observed.callback([{ isIntersecting: false, intersectionRatio: 0 }]);
+  assert.equal(shown(), 0);
+  observed.callback([{ isIntersecting: true, intersectionRatio: 1 }]);
+  observed.callback([{ isIntersecting: true, intersectionRatio: 1 }]);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(shown(), 1);
 });

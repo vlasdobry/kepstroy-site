@@ -10,7 +10,6 @@
   const document = root.document;
   let noticeAcknowledged = readAcknowledgement();
   let noticeShownTracked = false;
-  let bannerPositionInstalled = false;
   let loaderState = 'idle';
   let ownedTag = null;
   let ownedYmQueue = null;
@@ -219,22 +218,19 @@
     style.setAttribute('data-kepstroy-notice-styles', '');
     style.textContent = `
       #cookieBanner {
-        position: fixed;
-        right: 1rem;
-        bottom: 1rem;
-        left: 1rem;
-        z-index: 10000;
+        position: static;
+        z-index: auto;
+        inset: auto;
+        box-shadow: none;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 1rem;
-        max-width: 72rem;
-        margin: 0 auto;
-        padding: 1rem 1.25rem;
-        border: 1px solid #d8dee9;
-        border-radius: 0.75rem;
+        width: 100%;
+        margin: 0;
+        padding: 0.75rem max(1.25rem, calc((100% - 72rem) / 2));
+        border-bottom: 1px solid #d8dee9;
         background: #fff;
-        box-shadow: 0 0.75rem 2rem rgba(15, 23, 42, 0.18);
         color: #1f2937;
         font: 500 0.875rem/1.5 Inter, Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
@@ -284,7 +280,8 @@
     acknowledgeButton.textContent = 'Понятно';
 
     banner.append(message, acknowledgeButton);
-    document.body.appendChild(banner);
+    // A notice in document flow never covers a CTA, form or call panel.
+    document.body.prepend(banner);
 
     acknowledgeButton.addEventListener('click', function acknowledgeMetrikaNotice() {
       if (noticeAcknowledged || banner.hidden) return;
@@ -301,35 +298,40 @@
     const banner = document.getElementById('cookieBanner') || createBanner();
     banner.hidden = noticeAcknowledged;
     if (banner.hidden) return;
-    positionBanner(banner);
-    if (!noticeShownTracked) {
-      noticeShownTracked = true;
-      trackGoal('analytics_notice_shown');
-    }
+    trackNoticeWhenVisible(banner);
   }
 
-  function positionBanner(banner) {
-    const panels = Array.from(document.querySelectorAll('.solar-mobile-cta, .sticky-phone'));
-    const updatePosition = () => {
-      let bottom = 16;
-      if (typeof root.getComputedStyle === 'function') {
-        panels.forEach((panel) => {
-          const style = root.getComputedStyle(panel);
-          // Reserve the panel's layout height even during its slide-in animation.
-          if (style.position === 'fixed' && panel.offsetHeight > 0) {
-            bottom = Math.max(bottom, panel.offsetHeight + (parseFloat(style.bottom) || 0) + 12);
-          }
-        });
-      }
-      banner.style.bottom = `${bottom}px`;
+  function trackNoticeWhenVisible(banner) {
+    let observer = null;
+    let intersects = false;
+    let displayTimer = null;
+    const report = () => {
+      if (noticeShownTracked || banner.hidden || document.hidden || !intersects) return;
+      noticeShownTracked = true;
+      trackGoal('analytics_notice_shown');
+      observer?.disconnect();
     };
-    updatePosition();
-    if (bannerPositionInstalled) return;
-    bannerPositionInstalled = true;
-    root.addEventListener('resize', updatePosition);
-    if (typeof root.ResizeObserver === 'function') {
-      const observer = new root.ResizeObserver(updatePosition);
-      panels.forEach(panel => observer.observe(panel));
+    if (typeof root.IntersectionObserver === 'function') {
+      const schedule = () => {
+        root.clearTimeout(displayTimer);
+        if (intersects && !document.hidden) displayTimer = root.setTimeout(report, 500);
+      };
+      observer = new root.IntersectionObserver(entries => {
+        intersects = entries[0].isIntersecting && entries[0].intersectionRatio > 0;
+        schedule();
+      });
+      observer.observe(banner);
+      document.addEventListener('visibilitychange', schedule);
+    } else {
+      const check = () => {
+        const rect = banner.getBoundingClientRect();
+        intersects = rect.bottom > 0 && rect.top < root.innerHeight;
+        report();
+      };
+      root.addEventListener('scroll', check, { passive: true });
+      root.addEventListener('resize', check);
+      check();
+      document.addEventListener('visibilitychange', report);
     }
   }
 

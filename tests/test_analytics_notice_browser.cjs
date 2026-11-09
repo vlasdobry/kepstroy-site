@@ -44,6 +44,7 @@ async function main() {
           await page.goto(origin + urlPath, { waitUntil: 'networkidle' });
           const banner = page.locator('#cookieBanner');
           await banner.waitFor({ state: 'visible' });
+          await page.waitForFunction(() => window.__qaCalls.some(a => a[2] === 'analytics_notice_shown'));
           const panel = page.locator(urlPath === '/' ? '.sticky-phone' : '.solar-mobile-cta');
           if (width <= (urlPath === '/' ? 768 : 760)) {
             if (urlPath === '/') {
