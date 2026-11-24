@@ -64,8 +64,8 @@ def build(slug, service, hero, detail):
     other = 'kanalizaciya' if service == 'water' else 'vodosnabzhenie'
     other_text = 'Подключение канализации' if service == 'water' else 'Подключение водопровода'
     article = '/blog/vodosnabzhenie-chastnogo-doma-krym/' if service == 'water' else '/blog/kanalizaciya-v-chastnom-dome-krym/'
-    photo_alt = 'Прокладка наружной трубы в траншее у здания' if service == 'water' else 'Бетонный колодец с подводом трубы'
-    detail_alt = 'Траншея и синяя труба на объекте' if service == 'water' else 'Узел труб в бетонном колодце'
+    photo_alt = 'Счётчик воды и запорный кран в колодце' if service == 'water' else 'Бетонный колодец с подводом трубы'
+    detail_alt = 'Запорные задвижки на водопроводных трубах' if service == 'water' else 'Узел труб в бетонном колодце'
     exclusion = 'Бурение скважин, аварийную прочистку, мелкую сантехнику и мелкий ремонт не выполняем.'
     main = f'''<main class="utility-page" data-utility-service="{service}">
     <section class="utility-hero"><div class="container utility-hero-grid">
@@ -116,6 +116,6 @@ def build(slug, service, hero, detail):
     target.write_text(result, encoding='utf-8', newline='\n')
 
 
-build('vodosnabzhenie', 'water', 'IMG_0083.jpg', 'IMG_1039.jpg')
+build('vodosnabzhenie', 'water', 'IMG_1130.jpg', '2CB88526-8E8C-4EB0-94D4-54843C418591.jpg')
 build('kanalizaciya', 'sewer', 'IMG_0031.jpg', 'IMG_0451.jpg')
 print('Generated 2 central utility connection pages')
