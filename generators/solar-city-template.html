@@ -41,7 +41,7 @@
       },
       {
         "@type": "Product",
-        "name": "Солнечная панель ${product_name_schema} ${panel_power_w} Вт",
+        "name": "Солнечная панель ${product_name_schema} ${panel_power_w} Вт",${product_image_schema}
         "brand": {"@type": "Brand", "name": "${product_brand_schema}"},
         "offers": {
           "@type": "Offer",
@@ -123,7 +123,7 @@
 
     <section id="panel" class="solar-section">
       <div class="container solar-product">
-        <figure class="solar-product__photo"><img src="/images/solnechnye-paneli/solar-panel-visualization.webp" alt="Визуализация двусторонней солнечной панели в алюминиевой раме" width="960" height="720" loading="lazy" decoding="async"><figcaption>Визуализация панели. Внешний вид поставляемой партии может отличаться.</figcaption></figure>
+        <figure class="solar-product__photo"><img src="${product_image_src}" alt="Визуализация двусторонней солнечной панели в алюминиевой раме" width="960" height="720" loading="lazy" decoding="async"><figcaption>Изображение приведено для примера.</figcaption></figure>
         <div class="solar-product__copy"><h2>${product_name} ${panel_power_w} Вт</h2><p>${intro}</p><p class="solar-note solar-spec-note">Характеристики сверяются по паспорту поставляемой модификации.</p><dl class="solar-product__facts"><div><dt>Мощность</dt><dd>${panel_power_w} Вт</dd></div><div><dt>Стоимость панели</dt><dd>${panel_price_formatted} ₽ за штуку</dd></div><div><dt>Поставка</dt><dd>${availability_sentence}</dd></div></dl><p class="solar-note">Монтаж, доставка, инвертор, аккумуляторы и остальные комплектующие рассчитываются отдельно и индивидуально.</p><a href="#request" data-solar-intent="panels" class="btn btn--primary">Уточнить наличие</a></div>
       </div>
     </section>

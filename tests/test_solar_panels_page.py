@@ -69,7 +69,10 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual(20000, offer["price"])
         self.assertEqual("RUB", offer["priceCurrency"])
         self.assertEqual("https://schema.org/InStock", offer["availability"])
-        self.assertNotIn("image", product)
+        offer_data = json.loads(
+            (ROOT / "generators" / "solar-page-data.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(offer_data["product_image_url"], product.get("image"))
         self.assertIn(
             "Визуализация солнечной системы на частном доме.", text
         )
@@ -358,7 +361,7 @@ class SolarPanelsPageTests(unittest.TestCase):
         self.assertEqual(12, len(city_links))
 
     def test_all_generated_solar_pages_use_the_current_css_cache_version(self):
-        expected_version = "7"
+        expected_version = "8"
         for template_name in ("solar-main-template.html", "solar-city-template.html"):
             template = (ROOT / "generators" / template_name).read_text(encoding="utf-8")
             self.assertIn(

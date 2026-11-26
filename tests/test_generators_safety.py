@@ -704,6 +704,7 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
     def test_offer_data_contains_only_confirmed_public_facts(self):
         self.assertTrue(SOLAR_OFFER_DATA.exists(), "solar offer data is missing")
         offer = json.loads(SOLAR_OFFER_DATA.read_text(encoding="utf-8"))
+        offer.pop("product_image_url", None)
         self.assertEqual(
             {
                 "product_name": "LONGi Hi-MO X10 Scientist",
@@ -715,6 +716,53 @@ class SolarGeneratorSafetyTests(unittest.TestCase):
             },
             offer,
         )
+
+    def test_product_image_is_rendered_only_when_configured(self):
+        module, (cities, city_content, offer, main_template, city_template) = self.inputs()
+        offer.pop("product_image_url", None)
+        image_url = "https://example.test/solar-module.webp?v=1&size=large"
+
+        for expected_image in (None, image_url):
+            if expected_image is not None:
+                offer["product_image_url"] = expected_image
+            rendered = module.render_pages(
+                cities, city_content, offer, main_template, city_template
+            )
+            self.assertEqual(13, len(rendered))
+            for path, source in rendered.items():
+                with self.subTest(path=path, image_url=expected_image):
+                    payload = re.search(
+                        r'<script type="application/ld\+json">(.*?)</script>',
+                        source,
+                        re.DOTALL,
+                    ).group(1)
+                    nodes = json.loads(payload)["@graph"]
+                    product = next(node for node in nodes if node["@type"] == "Product")
+                    if expected_image is None:
+                        self.assertNotIn("image", product)
+                    else:
+                        self.assertEqual(expected_image, product["image"])
+                        escaped_image = expected_image.replace("&", "&amp;")
+                        self.assertIn(f'src="{escaped_image}"', source)
+                    self.assertIn("<figcaption>Изображение приведено для примера.</figcaption>", source)
+
+    def test_offer_image_url_rejects_invalid_values(self):
+        module, (cities, city_content, offer, _main, _city) = self.inputs()
+        invalid_urls = (
+            None,
+            "",
+            "/panel.webp",
+            "https:///panel.webp",
+            "https://[invalid",
+            "https://cdn.example.test/panel photo.webp",
+            "https://user@cdn.example.test/panel.webp",
+        )
+        for value in invalid_urls:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(module.GeneratorError, "product_image_url"):
+                    module.validate_inputs(
+                        cities, city_content, {**offer, "product_image_url": value}
+                    )
 
     def test_offer_numeric_fields_reject_booleans(self):
         module, (cities, city_content, offer, _main, _city) = self.inputs()

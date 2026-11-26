@@ -416,6 +416,9 @@ class SolarCityPagesTests(unittest.TestCase):
 
     def test_schema_describes_local_service_product_offer_and_matching_faq(self):
         sources = self.require_all_sources()
+        offer_data = json.loads(
+            (ROOT / "generators" / "solar-page-data.json").read_text(encoding="utf-8")
+        )
         for city in city_registry():
             with self.subTest(city=city["slug"]):
                 source = sources[city["slug"]]
@@ -444,7 +447,7 @@ class SolarCityPagesTests(unittest.TestCase):
                 self.assertEqual("Республика Крым", served.get("AdministrativeArea"))
 
                 product = next(node for node in nodes if node.get("@type") == "Product")
-                self.assertNotIn("image", product)
+                self.assertEqual(offer_data["product_image_url"], product.get("image"))
                 offer = product.get("offers", {})
                 self.assertEqual("Offer", offer.get("@type"))
                 self.assertEqual(20000, offer.get("price"))
