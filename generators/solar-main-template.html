@@ -39,7 +39,7 @@
       {
         "@type": "Product",
         "@id": "https://kepstroy.ru/uslugi/solnechnye-paneli/#product",
-        "name": "Солнечная панель ${product_name_schema} ${panel_power_w} Вт",
+        "name": "Солнечная панель ${product_name_schema} ${panel_power_w} Вт",${product_image_schema}
         "description": "Солнечная панель мощностью ${panel_power_w} Вт. Доступна ${availability_lower_schema} с доставкой по Крыму.",
         "brand": {"@type": "Brand", "name": "${product_brand_schema}"},
         "offers": {
@@ -161,8 +161,8 @@
     <section id="panel" class="solar-section">
       <div class="container solar-product">
         <figure class="solar-product__photo">
-          <img src="/images/solnechnye-paneli/solar-panel-visualization.webp" alt="Визуализация двусторонней солнечной панели в алюминиевой раме" width="960" height="720" loading="lazy" decoding="async">
-          <figcaption>Визуализация современной двусторонней солнечной панели. Внешний вид поставляемой партии может отличаться.</figcaption>
+          <img src="${product_image_src}" alt="Визуализация двусторонней солнечной панели в алюминиевой раме" width="960" height="720" loading="lazy" decoding="async">
+          <figcaption>Изображение приведено для примера.</figcaption>
         </figure>
         <div class="solar-product__copy">
           <h2>${product_name} ${panel_power_w} Вт</h2>

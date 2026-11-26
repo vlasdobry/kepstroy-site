@@ -12,6 +12,7 @@ import tempfile
 from html import escape
 from pathlib import Path
 from string import Template
+from urllib.parse import urlsplit
 
 
 GENERATOR_DIR = Path(__file__).resolve().parent
@@ -22,7 +23,7 @@ OFFER_PATH = GENERATOR_DIR / "solar-page-data.json"
 MAIN_TEMPLATE_PATH = GENERATOR_DIR / "solar-main-template.html"
 CITY_TEMPLATE_PATH = GENERATOR_DIR / "solar-city-template.html"
 MAIN_OUTPUT = Path("uslugi/solnechnye-paneli/index.html")
-SOLAR_CSS_VERSION = "7"
+SOLAR_CSS_VERSION = "8"
 SOLAR_JS_VERSION = "8"
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 REQUIRED_OFFER_KEYS = {
@@ -145,12 +146,30 @@ def validate_inputs(cities, city_content, offer):
 
     validate_neighbor_map(cities, NEIGHBOR_SLUGS)
 
-    if not isinstance(offer, dict) or set(offer) != REQUIRED_OFFER_KEYS:
+    if (
+        not isinstance(offer, dict)
+        or set(offer) - {"product_image_url"} != REQUIRED_OFFER_KEYS
+    ):
         raise GeneratorError(
             "Solar offer must contain only the confirmed common offer fields"
         )
     if not isinstance(offer["product_name"], str) or not offer["product_name"].strip():
         raise GeneratorError("Solar offer product_name must be text")
+    if "product_image_url" in offer:
+        image_url = offer["product_image_url"]
+        error_message = "Solar offer product_image_url must be an absolute HTTP(S) URL"
+        if not isinstance(image_url, str) or re.search(r"[\s\x00-\x1f\x7f]", image_url):
+            raise GeneratorError(error_message)
+        try:
+            image = urlsplit(image_url)
+        except ValueError as error:
+            raise GeneratorError(error_message) from error
+        if (
+            image.scheme not in ("http", "https")
+            or not image.hostname
+            or image.username is not None
+        ):
+            raise GeneratorError(error_message)
     panel_power_w = offer["panel_power_w"]
     if (
         isinstance(panel_power_w, bool)
@@ -255,11 +274,18 @@ def _common_context(offer):
     availability_sentence = availability_lower[:1].upper() + availability_lower[1:]
     product_brand = offer["product_name"].split(maxsplit=1)[0]
     system_types_plural = _plural_system_types(offer["system_types"])
+    product_image_schema = ""
+    if image_url := offer.get("product_image_url"):
+        product_image_schema = f'\n        "image": "{_json_script_string(image_url)}",'
     return {
         "solar_css_version": SOLAR_CSS_VERSION,
         "solar_js_version": SOLAR_JS_VERSION,
         "product_name": escape(offer["product_name"]),
         "product_name_schema": _json_script_string(offer["product_name"]),
+        "product_image_schema": product_image_schema,
+        "product_image_src": escape(
+            image_url or "/images/solnechnye-paneli/solar-panel-visualization.webp"
+        ),
         "product_brand": escape(product_brand),
         "product_brand_schema": _json_script_string(product_brand),
         "panel_power_w": str(offer["panel_power_w"]),
